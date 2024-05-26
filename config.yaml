@@ -1,0 +1,8 @@
+# Port must be larger than 1023 and smaller than 65536
+port: 6969
+
+# Available languages are: 'en' (English) and 'es' (Spanish)
+lang: "en"
+
+# Database name
+name: "my-inventory"
