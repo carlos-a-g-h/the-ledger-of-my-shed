@@ -26,6 +26,7 @@ on:
 env:
   MAIN_PY: "main.py"
   THE_NAME: "shed-ledger"
+  THE_NAME_BIN: "shledger"
 
 jobs:
   job1:
@@ -70,16 +71,16 @@ jobs:
         if: ${{ contains(matrix.os,'windows') == false }}
         working-directory: source-code
         run: |
-          python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME }}"
-          mv "the-output/${{ env.THE_NAME }}" "the-output/${{ env.THE_NAME }}.${{ matrix.os }}"
+          python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME_BIN }}"
+          mv "the-output/${{ env.THE_NAME_BIN }}" "the-output/${{ env.THE_NAME_BIN }}.${{ matrix.os }}"
           find the-output
 
       - name: Build for Windows
         if: ${{ contains(matrix.os,'windows') == true }}
         working-directory: source-code
         run: |
-          python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.exe"
-          mv "the-output/${{ env.THE_NAME }}.exe" "the-output/${{ env.THE_NAME }}.${{ matrix.os }}.exe"
+          python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME_BIN }}.exe"
+          mv "the-output/${{ env.THE_NAME_BIN }}.exe" "the-output/${{ env.THE_NAME_BIN }}.${{ matrix.os }}.exe"
           ls the-output
 
       - uses: actions/upload-artifact@v3
@@ -87,8 +88,8 @@ jobs:
           name: "${{ matrix.os }}"
           if-no-files-found: error
           path: |
-            ./source-code/the-output/${{ env.THE_NAME }}.${{ matrix.os }}
-            ./source-code/the-output/${{ env.THE_NAME }}.${{ matrix.os }}.exe
+            ./source-code/the-output/${{ env.THE_NAME_BIN }}.${{ matrix.os }}
+            ./source-code/the-output/${{ env.THE_NAME_BIN }}.${{ matrix.os }}.exe
 
   job2:
     name: Get date of today
@@ -115,17 +116,18 @@ jobs:
 
     steps:
     - name: Create release
-      id: CreateRelease
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-      with:
-        # tag_name: ${{ steps.DateToday.outputs.TODAY }}
-        # release_name: ${{ steps.DateToday.outputs.TODAY }}
-        tag_name: ${{ needs.job2.the_date }}
-        release_name: ${{ needs.job2.the_date }}
-        draft: false
-        prerelease: false
+      run: echo "ignoring..."
+#      id: CreateRelease
+#      uses: actions/create-release@v1
+#      env:
+#        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+#      with:
+#        # tag_name: ${{ steps.DateToday.outputs.TODAY }}
+#        # release_name: ${{ steps.DateToday.outputs.TODAY }}
+#        tag_name: ${{ needs.job2.the_date }}
+#        release_name: ${{ needs.job2.the_date }}
+#        draft: false
+#        prerelease: false
 
   job4:
     name: Attach artifact as an asset
@@ -147,12 +149,12 @@ jobs:
       - name: Set name (Linux)
         if: ${{ contains(matrix.binary,'windows') == false }}
         run: |
-          echo "THE_FILENAME=${{ env.THE_NAME }}.${{ matrix.binary }} >> $GITHUB_ENV"
+          echo "THE_FILENAME=${{ env.THE_NAME_BIN }}.${{ matrix.binary }} >> $GITHUB_ENV"
 
       - name: Set name (Windows)
         if: ${{ contains(matrix.binary,'windows') == true }}
         run: |
-          echo "THE_FILENAME=${{ env.THE_NAME }}.${{ matrix.binary }}.exe >> $GITHUB_ENV"
+          echo "THE_FILENAME=${{ env.THE_NAME_BIN }}.${{ matrix.binary }}.exe >> $GITHUB_ENV"
 
       - name: Download artifact
         uses: actions/download-artifact@v3
@@ -160,14 +162,18 @@ jobs:
           name: ${{ matrix.binary }}
           path: "$THE_FILENAME"
 
-      - name: Attach the artifact
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      - name: Check the landscape
+        run: |
+          find .
 
-        with:
-          upload_url: ${{ needs.job3.the_upload_url }}
-          asset_path: "$THE_FILENAME"
-          asset_name: "$THE_FILENAME"
-          asset_content_type: application/octet-stream
+#      - name: Attach the artifact
+#        uses: actions/upload-release-asset@v1
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+#
+#        with:
+#          upload_url: ${{ needs.job3.the_upload_url }}
+#          asset_path: "$THE_FILENAME"
+#          asset_name: "$THE_FILENAME"
+#          asset_content_type: application/octet-stream
 
