@@ -142,7 +142,7 @@ jobs:
       - name: Download repo (one last time)
         uses: actions/checkout@v4
         with:
-          path: source-code       
+          path: source-code
 
       - name: Set name (Linux)
         if: ${{ contains(matrix.binary,'windows') == false }}
@@ -154,7 +154,7 @@ jobs:
         run: |
           echo "THE_FILENAME=${{ env.THE_NAME }}.${{ matrix.binary }}.exe >> $GITHUB_ENV"
 
-      - name: Download artifact (Linux)
+      - name: Download artifact
         uses: actions/download-artifact@v3
         with:
           name: ${{ matrix.binary }}
