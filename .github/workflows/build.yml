@@ -1,126 +1,173 @@
-name: Create release and binaries
+name: Build release
 
 on:
-  workflow_dispatch:
-    inputs:
-      TAGNAME:
-        description: Tag name (Version)
-        required: true
-        type: string
-        default: "yail"
+  [workflow_dispatch]
+
+#on:
+#  workflow_dispatch:
+#    inputs:
+#      THE_NAME:
+#        description: Repository name (without your username)
+#        type: string
+#        required: true
+#
+#      #MAIN_PY:
+#      #  description: Python main filename
+#      #  type: string
+#      #  required: true
+#      #  default: main.py
+#
+#      NO_WINDOWS:
+#        description: Do not build for Windows, just Linux
+#        type: boolean
+#        required: true
+#        default: false
 
 env:
-  FILE_REQ: "req.txt"
-  FILE_PY: "main.py"
-  NAME_LINUX: "yail-linux.tar"
-  NAME_LINUX_STEM: "yail-linux"
-  NAME_WINDOWS: "yail-windows.zip"
-  NAME_WINDOWS_STEM: "yail-windows"
+  MAIN_PY: "main.py"
+  THE_NAME: "whouse"
 
 jobs:
-  job-one:
-    name: Build binaries
+  job1:
+    name: Build and upload executable binary
     strategy:
       matrix:
-        os: [windows-2019,ubuntu-20.04]
+        # os: [ubuntu-20.04,windows-2019 ]
+        os: [ubuntu-20.04]
+
     runs-on: ${{ matrix.os }}
-
     steps:
+      - name: Check if on Windows
+        if: ${{ contains(matrix.os,'windows') == true && inputs.NO_WINDOWS == true }}
+        run: exit 1
 
-    - name: Pull the repo
-      uses: actions/checkout@v3
+      - name: Download repo
+        uses: actions/checkout@v4
+        with:
+          # repository: "${{ github.repository_owner }}/${{ inputs.THE_NAME }}"
+          # ref: main
+          # token: ${{ secrets.GH_TOKEN }}
+          path: source-code
+          sparse-checkout: .
 
-    - name: Setup Python (1)
-      uses: actions/setup-python@v3
-      with:
-        python-version: "3.9.6"
-    - name: Setup Python (2)
-      run: |
-        pip install -r "${{ env.FILE_REQ }}"
+      - name: Setup Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.9.6"
 
-    - name: Linux (Build binary)
-      if: ${{ matrix.os == 'ubuntu-20.04' }}
-      run: |
-        pip install pyinstaller
-        pyinstaller --onefile "${{ env.FILE_PY }}"
-        mv dist "${{ env.NAME_LINUX_STEM }}"
-        mv README.md "${{ env.NAME_LINUX_STEM }}/README.md"
-        tar -cvf "${{ env.NAME_LINUX }}" "${{ env.NAME_LINUX_STEM }}"
+      - name: Setup Python (req.txt)
+        if: ${{ hashFiles('req.txt') != '' }}
+        working-directory: source-code
+        run: |
+          pip install -r req.txt
+          mkdir out
 
-    - name: Linux (Upload artifact)
-      if: ${{ matrix.os == 'ubuntu-20.04' }}
-      uses: actions/upload-artifact@v3
-      with:
-        name: "${{ env.NAME_LINUX }}"
-        path: "${{ env.NAME_LINUX }}"
+      - name: Setup Python (install Nuitka)
+        run: |
+          pip install nuitka
 
-    - name: Windows (Build binary)
-      if: ${{ matrix.os == 'windows-2019' }}
-      run: |
-        pip install PyInstaller
-        python -m PyInstaller --onefile "${{ env.FILE_PY }}"
-        mv dist "${{ env.NAME_WINDOWS_STEM }}"
-        mv "README.md" "${{ env.NAME_WINDOWS_STEM }}/README.md"
-        Compress-Archive "${{ env.NAME_WINDOWS_STEM }}" "${{ env.NAME_WINDOWS }}"
+      - name: Build for Linux
+        if: ${{ contains(matrix.os,'windows') == false }}
+        working-directory: source-code
+        run: |
+          python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME }}"
+          mv "the-output/${{ env.THE_NAME }}" "the-output/${{ env.THE_NAME }}.${{ matrix.os }}"
+          find the-output
 
-    - name: Windows (Upload artifact)
-      if: ${{ matrix.os == 'windows-2019' }}
-      uses: actions/upload-artifact@v3
-      with:
-        name: "${{ env.NAME_WINDOWS }}"
-        path: "${{ env.NAME_WINDOWS }}"
+      - name: Build for Windows
+        if: ${{ contains(matrix.os,'windows') == true }}
+        working-directory: source-code
+        run: |
+          python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.exe"
+          mv "the-output/${{ env.THE_NAME }}.exe" "the-output/${{ env.THE_NAME }}.${{ matrix.os }}.exe"
+          ls the-output
 
-  job-two:
-    name: Create release and add the assets
-    needs: job-one
+      - uses: actions/upload-artifact@v3
+        with:
+          name: "${{ matrix.os }}"
+          if-no-files-found: error
+          path: |
+            ./source-code/the-output/${{ env.THE_NAME }}.${{ matrix.os }}
+            ./source-code/the-output/${{ env.THE_NAME }}.${{ matrix.os }}.exe
+
+  job2:
+    name: Get date of today
+    needs: job1
     runs-on: ubuntu-latest
+    outputs:
+      the_date: ${{ steps.DateToday.outputs.TODAY }}
+
     steps:
+      - name: Get date and time
+        id: DateToday
+        run: |
+          RIGHT_NOW=$(date +%Y-%m-%d-%H-%M-%S)
+          echo "Today is: $RIGHT_NOW"
+          echo "TODAY=$RIGHT_NOW >> $GITHUB_OUTPUT"
 
-    - name: Download artifact (Linux)
-      uses: actions/download-artifact@v2.1.1
-      with:
-        name: "${{ env.NAME_LINUX }}"
+  job3:
+    name: Create the release
+    needs: job2
 
-    - name: Download artifact (Windows)
-      uses: actions/download-artifact@v2.1.1
-      with:
-        name: "${{ env.NAME_WINDOWS }}"
+    runs-on: ubuntu-latest
+    outputs:
+      the_upload_url: ${{ steps.CreateRelease.outputs.upload_url }}
 
-    - name: Make sure that the files exist
-      run: |
-        ls -l "${{ env.NAME_LINUX }}"
-        ls -l "${{ env.NAME_WINDOWS }}"
-
+    steps:
     - name: Create release
       id: CreateRelease
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
       with:
-        tag_name: "${{ inputs.TAGNAME }}"
-        release_name: "${{ inputs.TAGNAME }}"
+        # tag_name: ${{ steps.DateToday.outputs.TODAY }}
+        # release_name: ${{ steps.DateToday.outputs.TODAY }}
+        tag_name: ${{ needs.job2.the_date }}
+        release_name: ${{ needs.job2.the_date }}
         draft: false
         prerelease: false
 
-    - name: Ubuntu / Linux (Upload Release Asset)
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-      with:
-        upload_url: ${{ steps.CreateRelease.outputs.upload_url }}
-        asset_path: "${{ env.NAME_LINUX }}"
-        asset_name: "${{ env.NAME_LINUX }}"
-        asset_content_type: application/octet-stream
+  job4:
+    name: Attach artifact as an asset
+    needs: job3
 
-    - name: (Debug) Show upload URL
-      run: echo "${{ steps.CreateRelease.outputs.upload_url }}"
+    strategy:
+      max-parallel: 1
+      matrix:
+        # binary: [ubuntu-20.04,windows-2019 ]
+        binary: [ubuntu-20.04]
 
-    - name: Windows (Upload Release Asset)
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-      with:
-        upload_url: ${{ steps.CreateRelease.outputs.upload_url }}
-        asset_path: "${{ env.NAME_WINDOWS }}"
-        asset_name: "${{ env.NAME_WINDOWS }}"
-        asset_content_type: application/octet-stream
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download repo (one last time)
+        uses: actions/checkout@v4
+        with:
+          path: source-code       
+
+      - name: Set name (Linux)
+        if: ${{ contains(matrix.binary,'windows') == false }}
+        run: |
+          echo "THE_FILENAME=${{ env.THE_NAME }}.${{ matrix.binary }} >> $GITHUB_ENV"
+
+      - name: Set name (Windows)
+        if: ${{ contains(matrix.binary,'windows') == true }}
+        run: |
+          echo "THE_FILENAME=${{ env.THE_NAME }}.${{ matrix.binary }}.exe >> $GITHUB_ENV"
+
+      - name: Download artifact (Linux)
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ matrix.binary }}
+          path: "$THE_FILENAME"
+
+      - name: Attach the artifact
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+
+        with:
+          upload_url: ${{ needs.job3.the_upload_url }}
+          asset_path: "$THE_FILENAME"
+          asset_name: "$THE_FILENAME"
+          asset_content_type: application/octet-stream
+
