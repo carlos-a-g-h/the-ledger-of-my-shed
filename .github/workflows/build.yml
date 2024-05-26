@@ -7,7 +7,7 @@ on:
         description: Tag name (Version)
         required: true
         type: string
-        default: "abusiv"
+        default: "yail"
 
 env:
   FILE_REQ: "req.txt"
