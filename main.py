@@ -2,6 +2,7 @@
 
 # from asyncio import run as aiorun
 from pathlib import Path
+from typing import Optional
 
 from aiohttp.web import Application
 from aiohttp.web import run_app
@@ -36,15 +37,23 @@ def read_config(path_config:Path)->dict:
 
 	rawconfig=read_yaml_file(path_config)
 
-	# name
+	# port
 
-	cfg_name=util_valid_str(
-		rawconfig.get("name"),
-		True
+	cfg_port=util_valid_int(
+		rawconfig.get("port"),
 	)
-	if not isinstance(cfg_name,str):
+	if not isinstance(cfg_port,int):
 		print(
-			"'name' key not found in config"
+			"'port' key not found in config"
+		)
+		return {}
+
+	if not (
+		cfg_port>1023 and
+		cfg_port<65536
+	):
+		print(
+			"Port must be larger than 1023 and smaller than 65536"
 		)
 		return {}
 
@@ -66,47 +75,59 @@ def read_config(path_config:Path)->dict:
 		)
 		return {}
 
-	# port
+	# db-name
 
-	cfg_port=util_valid_int(
-		rawconfig.get("port"),
+	cfg_db_name=util_valid_str(
+		rawconfig.get("db-name"),
+		True
 	)
-	if not isinstance(cfg_port,int):
+	if not isinstance(cfg_db_name,str):
 		print(
-			"'port' key not found in config"
+			"'db-name' key not found in config"
 		)
 		return {}
 
-	if not (
-		cfg_port>1023 and
-		cfg_port<65536
-	):
+	# db-url
+
+	cfg_db_url=util_valid_str(
+		rawconfig.get("db-url"),
+		True
+	)
+	if not isinstance(cfg_db_url,str):
 		print(
-			"Port must be larger than 1023 and smaller than 65536"
+			"'db-url' key not found in config: A local database will be used instead"
 		)
-		return {}
 
 	# all ok
 
 	return {
-		"name":cfg_name,
+		"db-name":cfg_db_name,
+		"db-url":cfg_db_url,
 		"port":cfg_port,
 		"lang":cfg_lang
 	}
 
 def build_app(
 		path_programdir:Path,
-		rdbn:str,
-		lang:str
+		lang:str,
+		rdb_name:str,
+		rdb_url:Optional[str],
 	)->Application:
 
 	app=Application()
+
 	app["path_programdir"]=path_programdir
 	app["cache_items"]={}
-	app["rdbc"]=AsyncIOMotorClient()
-	app["rdbn"]=rdbn
+	app["rdbn"]=rdb_name
 	app["lang"]=lang
 
+	has_connection_url=isinstance(rdb_name,str)
+	if has_connection_url:
+		app["rdbc"]=AsyncIOMotorClient()
+	if not has_connection_url:
+		print("MongoDB Connection string:",rdb_url)
+		app["rdbc"]=AsyncIOMotorClient(rdb_url)
+	
 	app.add_routes([
 
 		web_GET(
@@ -222,15 +243,18 @@ if __name__=="__main__":
 	if not isinstance(cfg_lang,str):
 		sys_exit(1)
 
-	cfg_name=the_config.get("name")
-	if not isinstance(cfg_name,str):
+	cfg_db_name=the_config.get("db-name")
+	if not isinstance(cfg_db_name,str):
 		sys_exit(1)
+
+	cfg_db_url=the_config.get("db-url")
 
 	run_app(
 		build_app(
 			path_appdir,
-			cfg_name,
-			cfg_lang
+			cfg_lang,
+			cfg_db_name,
+			cfg_db_url
 		),
 		port=cfg_port,
 	)
