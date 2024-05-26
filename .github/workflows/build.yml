@@ -25,7 +25,7 @@ on:
 
 env:
   MAIN_PY: "main.py"
-  THE_NAME: "whouse"
+  THE_NAME: "shed-ledger"
 
 jobs:
   job1:
