@@ -7,8 +7,6 @@ jobs:
   first:
     name: First Job
     runs-on: ubuntu-latest
-#    outputs:
-#      the_date: ${{ steps.GetDate.outputs.TODAY }}
     steps:
       - name: Get Date
         id: step_date
@@ -18,18 +16,35 @@ jobs:
       - name: Print date
         run: |
           echo "TODAY IS ${{ steps.step_date.outputs.TODAY }}"
+          echo "" > NOTES.txt
           echo "DATE_TODAY=${{ steps.step_date.outputs.TODAY }}" >> NOTES.txt
+          echo "HELLO=WORLD" >> NOTES.txt
           ls NOTES.txt
           cat NOTES.txt
 
-#      - name: Upload Notes
-#        uses: actions/upload-artifact@v3
-#        with:
-#          name: "NOTES"
-#          if-no-files-found: error
-#          path: NOTES.txt
-#
-#  second:
-#    name: Second Job
-#    needs: [first]
-#    runs-on: ubuntu-latest
+      - name: Upload Notes
+        uses: actions/upload-artifact@v3
+        with:
+          name: "NOTES"
+          if-no-files-found: error
+          path: NOTES.txt
+
+  second:
+    name: Second Job
+    needs: [first]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Notes
+        uses: actions/download-artifact@v3
+        with:
+          name: "NOTES"
+      - name: Check notes and save content
+        id: step_notes
+        run: |
+          cat NOTES.txt
+          cat NOTES >> $GITHUB_OUTPUT
+
+      - name: Print Notes contents
+        run: |
+          echo "TODAY IS ${{ steps.step_notes.outputs.DATE_TODAY }}"
+          echo "HI ${{ steps.step_notes.outputs.HELLO }}"
