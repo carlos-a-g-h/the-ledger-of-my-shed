@@ -115,6 +115,8 @@ jobs:
       the_upload_url: ${{ steps.CreateRelease.outputs.upload_url }}
 
     steps:
+    - name: Printing date again
+      run: echo "${{ needs.job2.the_date }}"
     - name: Create release
 #      run: echo "ignoring..."
       id: CreateRelease
@@ -124,8 +126,8 @@ jobs:
       with:
         # tag_name: ${{ steps.DateToday.outputs.TODAY }}
         # release_name: ${{ steps.DateToday.outputs.TODAY }}
-        tag_name: ${{ needs.job2.the_date }}
-        release_name: ${{ needs.job2.the_date }}
+        tag_name: "${{ needs.job2.the_date }}"
+        release_name: "${{ needs.job2.the_date }}"
         draft: false
         prerelease: false
 
