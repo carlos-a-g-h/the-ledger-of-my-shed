@@ -142,16 +142,22 @@ jobs:
         with:
           path: repo
 
-      - name: Download NOTES.txt
+      - name: Download Notes
         uses: actions/download-artifact@v3
         with:
           name: "NOTES"
 
-      - name: Recover from NOTES.txt
+      - name: Recover from Notes
         id: FromNotes
         run: |
           cat NOTES.txt
           cat NOTES.txt >> $GITHUB_OUTPUT
+
+      - name: Test Notes
+        run: |
+          echo "${{ steps.FromNotes.outputs.the_date }}"
+          echo "${{ steps.FromNotes.outputs.the_date_again }}"
+          echo "${{ steps.FromNotes.outputs.the_upload_url }}"
 
       - name: Download artifact
         uses: actions/download-artifact@v3
