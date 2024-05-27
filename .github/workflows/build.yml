@@ -6,7 +6,7 @@ on:
 env:
   MAIN_PY: "main.py"
   THE_NAME: "shed-ledger"
-  THE_NAME_BIN: "shld"
+  THE_NAME_BIN: "shled"
 
 jobs:
   job-build:
