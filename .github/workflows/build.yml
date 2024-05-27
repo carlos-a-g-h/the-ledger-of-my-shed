@@ -71,8 +71,8 @@ jobs:
         if: ${{ contains(matrix.os,'windows') == false }}
         working-directory: source-code
         run: |
-          python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME_BIN }}"
-          mv "the-output/${{ env.THE_NAME_BIN }}" "the-output/${{ env.THE_NAME_BIN }}.${{ matrix.os }}"
+          python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME_BIN }}.bin"
+          mv "the-output/${{ env.THE_NAME_BIN }}.bin" "the-output/${{ env.THE_NAME_BIN }}.${{ matrix.os }}.bin"
           find the-output
 
       - name: Build for Windows
@@ -88,7 +88,7 @@ jobs:
           name: "${{ matrix.os }}"
           if-no-files-found: error
           path: |
-            ./source-code/the-output/${{ env.THE_NAME_BIN }}.${{ matrix.os }}
+            ./source-code/the-output/${{ env.THE_NAME_BIN }}.${{ matrix.os }}.bin
             ./source-code/the-output/${{ env.THE_NAME_BIN }}.${{ matrix.os }}.exe
 
   job2:
@@ -116,18 +116,18 @@ jobs:
 
     steps:
     - name: Create release
-      run: echo "ignoring..."
-#      id: CreateRelease
-#      uses: actions/create-release@v1
-#      env:
-#        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-#      with:
-#        # tag_name: ${{ steps.DateToday.outputs.TODAY }}
-#        # release_name: ${{ steps.DateToday.outputs.TODAY }}
-#        tag_name: ${{ needs.job2.the_date }}
-#        release_name: ${{ needs.job2.the_date }}
-#        draft: false
-#        prerelease: false
+#      run: echo "ignoring..."
+      id: CreateRelease
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      with:
+        # tag_name: ${{ steps.DateToday.outputs.TODAY }}
+        # release_name: ${{ steps.DateToday.outputs.TODAY }}
+        tag_name: ${{ needs.job2.the_date }}
+        release_name: ${{ needs.job2.the_date }}
+        draft: false
+        prerelease: false
 
   job4:
     name: Attach artifact as an asset
@@ -144,36 +144,42 @@ jobs:
       - name: Download repo (one last time)
         uses: actions/checkout@v4
         with:
-          path: source-code
+          path: repo
 
-      - name: Set name (Linux)
-        if: ${{ contains(matrix.binary,'windows') == false }}
-        run: |
-          echo "THE_FILENAME=${{ env.THE_NAME_BIN }}.${{ matrix.binary }} >> $GITHUB_ENV"
-
-      - name: Set name (Windows)
-        if: ${{ contains(matrix.binary,'windows') == true }}
-        run: |
-          echo "THE_FILENAME=${{ env.THE_NAME_BIN }}.${{ matrix.binary }}.exe >> $GITHUB_ENV"
+#      - name: Set name (Linux)
+#        if: ${{ contains(matrix.binary,'windows') == false }}
+#        run: |
+#          echo "THE_FILENAME=${{ env.THE_NAME_BIN }}.${{ matrix.binary }} >> $GITHUB_ENV"
+#
+#      - name: Set name (Windows)
+#        if: ${{ contains(matrix.binary,'windows') == true }}
+#        run: |
+#          echo "THE_FILENAME=${{ env.THE_NAME_BIN }}.${{ matrix.binary }}.exe >> $GITHUB_ENV"
 
       - name: Download artifact
         uses: actions/download-artifact@v3
         with:
           name: ${{ matrix.binary }}
-          path: "$THE_FILENAME"
+          path: "${{ env.THE_NAME }}"
 
       - name: Check the landscape
         run: |
+          mkdir -v "${{ env.THE_NAME }}/sources"
+          cp -v repo/htmx.min.js "${{ env.THE_NAME }}/sources/htmx.min.js"
+          cp -v repo/custom.css "${{ env.THE_NAME }}/sources/custom.css"
+          cp -v repo/config.yaml "${{ env.THE_NAME }}/config.yaml"
+          echo "${{ needs.job2.the_date }}" > "${{ env.THE_NAME }}/release-date.txt"
+          zip -0 -r "${{ env.THE_NAME }}-${{ matrix.binary }}.zip" "${{ env.THE_NAME }}"
           find .
 
-#      - name: Attach the artifact
-#        uses: actions/upload-release-asset@v1
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-#
-#        with:
-#          upload_url: ${{ needs.job3.the_upload_url }}
-#          asset_path: "$THE_FILENAME"
-#          asset_name: "$THE_FILENAME"
-#          asset_content_type: application/octet-stream
+      - name: Attach the artifact
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+
+        with:
+          upload_url: ${{ needs.job3.the_upload_url }}
+          asset_path: "${{ env.THE_NAME }}-${{ matrix.binary }}.zip"
+          asset_name: "${{ env.THE_NAME }}-${{ matrix.binary }}.zip"
+          asset_content_type: application/octet-stream
 
