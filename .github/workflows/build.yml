@@ -5,6 +5,7 @@ on:
 
 env:
   MAIN_PY: "main.py"
+  REQFILE: "requirements.txt"
   THE_NAME: "shed-ledger"
   THE_NAME_BIN: "shled"
 
@@ -36,12 +37,10 @@ jobs:
         with:
           python-version: "3.9.6"
 
-      - name: Setup Python (req.txt)
-        if: ${{ hashFiles('req.txt') != '' }}
+      - name: Setup Python (project dependencies)
         working-directory: repo
         run: |
-          pip install -r req.txt
-          mkdir out
+          pip install -r "${{ env.REQFILE }}"
 
       - name: Setup Python (install Nuitka)
         run: |
