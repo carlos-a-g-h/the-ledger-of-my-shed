@@ -9,7 +9,7 @@ env:
   THE_NAME_BIN: "shld"
 
 jobs:
-  job1:
+  job-build:
     name: Build and upload executable binary
     strategy:
       matrix:
@@ -28,7 +28,7 @@ jobs:
           # repository: "${{ github.repository_owner }}/${{ inputs.THE_NAME }}"
           # ref: main
           # token: ${{ secrets.GH_TOKEN }}
-          path: source-code
+          path: repo
           sparse-checkout: .
 
       - name: Setup Python
@@ -38,7 +38,7 @@ jobs:
 
       - name: Setup Python (req.txt)
         if: ${{ hashFiles('req.txt') != '' }}
-        working-directory: source-code
+        working-directory: repo
         run: |
           pip install -r req.txt
           mkdir out
@@ -49,7 +49,7 @@ jobs:
 
       - name: Build for Linux
         if: ${{ contains(matrix.os,'windows') == false }}
-        working-directory: source-code
+        working-directory: repo
         run: |
           # python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME_BIN }}.bin"
           mkdir the-output; echo "test.lol" > "the-output/${{ env.THE_NAME_BIN }}.bin"
@@ -58,7 +58,7 @@ jobs:
 
       - name: Build for Windows
         if: ${{ contains(matrix.os,'windows') == true }}
-        working-directory: source-code
+        working-directory: repo
         run: |
           # python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME_BIN }}.exe"
           mkdir the-output; echo "test.lol" > "the-output/${{ env.THE_NAME_BIN }}.exe"
@@ -73,43 +73,39 @@ jobs:
             ./source-code/the-output/${{ env.THE_NAME_BIN }}.${{ matrix.os }}.bin
             ./source-code/the-output/${{ env.THE_NAME_BIN }}.${{ matrix.os }}.exe
 
-  job2:
-    name: Get date of today
-    needs: job1
+  job-release:
+    name: Create release
+    needs: [job-build]
     runs-on: ubuntu-latest
-    outputs:
-      the_date: ${{ steps.DateToday.outputs.TODAY }}
-      the_upload_url: ${{ steps.CreateRelease.outputs.upload_url }}
+    #outputs:
+    #  the_date: ${{ steps.DateToday.outputs.TODAY }}
+    #  the_upload_url: ${{ steps.CreateRelease.outputs.upload_url }}
 
     steps:
-      - name: Get date and time
-        id: DateToday
+      - name: Get exact date
+        id: step_date
         run: |
-          RIGHT_NOW=$(date +%Y-%m-%d-%H-%M-%S)
-          echo "Today is: $RIGHT_NOW"
-          echo "TODAY=$RIGHT_NOW >> $GITHUB_OUTPUT"
+          echo "VAR_DATE=$(date +%Y-%m-%d-%H-%M-%S)" >> $GITHUB_OUTPUT
 
-      - name: Printing date again
-        run: echo "${{ steps.DateToday.outputs.TODAY }}"
+      - name: (dbg) Printing date
+        run: echo "${{ steps.step_date.outputs.VAR_DATE }}"
+
       - name: Create release
-        id: CreateRelease
+        id: step_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         with:
-          # tag_name: "${{ needs.job2.outputs.the_date }}"
-          tag_name: "${{ steps.DateToday.outputs.TODAY }}"
-          # release_name: "${{ needs.job2.outputs.the_date }}"
-          release_name: "${{ steps.DateToday.outputs.TODAY }}"
+          tag_name: "${{ steps.step_date.outputs.VAR_DATE }}"
+          release_name: "${{ steps.step_date.outputs.VAR_DATE }}"
           draft: false
           prerelease: false
 
-      - name: Write data
+      - name: Write data to NOTES
         run: |
           echo "" > NOTES.txt
-          echo "THE_URL=${{ steps.CreateRelease.outputs.upload_url }}" >> NOTES.txt
-          echo "THE_DATE=${{ needs.job2.outputs.the_date }}" >> NOTES.txt
-          echo "THE_DATE_AGAIN=$(date +%Y-%m-%d-%H-%M-%S)" >> NOTES.txt
+          echo "THE_URL=${{ steps.step_release.outputs.upload_url }}" >> NOTES.txt
+          echo "THE_DATE=${{ steps.step_date.outputs.VAR_DATE }}" >> NOTES.txt
           echo "{"
           cat NOTES.txt
           echo "}"
@@ -121,13 +117,13 @@ jobs:
           path: "NOTES.txt"
           if-no-files-found: error
 
-  job3:
+  job-attach:
     name: Attach artifact as an asset
-    needs: [job2]
-    outputs:
-      the_date: ${{ steps.FromNotes.outputs.THE_DATE }}
-      the_date_again: ${{ steps.FromNotes.outputs.THE_DATE_AGAIN }}
-      the_upload_url: ${{ steps.FromNotes.outputs.THE_URL }}
+    needs: [job-release]
+    #outputs:
+    #  the_date: ${{ steps.FromNotes.outputs.THE_DATE }}
+    #  the_date_again: ${{ steps.FromNotes.outputs.THE_DATE_AGAIN }}
+    #  the_upload_url: ${{ steps.FromNotes.outputs.THE_URL }}
 
     strategy:
       max-parallel: 1
@@ -148,16 +144,15 @@ jobs:
           name: "NOTES"
 
       - name: Recover from Notes
-        id: FromNotes
+        id: step_notes
         run: |
           cat NOTES.txt
           cat NOTES.txt >> $GITHUB_OUTPUT
 
-      - name: Test Notes
+      - name: (dbg) Test Notes
         run: |
-          echo "${{ steps.FromNotes.outputs.the_date }}"
-          echo "${{ steps.FromNotes.outputs.the_date_again }}"
-          echo "${{ steps.FromNotes.outputs.the_upload_url }}"
+          echo "CURRENT DATE = ${{ steps.step_notes.outputs.THE_DATE }}"
+          echo "UPLOAD URL = ${{ steps.step_notes.outputs.THE_URL }}"
 
       - name: Download artifact
         uses: actions/download-artifact@v3
@@ -165,7 +160,7 @@ jobs:
           name: ${{ matrix.binary }}
           path: "${{ env.THE_NAME }}"
 
-      - name: Check the landscape
+      - name: Pack it in
         run: |
           mkdir -v "${{ env.THE_NAME }}/sources"
           cp -v repo/htmx.min.js "${{ env.THE_NAME }}/sources/htmx.min.js"
@@ -180,7 +175,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
         with:
-          upload_url: "${{ needs.job2.outputs.the_upload_url }}"
+          upload_url: "${{ steps.step_notes.outputs.THE_URL }}"
           asset_path: "${{ env.THE_NAME }}-${{ matrix.binary }}.zip"
           asset_name: "${{ env.THE_NAME }}-${{ matrix.binary }}.zip"
           asset_content_type: application/octet-stream
