@@ -53,7 +53,7 @@ jobs:
         run: |
           # python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME_BIN }}.bin"
           mkdir the-output; echo "test.lol" > "the-output/${{ env.THE_NAME_BIN }}.bin"
-          mv "the-output/${{ env.THE_NAME_BIN }}.bin" "the-output/${{ env.THE_NAME_BIN }}.${{ matrix.os }}.bin"
+          mv "the-output/${{ env.THE_NAME_BIN }}.bin" "the-output/${{ env.THE_NAME_BIN }}.bin"
           find the-output
 
       - name: Build for Windows
@@ -62,7 +62,7 @@ jobs:
         run: |
           # python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME_BIN }}.exe"
           mkdir the-output; echo "test.lol" > "the-output/${{ env.THE_NAME_BIN }}.exe"
-          mv "the-output/${{ env.THE_NAME_BIN }}.exe" "the-output/${{ env.THE_NAME_BIN }}.${{ matrix.os }}.exe"
+          mv "the-output/${{ env.THE_NAME_BIN }}.exe" "the-output/${{ env.THE_NAME_BIN }}.exe"
           ls the-output
 
       - uses: actions/upload-artifact@v3
@@ -70,8 +70,8 @@ jobs:
           name: "${{ matrix.os }}"
           if-no-files-found: error
           path: |
-            ./source-code/the-output/${{ env.THE_NAME_BIN }}.${{ matrix.os }}.bin
-            ./source-code/the-output/${{ env.THE_NAME_BIN }}.${{ matrix.os }}.exe
+            ./repo/the-output/${{ env.THE_NAME_BIN }}.bin
+            ./repo/the-output/${{ env.THE_NAME_BIN }}.exe
 
   job-release:
     name: Create release
@@ -160,12 +160,14 @@ jobs:
           name: ${{ matrix.binary }}
           path: "${{ env.THE_NAME }}"
 
-      - name: Pack it in
+      - name: Create the package
         run: |
           mkdir -v "${{ env.THE_NAME }}/sources"
           cp -v repo/htmx.min.js "${{ env.THE_NAME }}/sources/htmx.min.js"
           cp -v repo/custom.css "${{ env.THE_NAME }}/sources/custom.css"
           cp -v repo/config.yaml "${{ env.THE_NAME }}/config.yaml"
+          cp -v repo/README.md "${{ env.THE_NAME }}/README.md"
+          echo "Build date => ${{ steps.step_notes.outputs.THE_DATE }}" >> "${{ env.THE_NAME }}/README.md"
           zip -0 -r "${{ env.THE_NAME }}-${{ matrix.binary }}.zip" "${{ env.THE_NAME }}"
           find .
 
