@@ -88,7 +88,7 @@ jobs:
           echo "TODAY=$RIGHT_NOW >> $GITHUB_OUTPUT"
 
       - name: Printing date again
-        run: echo "${{ needs.job2.outputs.the_date }}"
+        run: echo "${{ steps.DateToday.outputs.TODAY }}"
       - name: Create release
         id: CreateRelease
         uses: actions/create-release@v1
@@ -101,10 +101,31 @@ jobs:
           release_name: "${{ steps.DateToday.outputs.TODAY }}"
           draft: false
           prerelease: false
-  
+
+      - name: Write data
+        run: |
+          echo "" > NOTES.txt
+          echo "THE_URL=${{ steps.CreateRelease.outputs.upload_url }}" >> NOTES.txt
+          echo "THE_DATE=${{ needs.job2.outputs.the_date }}" >> NOTES.txt
+          echo "THE_DATE_AGAIN=$(date +%Y-%m-%d-%H-%M-%S)" >> NOTES.txt
+          echo "{"
+          cat NOTES.txt
+          echo "}"
+
+      - name: Store data
+        uses: actions/upload-artifact@v3
+        with:
+          name: "NOTES"
+          path: "NOTES.txt"
+          if-no-files-found: error
+
   job3:
     name: Attach artifact as an asset
     needs: [job2]
+    outputs:
+      the_date: ${{ steps.FromNotes.outputs.THE_DATE }}
+      the_date_again: ${{ steps.FromNotes.outputs.THE_DATE_AGAIN }}
+      the_upload_url: ${{ steps.FromNotes.outputs.THE_URL }}
 
     strategy:
       max-parallel: 1
@@ -118,6 +139,18 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: repo
+
+      - name: Download NOTES.txt
+        uses: actions/download-artifact@v3
+        with:
+          name: "NOTES"
+
+      - name: Recover from NOTES.txt
+        id: FromNotes
+        run: |
+          cat NOTES.txt
+          cat NOTES.txt >> $GITHUB_OUTPUT
+
       - name: Download artifact
         uses: actions/download-artifact@v3
         with:
