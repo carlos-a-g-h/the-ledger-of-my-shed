@@ -3,30 +3,10 @@ name: Build release
 on:
   [workflow_dispatch]
 
-#on:
-#  workflow_dispatch:
-#    inputs:
-#      THE_NAME:
-#        description: Repository name (without your username)
-#        type: string
-#        required: true
-#
-#      #MAIN_PY:
-#      #  description: Python main filename
-#      #  type: string
-#      #  required: true
-#      #  default: main.py
-#
-#      NO_WINDOWS:
-#        description: Do not build for Windows, just Linux
-#        type: boolean
-#        required: true
-#        default: false
-
 env:
   MAIN_PY: "main.py"
   THE_NAME: "shed-ledger"
-  THE_NAME_BIN: "shledger"
+  THE_NAME_BIN: "shld"
 
 jobs:
   job1:
@@ -116,18 +96,15 @@ jobs:
 
     steps:
     - name: Printing date again
-      run: echo "${{ needs.job2.the_date }}"
+      run: echo "${{ needs.job2.outputs.the_date }}"
     - name: Create release
-#      run: echo "ignoring..."
       id: CreateRelease
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
       with:
-        # tag_name: ${{ steps.DateToday.outputs.TODAY }}
-        # release_name: ${{ steps.DateToday.outputs.TODAY }}
-        tag_name: "${{ needs.job2.the_date }}"
-        release_name: "${{ needs.job2.the_date }}"
+        tag_name: "${{ needs.job2.outputs.the_date }}"
+        release_name: "${{ needs.job2.outputs.the_date }}"
         draft: false
         prerelease: false
 
@@ -147,17 +124,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: repo
-
-#      - name: Set name (Linux)
-#        if: ${{ contains(matrix.binary,'windows') == false }}
-#        run: |
-#          echo "THE_FILENAME=${{ env.THE_NAME_BIN }}.${{ matrix.binary }} >> $GITHUB_ENV"
-#
-#      - name: Set name (Windows)
-#        if: ${{ contains(matrix.binary,'windows') == true }}
-#        run: |
-#          echo "THE_FILENAME=${{ env.THE_NAME_BIN }}.${{ matrix.binary }}.exe >> $GITHUB_ENV"
-
       - name: Download artifact
         uses: actions/download-artifact@v3
         with:
@@ -170,7 +136,6 @@ jobs:
           cp -v repo/htmx.min.js "${{ env.THE_NAME }}/sources/htmx.min.js"
           cp -v repo/custom.css "${{ env.THE_NAME }}/sources/custom.css"
           cp -v repo/config.yaml "${{ env.THE_NAME }}/config.yaml"
-          echo "${{ needs.job2.the_date }}" > "${{ env.THE_NAME }}/release-date.txt"
           zip -0 -r "${{ env.THE_NAME }}-${{ matrix.binary }}.zip" "${{ env.THE_NAME }}"
           find .
 
