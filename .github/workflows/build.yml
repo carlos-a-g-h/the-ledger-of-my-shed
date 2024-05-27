@@ -139,7 +139,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
         with:
-          upload_url: ${{ needs.job2.outputs.the_upload_url }}
+          upload_url: "${{ needs.job2.outputs.the_upload_url }}"
           asset_path: "${{ env.THE_NAME }}-${{ matrix.binary }}.zip"
           asset_name: "${{ env.THE_NAME }}-${{ matrix.binary }}.zip"
           asset_content_type: application/octet-stream
