@@ -51,7 +51,8 @@ jobs:
         if: ${{ contains(matrix.os,'windows') == false }}
         working-directory: source-code
         run: |
-          python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME_BIN }}.bin"
+          # python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME_BIN }}.bin"
+          echo "test.lol" > "the-output/${{ env.THE_NAME_BIN }}.bin"
           mv "the-output/${{ env.THE_NAME_BIN }}.bin" "the-output/${{ env.THE_NAME_BIN }}.${{ matrix.os }}.bin"
           find the-output
 
@@ -59,7 +60,8 @@ jobs:
         if: ${{ contains(matrix.os,'windows') == true }}
         working-directory: source-code
         run: |
-          python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME_BIN }}.exe"
+          # python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME_BIN }}.exe"
+          echo "test.lol" > "the-output/${{ env.THE_NAME_BIN }}.exe"
           mv "the-output/${{ env.THE_NAME_BIN }}.exe" "the-output/${{ env.THE_NAME_BIN }}.${{ matrix.os }}.exe"
           ls the-output
 
