@@ -1,3 +1,5 @@
+# The Shed Ledger
+
 ## What is this now?
 
 This is a very simple inventory manager, it only supports fungible items at the moment
@@ -36,12 +38,12 @@ More will be added but this is what you can do right now:
 
 First of all, open up the "config.yaml" file and adjust it to your needs
 
-After setting it up, you can run this thing:
+After setting it up, you can run Shed Ledger:
 
 like this
 
 ```
-$ ./sled
+$ chmod +x shled; ./shled
 ```
 or like this if you're not running the binary from the release
 
