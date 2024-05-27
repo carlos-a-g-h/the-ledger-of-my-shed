@@ -42,7 +42,7 @@ jobs:
         id: step_notes
         run: |
           cat NOTES.txt
-          cat NOTES >> $GITHUB_OUTPUT
+          cat NOTES.txt >> $GITHUB_OUTPUT
 
       - name: Print Notes contents
         run: |
