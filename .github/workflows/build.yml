@@ -53,7 +53,7 @@ jobs:
         run: |
           # python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME_BIN }}.bin"
           mkdir the-output; echo "test.lol" > "the-output/${{ env.THE_NAME_BIN }}.bin"
-          mv "the-output/${{ env.THE_NAME_BIN }}.bin" "the-output/${{ env.THE_NAME_BIN }}.bin"
+          # mv "the-output/${{ env.THE_NAME_BIN }}.bin" "the-output/${{ env.THE_NAME_BIN }}.bin"
           find the-output
 
       - name: Build for Windows
@@ -62,7 +62,7 @@ jobs:
         run: |
           # python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME_BIN }}.exe"
           mkdir the-output; echo "test.lol" > "the-output/${{ env.THE_NAME_BIN }}.exe"
-          mv "the-output/${{ env.THE_NAME_BIN }}.exe" "the-output/${{ env.THE_NAME_BIN }}.exe"
+          # mv "the-output/${{ env.THE_NAME_BIN }}.exe" "the-output/${{ env.THE_NAME_BIN }}.exe"
           ls the-output
 
       - uses: actions/upload-artifact@v3
