@@ -41,7 +41,7 @@ After setting it up, you can run this thing:
 like this
 
 ```
-$ ./yasil
+$ ./sled
 ```
 or like this if you're not running the binary from the release
 
