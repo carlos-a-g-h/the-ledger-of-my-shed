@@ -11,9 +11,9 @@ from internals import util_valid_list
 from internals import util_valid_str
 from internals import util_valid_int
 
-def write_div_display_error(lang)->str:
+def write_div_display_error(lang:str)->str:
 	html_text=(
-		"""<div class="display-error">""" "\n"
+		"""<div class="display-error">"""
 	)
 
 	html_text=f"{html_text}"+{
@@ -23,10 +23,10 @@ def write_div_display_error(lang)->str:
 
 	return (
 			f"{html_text}\n"
-		"<div>\n"
+		"<div>"
 	)
 
-def write_button_new_item(lang)->str:
+def write_button_new_item(lang:str)->str:
 
 	html_text=(
 		"""<button class="common" """
@@ -42,11 +42,11 @@ def write_button_new_item(lang)->str:
 	}[lang]
 
 	return (
-			f"{html_text}"
-		"</button>\n"
+			f"{html_text}\n"
+		"</button>"
 	)
 
-def write_button_search_items(lang)->str:
+def write_button_search_items(lang:str)->str:
 
 	html_text=(
 		"""<button class="common" """
@@ -62,11 +62,11 @@ def write_button_search_items(lang)->str:
 	}[lang]
 
 	return (
-			f"{html_text}"
+			f"{html_text}\n"
 		"</button>"
 	)
 
-def write_form_new_item(lang)->str:
+def write_form_new_item(lang:str)->str:
 
 	tl={
 		_LANG_EN:"Creation of a new item",
@@ -91,7 +91,7 @@ def write_form_new_item(lang)->str:
 	}[lang]
 
 	html_text=(
-		f"{html_text}"
+		f"{html_text}\n"
 		"""<div class="hcontainer">""" "\n"
 			f"""<label style="display:block;" for="item-name">{tl}</label>""" "\n"
 			"""<input class="common" """
@@ -109,7 +109,7 @@ def write_form_new_item(lang)->str:
 	}[lang]
 
 	html_text=(
-		f"{html_text}"
+		f"{html_text}\n"
 		"""<div class="hcontainer">""" "\n"
 			f"""<label style="display:block;" for="item-sign">{tl}</label>""" "\n"
 			"""<input class="common" """
@@ -127,7 +127,7 @@ def write_form_new_item(lang)->str:
 	}[lang]
 
 	html_text=(
-		f"{html_text}"
+		f"{html_text}\n"
 		"""<div class="hcontainer">""" "\n"
 			f"""<label style="display:block;" for="item-tag">{tl}</label>""" "\n"
 			"""<input class="common" """
@@ -145,11 +145,13 @@ def write_form_new_item(lang)->str:
 	}[lang]
 
 	html_text=(
-			f"{html_text}"
-		"</div>"
-		f"""<label style="display:block;" for="item-comment">{tl}</label>"""
-		"""<textarea class="common" id="item-comment" name="comment" """
-			""" max-length=256 ></textarea>"""
+			f"{html_text}\n"
+		"</div>\n"
+		f"""<label style="display:block;" for="item-comment">{tl}</label>""" "\n"
+		"""<textarea class="common" """
+			"""id="item-comment" """
+			"""name="comment" """
+			"""max-length=256></textarea>"""
 	)
 
 	tl={
@@ -158,7 +160,7 @@ def write_form_new_item(lang)->str:
 	}[lang]
 
 	return (
-			f"{html_text}"
+			f"{html_text}\n"
 			"""<button """
 				"""type="submit" """
 				"""class="common" """
@@ -168,7 +170,7 @@ def write_form_new_item(lang)->str:
 		"</form>"
 	)
 
-def write_form_search_items(lang)->str:
+def write_form_search_items(lang:str)->str:
 
 	tl={
 		_LANG_EN:"Item(s) searcher",
@@ -185,12 +187,6 @@ def write_form_search_items(lang)->str:
 			">"
 
 			"<div>"
-
-		# """<label for="item-name">Name</label>""" "\n"
-		# "<div>\n"
-		# 	"""<input id="item-name" name="name" """
-		# 		"""type="text" max-length=64 >""" "\n"
-		# "</div>\n"
 
 		# """<label for="item-id">ID</label>""" "\n"
 		# "<div>\n"
@@ -310,7 +306,7 @@ def write_form_add_modev(lang:str,item_id:str)->str:
 	}[lang]
 
 	html_text=(
-		f"{html_text}"
+		f"{html_text}\n"
 		"""<div class="hcontainer">""" "\n"
 			f"""<label style="display:block;" for="modev-sign">{tl}</label>""" "\n"
 			"""<input class="common" """
@@ -328,7 +324,7 @@ def write_form_add_modev(lang:str,item_id:str)->str:
 	}[lang]
 
 	html_text=(
-		f"{html_text}"
+		f"{html_text}\n"
 		"""<div class="hcontainer">""" "\n"
 			f"""<label style="display:block;" for="modev-tag">{tl}</label>""" "\n"
 			"""<input class="common" """
@@ -346,7 +342,7 @@ def write_form_add_modev(lang:str,item_id:str)->str:
 	}[lang]
 
 	html_text=(
-		f"{html_text}"
+		f"{html_text}\n"
 		f"""<label style="display:block;" for="modev-comment">{tl}</label>"""
 		"""<textarea class="common" id="modev-comment" name="comment" """
 			"""max-length=256 ></textarea>"""
@@ -408,7 +404,7 @@ def write_html_modev(lang:str,data:Mapping)->str:
 			f"<div>UID: <code>{modev_uid}</code></div>\n"
 			f"<div>{tl_mod}: <code>{modev_mod}</code></div>\n"
 			f"<div>{tl_sign}: <code>{modev_sign}</code></div>\n"
-			f"<div>{tl_date}: <code>{modev_date}</code></div>\n"
+			f"<div>{tl_date}: <code>{modev_date}</code></div>"
 	)
 
 	modev_tag=util_valid_str(
@@ -425,7 +421,7 @@ def write_html_modev(lang:str,data:Mapping)->str:
 		}[lang]
 		html_text=(
 			f"{html_text}\n"
-			f"<div>{tl}: <code>{modev_tag}</code></div>\n"
+			f"<div>{tl}: <code>{modev_tag}</code></div>"
 		)
 
 	if isinstance(modev_comment,str):
@@ -440,7 +436,7 @@ def write_html_modev(lang:str,data:Mapping)->str:
 
 	return (
 			f"{html_text}\n"
-		"</div>\n"
+		"</div>"
 	)
 
 def write_html_modev_history(
