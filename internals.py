@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional,Union
 
-from aiofiles import open as async_open
+# from aiofiles import open as async_open
 from yaml import Loader as yaml_Loader
 from yaml import load as yaml_load
 
