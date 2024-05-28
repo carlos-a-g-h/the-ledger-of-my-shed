@@ -4,5 +4,8 @@ port: 6969
 # Available languages are: 'en' (English) and 'es' (Spanish)
 lang: "en"
 
-# Database name
-name: "my-inventory"
+# MongoDB Database name
+db-name: "my-inventory"
+
+# MongoDB Connection string
+# db-url: ""
