@@ -12,12 +12,14 @@ from yaml import load as yaml_load
 
 def util_rnow()->str:
 	now=datetime.now()
-	t=f"{now.year}"
-	t=f"{t}-{str(now.month).zfill(2)}"
-	t=f"{t}-{str(now.day).zfill(2)}"
-	t=f"{t}-{str(now.hour).zfill(2)}"
-	t=f"{t}-{str(now.minute).zfill(2)}"
-	return f"{t}-{str(now.second).zfill(2)}"
+	return (
+		f"{now.year}"
+		f"-{str(now.month).zfill(2)}"
+		f"-{str(now.month).zfill(2)}"
+		f"-{str(now.hour).zfill(2)}"
+		f"-{str(now.minute).zfill(2)}"
+		f"-{str(now.second).zfill(2)}"
+	)
 
 # Validation stuff
 
