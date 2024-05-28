@@ -51,8 +51,6 @@ jobs:
         working-directory: repo
         run: |
           python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME_BIN }}.bin"
-          # mkdir the-output; echo "test.lol" > "the-output/${{ env.THE_NAME_BIN }}.bin"
-          # mv "the-output/${{ env.THE_NAME_BIN }}.bin" "the-output/${{ env.THE_NAME_BIN }}.bin"
           find the-output
 
       - name: Build for Windows
@@ -60,14 +58,12 @@ jobs:
         working-directory: repo
         run: |
           python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME_BIN }}.exe"
-          # mkdir the-output; echo "test.lol" > "the-output/${{ env.THE_NAME_BIN }}.exe"
-          # mv "the-output/${{ env.THE_NAME_BIN }}.exe" "the-output/${{ env.THE_NAME_BIN }}.exe"
           ls the-output
 
       - uses: actions/upload-artifact@v3
         with:
-          name: "${{ matrix.os }}"
           if-no-files-found: error
+          name: "${{ matrix.os }}"
           path: |
             ./repo/the-output/${{ env.THE_NAME_BIN }}.bin
             ./repo/the-output/${{ env.THE_NAME_BIN }}.exe
@@ -109,7 +105,7 @@ jobs:
           cat NOTES.txt
           echo "}"
 
-      - name: Store data
+      - name: Upload NOTES
         uses: actions/upload-artifact@v3
         with:
           name: "NOTES"
@@ -125,9 +121,9 @@ jobs:
     #  the_upload_url: ${{ steps.FromNotes.outputs.THE_URL }}
 
     strategy:
-      max-parallel: 1
+      max-parallel: 2
       matrix:
-        binary: [ubuntu-20.04,windows-2019 ]
+        binary: [ubuntu-20.04 , windows-2019 ]
         # binary: [ubuntu-20.04]
 
     runs-on: ubuntu-latest
