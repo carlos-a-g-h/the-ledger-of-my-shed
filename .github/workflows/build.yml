@@ -6,8 +6,7 @@ on:
 env:
   MAIN_PY: "main.py"
   REQFILE: "requirements.txt"
-  THE_NAME: "shed-ledger"
-  THE_NAME_BIN: "shled"
+  THE_NAME: "shled"
 
 jobs:
   job-build:
@@ -15,7 +14,6 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-20.04,windows-2019 ]
-        # os: [ubuntu-20.04]
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -26,11 +24,7 @@ jobs:
       - name: Download repo
         uses: actions/checkout@v4
         with:
-          # repository: "${{ github.repository_owner }}/${{ inputs.THE_NAME }}"
-          # ref: main
-          # token: ${{ secrets.GH_TOKEN }}
           path: repo
-          sparse-checkout: .
 
       - name: Setup Python
         uses: actions/setup-python@v3
@@ -50,14 +44,14 @@ jobs:
         if: ${{ contains(matrix.os,'windows') == false }}
         working-directory: repo
         run: |
-          python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME_BIN }}.bin"
+          python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.bin"
           find the-output
 
       - name: Build for Windows
         if: ${{ contains(matrix.os,'windows') == true }}
         working-directory: repo
         run: |
-          python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME_BIN }}.exe"
+          python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.exe"
           ls the-output
 
       - uses: actions/upload-artifact@v3
@@ -65,16 +59,13 @@ jobs:
           if-no-files-found: error
           name: "${{ matrix.os }}"
           path: |
-            ./repo/the-output/${{ env.THE_NAME_BIN }}.bin
-            ./repo/the-output/${{ env.THE_NAME_BIN }}.exe
+            ./repo/the-output/${{ env.THE_NAME }}.bin
+            ./repo/the-output/${{ env.THE_NAME }}.exe
 
   job-release:
     name: Create release
     needs: [job-build]
     runs-on: ubuntu-latest
-    #outputs:
-    #  the_date: ${{ steps.DateToday.outputs.TODAY }}
-    #  the_upload_url: ${{ steps.CreateRelease.outputs.upload_url }}
 
     steps:
       - name: Get exact date
@@ -115,16 +106,10 @@ jobs:
   job-attach:
     name: Attach artifact as an asset
     needs: [job-release]
-    #outputs:
-    #  the_date: ${{ steps.FromNotes.outputs.THE_DATE }}
-    #  the_date_again: ${{ steps.FromNotes.outputs.THE_DATE_AGAIN }}
-    #  the_upload_url: ${{ steps.FromNotes.outputs.THE_URL }}
-
     strategy:
       max-parallel: 2
       matrix:
         binary: [ubuntu-20.04 , windows-2019 ]
-        # binary: [ubuntu-20.04]
 
     runs-on: ubuntu-latest
     steps:

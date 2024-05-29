@@ -2,11 +2,12 @@
 
 # from pathlib import Path
 from secrets import token_hex
+from typing import Any
 from typing import Mapping
 from typing import Union
 from typing import Optional
 
-# from aiohttp.web import Application
+from aiohttp.web import Application
 from aiohttp.web import Request
 from aiohttp.web import Response
 from aiohttp.web import json_response
@@ -18,13 +19,15 @@ from control_Any import _SCRIPT_HTMX
 from control_Any import _STYLE_CUSTOM
 from control_Any import _STYLE_POPUP
 from control_Any import _TYPE_CUSTOM
+from control_Any import _ERR_DETAIL_DATA_NOT_VALID
+from control_Any import _ERR_DETAIL_DBI_FAIL
 from control_Any import get_lang
 from control_Any import get_client_type
 from control_Any import get_request_body_dict
 from control_Any import response_errormsg
 
-from control_items_cache import _CACHE_ITEMS
-from control_items_cache import util_items_cache_name_lookup
+# from control_items_cache import _CACHE_ITEMS
+# from control_items_cache import util_items_cache_name_lookup
 
 from dbi import dbi_inv_CreateItem
 from dbi import dbi_inv_ItemQuery
@@ -52,6 +55,8 @@ from internals import util_valid_int
 from internals import util_valid_str
 # from internals import util_rnow
 
+_CACHE_ITEMS="cache_items"
+
 _ERR_TITLE_MODEV_MOD={
 	_LANG_EN:"History modification error",
 	_LANG_ES:"Error al modificar el historial"
@@ -75,38 +80,93 @@ _ERR_TITLE_DROP_ITEM={
 	_LANG_ES:"Error de eliminación de objeto"
 }
 
-_ERR_DETAIL_DATA_NOT_VALID={
-	_LANG_EN:"The data from the request body is not valid",
-	_LANG_ES:"Los datos recogidos del cuerpo de la petición no son válidos"
-}
-_ERR_DETAIL_DBI_FAIL={
-	_LANG_EN:"The operation failed or returned a negative result",
-	_LANG_ES:"La operación falló o devolvió un resultado negativo"
-}
+def util_convert_item_to_kv(
+		data:Optional[Any]
+	)->Mapping:
 
-# async def util_build_items_cache(
-# 		rdbc:AsyncIOMotorClient,
-# 		rdbn:str
-# 	)->Mapping:
+	if not isinstance(data,Mapping):
+		return {}
 
-# 	results=await dbi_inv_ItemList(rdbc,rdbn)
+	item_id=util_valid_str(
+		data.get("id")
+	)
+	if not isinstance(item_id,str):
+		return {}
 
-# 	if len(results)==0:
-# 		return {}
+	item_name=util_valid_str(
+		data.get("name")
+	)
+	if not isinstance(item_name,str):
+		return {}
 
-# 	items_cache={}
+	return {item_id:item_name}
 
-# 	for item in results:
-# 		item_id=
+def util_item_fuzzy_finder(
+		app:Application,
+		text_raw:str,
+		find_exact_only:bool=False,
+	)->Union[list,Mapping]:
 
+	text=text_raw.lower().strip()
+	if len(text)==0:
+		return []
 
+	lookup_result:Union[list,Mapping]={
+		True:{},
+		False:[]
+	}[find_exact_only]
 
+	for item_id in app[_CACHE_ITEMS]:
+		item_name=app[_CACHE_ITEMS][item_id]
+		row=item_name.lower().strip()
+		if row.find(text)<0:
+			continue
 
+		exact=(row==text)
 
-# 	return items
+		if find_exact_only:
+			if exact:
+				lookup_result.update({
+					"id":item_id,
+					"name":item_name,
+				})
+				break
 
-# async def util_update_items_cache(app:Application):
-	
+			continue
+
+		lookup_result.append(
+			{
+				"id":item_id,
+				"name":item_name,
+				"exact":exact,
+			}
+		)
+
+	return lookup_result
+
+async def util_update_known_items(app:Application)->bool:
+
+	dbi_result=await dbi_inv_ItemQuery(
+		app["rdbc"],app["rdbn"]
+	)
+
+	size=len(dbi_result)
+
+	if size==0:
+		return False
+
+	while True:
+		size=size-1
+		if size<0:
+			break
+
+		app[_CACHE_ITEMS].update(
+			util_convert_item_to_kv(
+				dbi_result.pop()
+			)
+		)
+
+	return True
 
 async def route_fgmt_new_item(
 		request:Request
@@ -124,8 +184,11 @@ async def route_fgmt_new_item(
 	return Response(
 		body=(
 			f"{write_form_new_item(lang)}"
+
 			"""<section hx-swap-oob="innerHTML:#navigation">"""
+
 				f"{write_ul([write_button_search_items(lang)])}"
+
 			"</section>"
 		),
 		content_type=_MIMETYPE_HTML
@@ -147,8 +210,11 @@ async def route_fgmt_search_items(
 	return Response(
 		body=(
 			f"{write_form_search_items(lang)}"
+
 			"""<section hx-swap-oob="innerHTML:#navigation">"""
+
 				f"{write_ul([write_button_new_item(lang)])}"
+
 			"</section>"
 		),
 		content_type=_MIMETYPE_HTML
@@ -185,7 +251,7 @@ async def route_api_new_item(
 			ct,status_code=406
 		)
 
-	ematch=util_items_cache_name_lookup(
+	ematch=util_item_fuzzy_finder(
 		request.app,item_name,True
 	)
 	if len(ematch)>0:
@@ -292,13 +358,17 @@ async def route_api_new_item(
 			f"{html_popup}"
 
 			"""<section hx-swap-oob="innerHTML:#navigation">"""
+
 				f"{write_ul([write_button_search_items(lang)])}"
+
 			"</section>"
 
 			"""<section hx-swap-oob="innerHTML:#main">"""
-				f"{write_form_new_item(lang)}"
-				f"<p>{tl}:</p>"
+
+				f"{write_form_new_item(lang)}\n"
+				f"<p>{tl}:</p>\n"
 				f"{write_html_item(lang,result)}"
+
 			"</section>"
 		),
 		content_type=_MIMETYPE_HTML
@@ -414,21 +484,107 @@ async def route_mixup_get_item(
 
 	return Response(
 		body=(
-			f"<!-- Selected the item: {item_id} -->\n"
+			f"<!-- Selected the item: {item_id} -->"
 
-			"""<section hx-swap-oob="innerHTML:#navigation">""" "\n"
+			"""<section hx-swap-oob="innerHTML:#navigation">"""
+
 				"<!-- GET OK !-->\n"
-				f"{write_ul([write_button_search_items(lang),write_button_new_item(lang)])}\n"
+				f"{write_ul([write_button_search_items(lang),write_button_new_item(lang)])}"
+
 			"</section>"
 
-			"""<section hx-swap-oob="innerHTML:#main">""" "\n"
+			"""<section hx-swap-oob="innerHTML:#main">"""
 				"<!-- GET OK !!!!!-->\n"
 				f"<h3>{tl}</h3>\n"
-				f"{write_html_item(lang,the_item,True)}\n"
+				f"{write_html_item(lang,the_item,True)}"
 			"</section>"
 		),
 		content_type=_MIMETYPE_HTML
 	)
+
+async def util_search_items(
+		app:Application,
+		by_name:Optional[str],
+		by_sign:Optional[str],
+		by_tag:Optional[str],
+	)->list:
+
+	exact_name_match:Optional[Mapping]=None
+	search_results=[]
+	if_id_list=[]
+
+	buffer=[]
+
+	# NOTE: the exact match by name (if found) is appended at the end of the results list
+
+	if isinstance(by_name,str):
+		buffer.extend(
+			util_item_fuzzy_finder(
+				app,by_name
+			)
+		)
+		x=len(buffer)
+		while True:
+			x=x-1
+			if x<0:
+				break
+
+			if_id=buffer[x]["id"]
+			if_exact=buffer[x]["exact"]
+			if if_id in if_id_list:
+				buffer.pop()
+				continue
+
+			if_id_list.append(if_id)
+			if (
+				if_exact and
+				(not isinstance(exact_name_match,str))
+			):
+				exact_name_match=buffer.pop()
+				continue
+
+			search_results.append(
+				buffer.pop()
+			)
+
+	get_all=(
+		(not isinstance(by_name,str)) and
+		(not isinstance(by_sign,str)) and
+		(not isinstance(by_tag,str))
+	)
+
+	if get_all or isinstance(by_sign,str) or isinstance(by_tag,str):
+		buffer.extend(
+			await dbi_inv_ItemQuery(
+				app["rdbc"],
+				app["rdbn"],
+				item_tag=by_tag,
+				item_sign=by_sign,
+				get_total=True,
+			)
+		)
+		x=len(buffer)
+		while True:
+			x=x-1
+			if x<0:
+				break
+
+			if_id=buffer[x]["id"]
+			if if_id in if_id_list:
+				buffer.pop()
+				continue
+
+			if_id_list.append(if_id)
+			search_results.append(
+				buffer.pop()
+			)
+
+	if exact_name_match is not None:
+		search_results.append(
+			exact_name_match
+		)
+
+	return search_results
 
 async def route_api_search_items(
 		request:Request
@@ -457,90 +613,15 @@ async def route_api_search_items(
 	search_tag=util_valid_str(
 		request_data.get("tag")
 	)
-	# get_history=util_valid_bool(
-	# 	request_data.get("get_history")
-	# )
-	# get_total=util_valid_bool(
-	# 	request_data.get("get_total")
-	# )
-	# get_comment=util_valid_bool(
-	# 	request_data.get("get_comment")
-	# )
 
-	exact_name_match:Optional[Mapping]=None
-	search_results=[]
-	if_id_list=[]
-	buffer=[]
-
-	print(request.app[_CACHE_ITEMS])
-
-	if isinstance(search_name,str):
-		buffer.extend(
-			util_items_cache_name_lookup(
-				request.app,search_name
-			)
+	search_results=(
+		await util_search_items(
+			request.app,
+			by_name=search_name,
+			by_sign=search_sign,
+			by_tag=search_tag
 		)
-		# print("BUFFER:",buffer)
-		x=len(buffer)
-		while True:
-			x=x-1
-			if x<0:
-				break
-
-			if_id=buffer[x]["id"]
-			if_exact=buffer[x]["exact"]
-			if if_id in if_id_list:
-				buffer.pop()
-				continue
-
-			if_id_list.append(if_id)
-			if (
-				if_exact and
-				(not isinstance(exact_name_match,str))
-			):
-				exact_name_match=buffer.pop()
-				continue
-
-			search_results.append(
-				buffer.pop()
-			)
-
-	get_all=(
-		(not isinstance(search_sign,str)) and
-		(not isinstance(search_tag,str)) and
-		(not isinstance(search_name,str))
 	)
-
-	if get_all or isinstance(search_sign,str) or isinstance(search_tag,str):
-		buffer.extend(
-			await dbi_inv_ItemQuery(
-				request.app["rdbc"],
-				request.app["rdbn"],
-				item_tag=search_tag,
-				item_sign=search_sign,
-				get_total=True,
-			)
-		)
-		x=len(buffer)
-		while True:
-			x=x-1
-			if x<0:
-				break
-
-			if_id=buffer[x]["id"]
-			if if_id in if_id_list:
-				buffer.pop()
-				continue
-
-			if_id_list.append(if_id)
-			search_results.append(
-				buffer.pop()
-			)
-
-	if exact_name_match is not None:
-		search_results.append(
-			exact_name_match
-		)
 
 	if len(search_results)==0:
 		return response_errormsg(
@@ -866,7 +947,7 @@ async def route_main(
 			(
 				f"<h1>{tl1}</h1>\n"
 				f"<p>{tl2}</p>\n"
-				f"""<p><a href="/">{tl3}</a></p>\n"""
+				f"""<p><a href="/">{tl3}</a></p>""" "\n"
 				"""<section id="navigation">""" "\n"
 					f"{write_ul([write_button_search_items(lang),write_button_new_item(lang)])}\n"
 				"</section>\n"
