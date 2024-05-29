@@ -1,4 +1,4 @@
-# The Shed's Ledger
+# My Shed's Ledger
 
 ## What is this now?
 
@@ -20,7 +20,6 @@ More will be added but this is what you can do right now:
 
 - User (and external app) authentication
 - Propper API for external clients and frontends
-- 
 
 ## This is built on what?
 
