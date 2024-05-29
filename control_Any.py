@@ -82,6 +82,15 @@ _src_files={
 	"custom.css":{"mimetype":_MIMETYPE_CSS},
 }
 
+_ERR_DETAIL_DATA_NOT_VALID={
+	_LANG_EN:"The data from the request body is not valid",
+	_LANG_ES:"Los datos recogidos del cuerpo de la petición no son válidos"
+}
+_ERR_DETAIL_DBI_FAIL={
+	_LANG_EN:"The operation failed or returned a negative result",
+	_LANG_ES:"La operación falló o devolvió un resultado negativo"
+}
+
 def get_lang(ct:str,lang:str)->str:
 	if ct==_TYPE_CUSTOM:
 		return _LANG_EN
@@ -269,10 +278,18 @@ async def route_main(
 		_LANG_EN:"Basic item manager",
 		_LANG_ES:"Gestor básico de objetos"
 	}[lang]
-
 	html_text=(
 		f"{html_text}\n"
 		f"""<p><a href="/page/items">{tl}</a></p>"""
+	)
+
+	tl={
+		_LANG_EN:"System administration",
+		_LANG_ES:"Administración del sistema"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		f"""<p><a href="/page/admin">{tl}</a></p>"""
 	)
 
 	return Response(

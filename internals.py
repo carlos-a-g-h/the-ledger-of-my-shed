@@ -6,20 +6,20 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional,Union
 
-# from aiofiles import open as async_open
+from aiofiles import open as async_open
 from yaml import Loader as yaml_Loader
 from yaml import load as yaml_load
+from yaml import dump as yaml_dump
+from yaml import Dumper as yaml_Dumper
 
 def util_rnow()->str:
 	now=datetime.now()
-	return (
-		f"{now.year}"
-		f"-{str(now.month).zfill(2)}"
-		f"-{str(now.month).zfill(2)}"
-		f"-{str(now.hour).zfill(2)}"
-		f"-{str(now.minute).zfill(2)}"
-		f"-{str(now.second).zfill(2)}"
-	)
+	t=f"{now.year}"
+	t=f"{t}-{str(now.month).zfill(2)}"
+	t=f"{t}-{str(now.day).zfill(2)}"
+	t=f"{t}-{str(now.hour).zfill(2)}"
+	t=f"{t}-{str(now.minute).zfill(2)}"
+	return f"{t}-{str(now.second).zfill(2)}"
 
 # Validation stuff
 
@@ -142,7 +142,6 @@ async def read_yaml_file_async(filepath:Path)->dict:
 
 		data.update(
 			yaml_load(
-				#filepath.read_text(),
 				the_text,
 				Loader=yaml_Loader,
 			)

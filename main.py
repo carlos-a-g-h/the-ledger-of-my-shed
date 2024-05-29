@@ -18,6 +18,12 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from control_Any import route_src
 from control_Any import route_main as route_Home
 
+from control_admin import route_main as route_Admin
+from control_admin import route_api_change_language as route_Admin_api_ChangeLang
+from control_admin import route_api_change_port as route_Admin_api_ChangePort
+from control_admin import route_api_update_known_item_names as route_Admin_api_UpdateKnownItemNames
+
+from control_items import _CACHE_ITEMS
 from control_items import route_main as route_Items
 from control_items import route_mixup_get_item as route_Items_mixup_GetItem
 from control_items import route_fgmt_new_item as route_Items_fgmt_NewItem
@@ -26,8 +32,7 @@ from control_items import route_fgmt_search_items as route_Items_fgmt_SearchItem
 from control_items import route_api_search_items as route_Items_api_SearchItems
 from control_items import route_api_drop_item as route_Items_api_DropItem
 from control_items import route_api_add_modev as route_Items_api_AddModEv
-
-from control_items_cache import init as init_items_cache
+from control_items import util_update_known_items as init_items_cache
 
 from internals import read_yaml_file
 from internals import util_valid_int
@@ -117,7 +122,7 @@ def build_app(
 	app=Application()
 
 	app["path_programdir"]=path_programdir
-	app["cache_items"]={}
+	app[_CACHE_ITEMS]={}
 	app["rdbn"]=rdb_name
 	app["lang"]=lang
 
@@ -139,6 +144,27 @@ def build_app(
 			"/",
 			route_Home
 		),
+
+		# ADMIN
+
+		web_GET(
+			"/page/admin",
+			route_Admin
+		),
+			web_POST(
+				"/api/admin/change-lang",
+				route_Admin_api_ChangeLang
+			),
+			web_POST(
+				"/api/admin/change-port",
+				route_Admin_api_ChangePort
+			),
+			web_POST(
+				"/api/admin/update-known-items",
+				route_Admin_api_UpdateKnownItemNames
+			),
+
+		# ITEMS
 
 		web_GET(
 			"/page/items",
