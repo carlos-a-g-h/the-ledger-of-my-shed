@@ -19,8 +19,7 @@ from control_Any import route_src
 from control_Any import route_main as route_Home
 
 from control_admin import route_main as route_Admin
-from control_admin import route_api_change_language as route_Admin_api_ChangeLang
-from control_admin import route_api_change_port as route_Admin_api_ChangePort
+from control_admin import route_api_update_config as route_Admin_api_UpdateConfig
 from control_admin import route_api_update_known_item_names as route_Admin_api_UpdateKnownItemNames
 
 from control_items import _CACHE_ITEMS
@@ -152,12 +151,8 @@ def build_app(
 			route_Admin
 		),
 			web_POST(
-				"/api/admin/change-lang",
-				route_Admin_api_ChangeLang
-			),
-			web_POST(
-				"/api/admin/change-port",
-				route_Admin_api_ChangePort
+				"/api/admin/update-config",
+				route_Admin_api_UpdateConfig
 			),
 			web_POST(
 				"/api/admin/update-known-items",

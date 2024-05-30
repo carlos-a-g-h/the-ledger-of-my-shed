@@ -23,6 +23,19 @@ def util_rnow()->str:
 
 # Validation stuff
 
+def util_valid_str_inrange(
+		data:Optional[str],
+		values:Union[list,tuple],
+	)->str:
+
+	if not isinstance(data,str):
+		return None
+
+	if data not in values:
+		return None
+
+	return data
+
 def util_valid_str(
 		data:Optional[str],
 		lowerit:bool=False
@@ -40,9 +53,50 @@ def util_valid_str(
 
 	return data_ok
 
+def util_valid_int_inrange(
+		data:Optional[int],
+		fallback:Optional[int]=None,
+		minimum:Optional[int]=None,
+		maximum:Optional[int]=None,
+	)->Optional[int]:
+
+	if not isinstance(data,int):
+		return fallback
+
+	chk_min=isinstance(minimum,int)
+	chk_max=isinstance(maximum,int)
+	closed=(chk_min and chk_max)
+
+	above_min=False
+	if chk_min:
+		if data>minimum-1:
+			above_min=True
+
+	below_max=False
+	if chk_max:
+		if data<maximum+1:
+			below_max=True
+
+	if closed:
+		if above_min and below_max:
+			return data
+		return fallback
+
+	if chk_min:
+		if above_min:
+			return data
+
+	if chk_max:
+		if below_max:
+			return data
+
+	return fallback
+
 def util_valid_int(
 		data:Optional[Union[str,int]],
 		fallback:Optional[int]=None,
+		minimum:Optional[int]=None,
+		maximum:Optional[int]=None,
 	)->Optional[int]:
 
 	if not isinstance(data,(str,int)):
@@ -60,7 +114,7 @@ def util_valid_int(
 	if not data[1:].isdigit():
 		return fallback
 
-	return int(data)
+	return int(data[1:])
 
 def util_valid_bool(
 		data:Union[Optional[str],bool],
