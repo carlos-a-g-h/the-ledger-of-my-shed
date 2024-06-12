@@ -2,7 +2,7 @@
 
 ## What is this now?
 
-This is a very simple inventory manager, it only supports fungible items at the moment
+This is a very simple inventory manager, it only supports fungible assets at the moment
 
 ### DISCLAIMER
 
@@ -12,9 +12,9 @@ I do not know anything about accounting, or have any background on warehousing o
 
 More will be added but this is what you can do right now:
 
-- Create (define) and delete items
-- Small search engine to quickly find items
-- Add modification records to items
+- Create (define) and delete assets
+- Small search engine to quickly find assets
+- Add modification records to assets
 
 ### Pending
 
@@ -37,14 +37,12 @@ More will be added but this is what you can do right now:
 
 First of all, open up the "config.yaml" file and adjust it to your needs
 
-After setting it up, you can run Shed Ledger:
-
-like this
+After setting it up, you can run the server like this
 
 ```
 $ chmod +x shled; ./shled
 ```
-or like this if you're not running the binary from the release
+or like this if you're not running directly from the source code
 
 ```
 $ python3 main.py
@@ -54,4 +52,4 @@ $ python3 main.py
 
 You can customize the looks of this thing by editing the "custom.css" file, feel free to adjust it to your needs
 
-btw, If you're going to edit anything related to the popup messages, please check the "popup.css" file from your browser's CSS Editor. The "popup.css" file is baked in the program so you can only see it while the program runs or in the source code
+NOTE: If you're going to edit anything related to the popup messages, check the "popup.css" file using your browser's CSS Editor while the server is running
