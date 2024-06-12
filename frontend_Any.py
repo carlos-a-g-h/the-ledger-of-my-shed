@@ -3,7 +3,19 @@
 _LANG_EN="en"
 _LANG_ES="es"
 
-_MBTN_BACK="""<a href="/">Back to homepage</a>"""
+_CSS_CLASS_COMMON="common"
+_CSS_CLASS_HORIZONTAL="horizontal"
+
+_CSS_CLASS_BUTTON="button"
+_CSS_CLASS_DANGER="danger"
+_CSS_CLASS_INPUT_TEXT="input-text"
+
+def write_link_homepage(lang:str):
+	text={
+		_LANG_EN:"Back to homepage",
+		_LANG_ES:"Volver a la página principal"
+	}[lang]
+	return f"""<a class="{_CSS_CLASS_COMMON}" href="/">- {text} -</a>"""
 
 def write_popupmsg(html_content:str)->str:
 	return (
@@ -11,7 +23,7 @@ def write_popupmsg(html_content:str)->str:
 			"""<div class="popup-area">""" "\n"
 				"""<div class="popup-body">""" "\n"
 					"""<div class="popup-content">""" "\n"
-						f"{html_content}"
+						f"{html_content}\n"
 					"</div>\n"
 					"""<div class="popup-button-area">""" "\n"
 						"""<button class="popup-button" onclick="this.parentElement.parentElement.parentElement.parentElement.style.display='none';">""" "\n"
@@ -21,7 +33,7 @@ def write_popupmsg(html_content:str)->str:
 					"</div>\n"
 				"</div>\n"
 			"</div>\n"
-		"</div>\n"
+		"</div>"
 	)
 
 def write_popupmsg_oob(
@@ -30,8 +42,8 @@ def write_popupmsg_oob(
 	)->str:
 
 	return (
-		f"""<section hx-swap-oob="innerHTML:{oob_target}">"""
-			f"{write_popupmsg(html_content)}"
+		f"""<section hx-swap-oob="innerHTML:{oob_target}">""" "\n"
+			f"{write_popupmsg(html_content)}\n"
 		"</section>"
 	)
 
@@ -40,9 +52,6 @@ def write_fullpage(
 		html_title_inner:str,
 		html_body_inner:str,
 		html_header_extra:list=[],
-		# html_style_outer:str="",
-		# html_script_outer:str="",
-		# html_links:str=""
 	)->str:
 
 	html_page=(
@@ -56,17 +65,8 @@ def write_fullpage(
 	for thing in html_header_extra:
 		html_page=f"{html_page}\n{thing}"
 
-	# if not len(html_style_outer)==0:
-	# 	html_page=f"{html_page}\n{html_style_outer}"
-
-	# if not len(html_script_outer)==0:
-	# 	html_page=f"{html_page}{html_script_outer}"
-
-	# if not len(html_links)==0:
-	# 	html_page=f"{html_page}\n{html_links}"
-
 	return (
-			f"{html_page}\n"
+					f"{html_page}\n"
 				f"<title>{html_title_inner}</title>\n"
 			"</head>\n"
 			"<body>\n"
