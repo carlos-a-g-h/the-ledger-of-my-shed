@@ -49,6 +49,7 @@ async def dbi_orders_GetOrders(
 		order_id:Optional[str]=None,
 		order_sign:Optional[str]=None,
 		order_tag:Optional[str]=None,
+		include_assets:bool=False,
 	)->Union[list,Mapping]:
 
 	only_one=isinstance(order_id,str)
@@ -61,13 +62,34 @@ async def dbi_orders_GetOrders(
 	if isinstance(order_tag,str):
 		find_match.update({"tag":order_tag})
 
+	# aggr=[
+	# 	{"$match":find_match},
+	# 	{"$set":{"id":"$_id","_id":"$$REMOVE"}}
+	# ]
+
+	agg_params=[
+		{"$match":find_match}
+	]
+	if not include_assets:
+		agg_params.append(
+			{
+				"$project":{
+					# "_id":1,
+					# "sign":1,
+					# "tag":1,
+					"assets":0
+				}
+			}
+		)
+
+	agg_params.append(
+		{"$set":{"id":"$_id","_id":"$$REMOVE"}}
+	)
+
 	list_of_orders=[]
 	try:
 		collection=rdbc[name_db][_COL_ORDERS]
-		cursor:AsyncIOMotorCursor=collection.aggregate([
-			{"$match":find_match},
-			{"$set":{"id":"$_id","_id":"$$REMOVE"}}
-		])
+		cursor:AsyncIOMotorCursor=collection.aggregate(agg_params)
 		print("\tOrder(s) found:")
 		async for order in cursor:
 			list_of_orders.append(order)
@@ -81,6 +103,9 @@ async def dbi_orders_GetOrders(
 		return []
 
 	if len(list_of_orders)==0:
+		if only_one:
+			return {}
+
 		return []
 
 	if only_one:
@@ -89,8 +114,8 @@ async def dbi_orders_GetOrders(
 	return list_of_orders
 
 async def dbi_orders_DropOrder(
-		rdbc:AsyncIOMotorClient,name_db:str,
-		order_id:str
+		rdbc:AsyncIOMotorClient,
+		name_db:str,order_id:str
 	)->bool:
 
 	try:
@@ -103,24 +128,64 @@ async def dbi_orders_DropOrder(
 
 	return True
 
+async def dbi_orders_Editor_GetAsset(
+		rdbc:AsyncIOMotorClient,name_db:str,
+		order_id:str,asset_id:str,
+	)->Mapping:
+
+	data:Optional[Mapping]
+
+	try:
+		data=await rdbc[name_db][_COL_ORDERS].find_one(
+			{"_id":order_id},{f"assets.{asset_id}":1}
+		)
+	except Exception as e:
+		print(e)
+		return {}
+
+	if not isinstance(
+		data.get("assets"),
+		Mapping
+	):
+		return {}
+
+	data.pop("_id")
+	data.update({"id":order_id})
+
+	# { id: order_id , assets: { asset_id : mod } }
+
+	return data
+
 async def dbi_orders_Editor_AssetPatch(
 		rdbc:AsyncIOMotorClient,name_db:str,
-		order_id:str,asset_id:str,mod:int=0,
-	)->bool:
+		order_id:str,asset_id:str,
+		imod:int=0,justbool:bool=False,
+	)->Union[bool,Mapping]:
 
 	try:
 		print(
 			"\t",
 			await rdbc[name_db][_COL_ORDERS].update_one(
 				{"_id":order_id},
-				{"$set":{f"assets.{asset_id}":mod}}
+				{"$inc":{f"assets.{asset_id}":imod}}
 			)
 		)
 	except Exception as e:
-		print("ERROR:",e)
-		return False
+		print("ERROR (2):",e)
 
-	return True
+		if justbool:
+			return False
+
+		return {}
+
+	if justbool:
+		return True
+
+	return (
+		await dbi_orders_Editor_GetAsset(
+			rdbc,name_db,order_id,asset_id
+		)
+	)
 
 async def dbi_orders_Editor_AssetDrop(
 		rdbc:AsyncIOMotorClient,name_db:str,

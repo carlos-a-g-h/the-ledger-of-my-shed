@@ -28,7 +28,6 @@ from control_Any import get_request_body_dict
 from control_Any import response_errormsg
 
 # from control_assets_cache import _CACHE_ASSETS
-# from control_assets_cache import util_assets_cache_name_lookup
 
 from dbi_assets import dbi_assets_CreateAsset
 from dbi_assets import dbi_assets_AssetQuery
@@ -37,14 +36,15 @@ from dbi_assets import dbi_assets_ModEv_Add
 
 from frontend_Any import _LANG_EN
 from frontend_Any import _LANG_ES
-# from frontend_Any import _CSS_CLASS_COMMON
+from frontend_Any import _CSS_CLASS_COMMON
+from frontend_Any import _CSS_CLASS_HORIZONTAL
 from frontend_Any import write_fullpage
 from frontend_Any import write_popupmsg
 from frontend_Any import write_link_homepage
 from frontend_Any import write_ul
 
-from frontend_assets import write_button_new_asset
-from frontend_assets import write_button_search_assets
+from frontend_assets import write_button_nav_new_asset
+from frontend_assets import write_button_nav_search_assets
 from frontend_assets import write_form_new_asset
 from frontend_assets import write_form_search_assets
 from frontend_assets import write_form_add_modev
@@ -52,10 +52,14 @@ from frontend_assets import write_html_modev
 from frontend_assets import write_html_asset
 from frontend_assets import write_html_list_of_assets
 
+from frontend_orders import write_button_add_asset_to_order
+
 from internals import util_valid_bool
 from internals import util_valid_int
 from internals import util_valid_str
 # from internals import util_rnow
+
+# _ROUTE_SEARCH="/api/assets/search"
 
 _ROUTE_PAGE="/page/assets"
 
@@ -148,6 +152,92 @@ def util_asset_fuzzy_finder(
 
 	return lookup_result
 
+async def util_search_assets(
+		app:Application,
+		by_name:Optional[str],
+		by_sign:Optional[str],
+		by_tag:Optional[str],
+	)->list:
+
+	exact_name_match:Optional[Mapping]=None
+	search_results=[]
+	if_id_list=[]
+
+	buffer=[]
+
+	# NOTE
+	# the exact match by name (if found) is appended at the end of the results list
+	# the default frontend will REVERSE the list
+
+	if isinstance(by_name,str):
+		buffer.extend(
+			util_asset_fuzzy_finder(
+				app,by_name
+			)
+		)
+		x=len(buffer)
+		while True:
+			x=x-1
+			if x<0:
+				break
+
+			if_id=buffer[x]["id"]
+			if_exact=buffer[x]["exact"]
+			if if_id in if_id_list:
+				buffer.pop()
+				continue
+
+			if_id_list.append(if_id)
+			if (
+				if_exact and
+				(not isinstance(exact_name_match,str))
+			):
+				exact_name_match=buffer.pop()
+				continue
+
+			search_results.append(
+				buffer.pop()
+			)
+
+	get_all=(
+		(not isinstance(by_name,str)) and
+		(not isinstance(by_sign,str)) and
+		(not isinstance(by_tag,str))
+	)
+
+	if get_all or isinstance(by_sign,str) or isinstance(by_tag,str):
+		buffer.extend(
+			await dbi_assets_AssetQuery(
+				app["rdbc"],
+				app["rdbn"],
+				asset_tag=by_tag,
+				asset_sign=by_sign,
+				get_total=True,
+			)
+		)
+		x=len(buffer)
+		while True:
+			x=x-1
+			if x<0:
+				break
+
+			if_id=buffer[x]["id"]
+			if if_id in if_id_list:
+				buffer.pop()
+				continue
+
+			if_id_list.append(if_id)
+			search_results.append(
+				buffer.pop()
+			)
+
+	if exact_name_match is not None:
+		search_results.append(
+			exact_name_match
+		)
+
+	return search_results
+
 async def util_update_known_assets(app:Application)->bool:
 
 	dbi_result=await dbi_assets_AssetQuery(
@@ -194,7 +284,7 @@ async def route_fgmt_new_asset(
 
 			"""<section hx-swap-oob="innerHTML:#navigation">"""
 
-				f"{write_ul([write_button_search_assets(lang)])}"
+				f"{write_ul([write_button_nav_search_assets(lang)])}"
 
 			"</section>"
 		),
@@ -209,7 +299,9 @@ async def route_fgmt_search_assets(
 	if not isinstance(ct,str):
 		return Response(status=406)
 
-	if not assert_referer(ct,request,_ROUTE_PAGE):
+	in_assets_page=assert_referer(ct,request,_ROUTE_PAGE)
+	in_orders_page=assert_referer(ct,request,"/page/orders")
+	if not (in_assets_page or in_orders_page):
 		return Response(status=406)
 
 	if ct==_TYPE_CUSTOM:
@@ -217,16 +309,37 @@ async def route_fgmt_search_assets(
 
 	lang=request.app["lang"]
 
-	return Response(
-		body=(
+	html_text:str=""
+	if in_assets_page:
+		# hx-target = #main
+		html_text=(
 			f"{write_form_search_assets(lang)}"
-
 			"""<section hx-swap-oob="innerHTML:#navigation">"""
-
-				f"{write_ul([write_button_new_asset(lang)])}"
-
+				f"{write_ul([write_button_nav_new_asset(lang)])}\n"
 			"</section>"
-		),
+		)
+
+	if in_orders_page:
+		# hx-target = #messages
+
+		order_id=request.match_info["order_id"]
+
+		html_text=(
+
+			f"<!-- ASSET SEARCH FOR ORDER {order_id} -->\n"
+
+			"""<section hx-swap-oob="innerHTML:#main-1">"""
+				f"{write_form_search_assets(lang,order_id)}"
+			"</section>"
+
+			"""<section hx-swap-oob="innerHTML:#main-2">"""
+				"<!-- EMPTY -->"
+			"</section>"
+
+		)
+
+	return Response(
+		body=html_text,
 		content_type=_MIMETYPE_HTML
 	)
 
@@ -372,7 +485,7 @@ async def route_api_new_asset(
 
 			"""<section hx-swap-oob="innerHTML:#navigation">"""
 
-				f"{write_ul([write_button_search_assets(lang)])}"
+				f"{write_ul([write_button_nav_search_assets(lang)])}"
 
 			"</section>"
 
@@ -387,7 +500,7 @@ async def route_api_new_asset(
 		content_type=_MIMETYPE_HTML
 	)
 
-async def route_mixup_get_asset(
+async def route_api_select_asset(
 		request:Request
 	)->Union[json_response,Response]:
 
@@ -395,33 +508,73 @@ async def route_mixup_get_asset(
 	if not isinstance(ct,str):
 		return Response(status=406)
 
+	if not ct==_TYPE_CUSTOM:
+		return Response(status=406)
+
+	asset_id=util_valid_str(
+		request.match_info["asset_id"]
+	)
+
+	request_data=await get_request_body_dict(ct,request)
+	if not isinstance(request_data,Mapping):
+		return response_errormsg(
+			_ERR_TITLE_GET_ASSET[_LANG_EN],
+			_ERR_DETAIL_DATA_NOT_VALID[_LANG_EN],
+			ct,status_code=406
+		)
+
+	inc_history=util_valid_bool(
+		request_data.get("get_history"),
+		False
+	)
+	inc_total=util_valid_bool(
+		request_data.get("get_total"),
+		False
+	)
+	inc_comment=util_valid_bool(
+		request_data.get("get_comment"),
+		False
+	)
+
+	dbi_results=await dbi_assets_AssetQuery(
+		request.app["rdbc"],request.app["rdbn"],
+		asset_id=asset_id,
+		get_comment=inc_comment,
+		get_total=inc_total,
+		get_history=inc_history
+	)
+	if not len(dbi_results)==1:
+		return response_errormsg(
+			_ERR_TITLE_GET_ASSET[_LANG_EN],
+			f"{_ERR_DETAIL_DBI_FAIL[_LANG_EN]} (1)",
+			ct,status_code=400
+		)
+
+	the_asset=dbi_results.pop()
+	if len(the_asset)==0:
+		return response_errormsg(
+			_ERR_TITLE_GET_ASSET[_LANG_EN],
+			f"{_ERR_DETAIL_DBI_FAIL[_LANG_EN]} (2)",
+			ct,status_code=400
+		)
+
+	return json_response(data=the_asset)
+
+async def route_fgmt_asset_editor(
+		request:Request
+	)->Union[json_response,Response]:
+
+	ct=get_client_type(request)
+	if not isinstance(ct,str):
+		return Response(status=406)
+
+	if ct==_TYPE_CUSTOM:
+		return json_response(data={})
+
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
-	# print(
-	# 	"\n",
-	# 	"\n>",request.method,
-	# 	"\n>",request.url.path,
-	# 	"\n>",request.headers
-	# )
-
-	if ct==_TYPE_CUSTOM:
-
-		if not (
-			request.method=="POST" and
-			request.url.path.startswith("/api/")
-		):
-			return Response(status=406)
-
-	if not ct==_TYPE_CUSTOM:
-
-		if not (
-			request.method=="GET" and
-			request.url.path.startswith("/fgmt/")
-		):
-			return Response(status=406)
-
-	lang=get_lang(ct,request.app["lang"])
+	lang=request.app["lang"]
 
 	asset_id=util_valid_str(
 		request.match_info["asset_id"]
@@ -439,30 +592,6 @@ async def route_mixup_get_asset(
 	inc_history=True
 	inc_total=True
 	inc_comment=True
-
-	if ct==_TYPE_CUSTOM:
-
-		request_data=await get_request_body_dict(ct,request)
-		# if not request_data:
-		if not isinstance(request_data,Mapping):
-			return response_errormsg(
-				_ERR_TITLE_GET_ASSET[lang],
-				_ERR_DETAIL_DATA_NOT_VALID[lang],
-				ct,status_code=406
-			)
-
-		inc_history=util_valid_bool(
-			request_data.get("get_history"),
-			False
-		)
-		inc_total=util_valid_bool(
-			request_data.get("get_total"),
-			False
-		)
-		inc_comment=util_valid_bool(
-			request_data.get("get_comment"),
-			False
-		)
 
 	dbi_results=await dbi_assets_AssetQuery(
 		request.app["rdbc"],request.app["rdbn"],
@@ -486,13 +615,6 @@ async def route_mixup_get_asset(
 			ct,status_code=400
 		)
 
-	if ct==_TYPE_CUSTOM:
-		return json_response(
-			data=the_asset
-		)
-
-	lang=request.app["lang"]
-
 	tl={
 		_LANG_EN:"Asset info",
 		_LANG_ES:"Información del activo"
@@ -504,13 +626,13 @@ async def route_mixup_get_asset(
 
 			"""<section hx-swap-oob="innerHTML:#navigation">"""
 
-				"<!-- GET OK !-->\n"
-				f"{write_ul([write_button_search_assets(lang),write_button_new_asset(lang)])}"
+				f"{write_ul([write_button_nav_search_assets(lang),write_button_nav_new_asset(lang)])}\n"
 
 			"</section>"
 
+			"\n\n"
+
 			"""<section hx-swap-oob="innerHTML:#main">"""
-				"<!-- GET OK !!!!!-->\n"
 				f"<h3>{tl}</h3>\n"
 				f"{write_html_asset(lang,the_asset,True)}"
 			"</section>"
@@ -518,90 +640,7 @@ async def route_mixup_get_asset(
 		content_type=_MIMETYPE_HTML
 	)
 
-async def util_search_assets(
-		app:Application,
-		by_name:Optional[str],
-		by_sign:Optional[str],
-		by_tag:Optional[str],
-	)->list:
-
-	exact_name_match:Optional[Mapping]=None
-	search_results=[]
-	if_id_list=[]
-
-	buffer=[]
-
-	# NOTE: the exact match by name (if found) is appended at the end of the results list
-
-	if isinstance(by_name,str):
-		buffer.extend(
-			util_asset_fuzzy_finder(
-				app,by_name
-			)
-		)
-		x=len(buffer)
-		while True:
-			x=x-1
-			if x<0:
-				break
-
-			if_id=buffer[x]["id"]
-			if_exact=buffer[x]["exact"]
-			if if_id in if_id_list:
-				buffer.pop()
-				continue
-
-			if_id_list.append(if_id)
-			if (
-				if_exact and
-				(not isinstance(exact_name_match,str))
-			):
-				exact_name_match=buffer.pop()
-				continue
-
-			search_results.append(
-				buffer.pop()
-			)
-
-	get_all=(
-		(not isinstance(by_name,str)) and
-		(not isinstance(by_sign,str)) and
-		(not isinstance(by_tag,str))
-	)
-
-	if get_all or isinstance(by_sign,str) or isinstance(by_tag,str):
-		buffer.extend(
-			await dbi_assets_AssetQuery(
-				app["rdbc"],
-				app["rdbn"],
-				asset_tag=by_tag,
-				asset_sign=by_sign,
-				get_total=True,
-			)
-		)
-		x=len(buffer)
-		while True:
-			x=x-1
-			if x<0:
-				break
-
-			if_id=buffer[x]["id"]
-			if if_id in if_id_list:
-				buffer.pop()
-				continue
-
-			if_id_list.append(if_id)
-			search_results.append(
-				buffer.pop()
-			)
-
-	if exact_name_match is not None:
-		search_results.append(
-			exact_name_match
-		)
-
-	return search_results
-
+# TODO: figure out how to clean this sh1t up
 async def route_api_search_assets(
 		request:Request
 	)->Union[json_response,Response]:
@@ -610,7 +649,10 @@ async def route_api_search_assets(
 	if not isinstance(ct,str):
 		return Response(status=406)
 
-	if not assert_referer(ct,request,_ROUTE_PAGE):
+	# NOTE: What a f***ing mess
+	in_assets_page=assert_referer(ct,request,_ROUTE_PAGE)
+	in_orders_page=assert_referer(ct,request,"/page/orders")
+	if not (in_assets_page or in_orders_page):
 		return Response(status=406)
 
 	lang=get_lang(ct,request.app["lang"])
@@ -689,21 +731,66 @@ async def route_api_search_assets(
 		_LANG_ES:"Activo(s) encontrado(s)"
 	}[lang]
 
-	return Response(
-		body=(
-			f"<!-- sign: {search_sign} ; tag: {search_tag}-->\n"
+	html_text=f"<!-- sign: {search_sign} ; tag: {search_tag}-->\n"
 
-			"""<section hx-swap-oob="innerHTML:#navigation">""" "\n"
-				f"{write_ul([write_button_new_asset(lang)])}\n"
-			"</section>\n"
+	if in_assets_page:
+		html_text=(
+			f"{html_text}\n"
+
+			# """<section hx-swap-oob="innerHTML:#navigation">""" "\n"
+			# 	f"{write_ul([write_button_new_asset(lang)])}\n"
+			# "</section>\n"
 
 			"""<section hx-swap-oob="innerHTML:#main">""" "\n"
 				f"{write_form_search_assets(lang)}\n"
 				f"{html_text_params}\n"
 				f"<h3>{tl}:</h3>\n"
-				f"{write_html_list_of_assets(lang,search_results,True)}\n"
+				f"{write_html_list_of_assets(lang,search_results)}\n"
 			"</section>"
-		),
+		)
+
+	if in_orders_page:
+
+		order_id=request.match_info["order_id"]
+
+		html_text=(
+			f"{html_text}\n"
+			"""<section hx-swap-oob="innerHTML:#main-1">""" "\n"
+				f"{write_form_search_assets(lang,order_id)}\n"
+				f"{html_text_params}\n"
+				f"<h3>{tl}:</h3>"
+		)
+
+		x=len(search_results)
+		while True:
+			x=x-1
+			if x<0:
+				break
+
+			print("->",search_results[x])
+
+			asset_id=search_results[x]["id"]
+			asset_name=search_results[x]["name"]
+			asset_total=util_valid_int(
+				search_results[x].get("total"),fallback="???"
+			)
+
+			html_text=(
+				f"{html_text}\n"
+				f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
+					f"<div>{asset_id} - {asset_name}</div>\n"
+					f"<div>Total = {asset_total}</div>\n"
+					f"{write_button_add_asset_to_order(lang,order_id,asset_id)}"
+				"</div>"
+			)
+
+		html_text=(
+				f"{html_text}\n"
+			"</section>"
+		)
+
+	return Response(
+		body=html_text,
 		content_type=_MIMETYPE_HTML
 	)
 
@@ -786,7 +873,7 @@ async def route_api_drop_asset(
 			f"{html_popup}\n"
 
 			"""<section hx-swap-oob="innerHTML:#navigation">""" "\n"
-				f"{write_ul([write_button_search_assets(lang),write_button_new_asset(lang)])}\n"
+				f"{write_ul([write_button_nav_search_assets(lang),write_button_nav_new_asset(lang)])}\n"
 			"</section>\n"
 
 			"""<section hx-swap-oob="innerHTML:#main">""" "\n"
@@ -963,7 +1050,7 @@ async def route_main(
 				f"<p>{tl}</p>"
 				f"""<p>{write_link_homepage(lang)}</p>""" "\n"
 				"""<section id="navigation">""" "\n"
-					f"{write_ul([write_button_search_assets(lang),write_button_new_asset(lang)])}\n"
+					f"{write_ul([write_button_nav_search_assets(lang),write_button_nav_new_asset(lang)])}\n"
 				"</section>\n"
 				"""<section id="main">""" "\n"
 					"<!-- FRAGMENTS GO HERE -->\n"

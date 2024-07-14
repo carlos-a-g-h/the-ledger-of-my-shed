@@ -2,7 +2,7 @@
 
 
 from typing import Mapping
-# from typing import Optional
+from typing import Optional
 
 from frontend_Any import _LANG_EN,_LANG_ES
 
@@ -13,66 +13,45 @@ from frontend_Any import _CSS_CLASS_DANGER
 from frontend_Any import _CSS_CLASS_COMMON
 from frontend_Any import _CSS_CLASS_HORIZONTAL
 
+from frontend_Any import write_div_display_error
+
 from internals import util_valid_list
 from internals import util_valid_str
 from internals import util_valid_int
 
-def write_div_display_error(lang)->str:
-	html_text=(
-		"""<div class="display-error">""" "\n"
-	)
+def write_button_nav_new_asset(lang:str)->str:
 
-	html_text=f"{html_text}"+{
-		_LANG_EN:"Display error",
-		_LANG_ES:"Error al mostrar"
+	tl={
+		_LANG_EN:"Create new asset",
+		_LANG_ES:"Crear activo nuevo"
 	}[lang]
-
 	return (
-			f"{html_text}\n"
-		"<div>"
-	)
-
-def write_button_new_asset(lang)->str:
-
-	html_text=(
 		f"""<button class="{_CSS_CLASS_COMMON}" """
 			"""hx-get="/fgmt/assets/new" """
 			"""hx-swap="innerHTML" """
 			"""hx-target="#main" """
 			">"
-	)
-
-	html_text=f"{html_text}"+{
-		_LANG_EN:"Create new asset",
-		_LANG_ES:"Crear activo nuevo"
-	}[lang]
-
-	return (
-			f"{html_text}\n"
+			f"{tl}"
 		"</button>"
 	)
 
-def write_button_search_assets(lang)->str:
+def write_button_nav_search_assets(lang:str)->str:
 
-	html_text=(
+	tl={
+		_LANG_EN:"Search asset(s)",
+		_LANG_ES:"Buscar activo(s)"
+	}[lang]
+	return (
 		f"""<button class="{_CSS_CLASS_COMMON}" """
 			"""hx-get="/fgmt/assets/search" """
 			"""hx-swap="innerHTML" """
 			"""hx-target="#main" """
 			">"
-	)
-
-	html_text=f"{html_text}"+{
-		_LANG_EN:"Search asset(s)",
-		_LANG_ES:"Buscar activo(s)"
-	}[lang]
-
-	return (
-			f"{html_text}"
+			f"{tl}"
 		"</button>"
 	)
 
-def write_form_new_asset(lang)->str:
+def write_form_new_asset(lang:str)->str:
 
 	tl={
 		_LANG_EN:"Creation of a new asset",
@@ -96,15 +75,12 @@ def write_form_new_asset(lang)->str:
 		f"{html_text}\n"
 		"<div>\n"
 			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-				# "<div>\n"
-				f"""<label class="{_CSS_CLASS_COMMON}" for="asset-name">{tl}</label>""" "\n"
-				# "</div>\n"
+				f"""<label class="{_CSS_CLASS_COMMON}" for="name">{tl}</label>""" "\n"
 				f"""<input class="{_CSS_CLASS_COMMON}" """
-					""" id="asset-name" """
 					""" name="name" """
 					"""type="text" """
 					"""max-length=64 """
-					">\n"
+					"required>\n"
 			"</div>"
 	)
 
@@ -115,15 +91,12 @@ def write_form_new_asset(lang)->str:
 	html_text=(
 		f"{html_text}\n"
 		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-			# "<div>\n"
-				f"""<label class="{_CSS_CLASS_COMMON}" for="asset-sign">{tl}</label>""" "\n"
-			# "</div>\n"
+			f"""<label class="{_CSS_CLASS_COMMON}" for="sign">{tl}</label>""" "\n"
 			f"""<input class="{_CSS_CLASS_COMMON}" """
-				""" id="asset-sign" """
 				""" name="sign" """
 				"""type="text" """
 				"""max-length=32 """
-				">\n"
+				"required>\n"
 		"</div>"
 	)
 
@@ -134,11 +107,8 @@ def write_form_new_asset(lang)->str:
 	html_text=(
 			f"{html_text}\n"
 			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-				# "<div>\n"
-					f"""<label class="{_CSS_CLASS_COMMON}" for="asset-tag">{tl}</label>""" "\n"
-				# "</div>\n"
+				f"""<label class="{_CSS_CLASS_COMMON}" for="tag">{tl}</label>""" "\n"
 				f"""<input class="{_CSS_CLASS_COMMON}" """
-					""" id="asset-tag" """
 					""" name="tag" """
 					"""type="text" """
 					"""max-length=32 """
@@ -153,11 +123,8 @@ def write_form_new_asset(lang)->str:
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		# "<div>\n"
-			f"""<label class="{_CSS_CLASS_COMMON}" for="asset-comment">{tl}</label>""" "\n"
-		# "</div>\n"
+		f"""<label class="{_CSS_CLASS_COMMON}" for="comment">{tl}</label>""" "\n"
 		f"""<textarea class="{_CSS_CLASS_COMMON}" """
-			"""id="asset-comment" """
 			"""name="comment" """
 			"max-length=256 "
 			">"
@@ -165,8 +132,8 @@ def write_form_new_asset(lang)->str:
 	)
 
 	tl={
-		_LANG_EN:"Create",
-		_LANG_ES:"Crear"
+		_LANG_EN:"Create asset",
+		_LANG_ES:"Crear activo"
 	}[lang]
 	return (
 			f"{html_text}"
@@ -179,21 +146,43 @@ def write_form_new_asset(lang)->str:
 		"</form>"
 	)
 
-def write_form_search_assets(lang)->str:
+# def write_form_search_assets(lang:str,api_route:str)->str:
+def write_form_search_assets(
+		lang:str,
+		order_id:Optional[str]=None
+	)->str:
+
+	order_specific=isinstance(order_id,str)
+
+	the_route={
+		True:f"/api/orders/panel/{order_id}/asset-search",
+		False:"/api/assets/search"
+	}[order_specific]
 
 	tl={
-		_LANG_EN:"asset(s) searcher",
-		_LANG_ES:"Buscador de activo(s)"
+		_LANG_EN:"Asset search",
+		_LANG_ES:"Buscar activo(s)"
 	}[lang]
 	html_text=(
 		f"<h3>{tl}</h3>\n"
-		"""<form """
-			"""hx-post="/api/assets/search" """
-			"""hx-trigger="submit" """
-			"""hx-target="#messages" """
-			"""hx-swap="innerHTML" """
-			">"
 	)
+
+	if order_specific:
+		tl={
+			_LANG_EN:"Go to the editor",
+			_LANG_ES:"Ir al editor"
+		}[lang]
+		html_text=(
+			"<div>"
+				f"""<button class="{_CSS_CLASS_COMMON}" """
+					f"""hx-get="/fgmt/orders/panel/{order_id}/editor" """
+					"""hx-target="#messages" """
+					"""hx-swap="innerHTML" """
+					">\n"
+					f"{tl} ({order_id})\n"
+				"</button>\n"
+			"</div>"
+		)
 
 	tl={
 		_LANG_EN:"Name",
@@ -201,18 +190,21 @@ def write_form_search_assets(lang)->str:
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		"<div>\n"
-			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-				# "<div>\n"
-					f"""<label class="{_CSS_CLASS_COMMON}" for="asset-name">{tl}</label>""" "\n"
-				# "</div>\n"
-				f"""<input class="{_CSS_CLASS_COMMON}" """
-					"""id="asset-name" """
-					"""name="name" """
-					"""type="text" """
-					"""max-length=32 """
-					">\n"
-			"</div>"
+		"""<form """
+			f"""hx-post="{the_route}" """
+			"""hx-trigger="submit" """
+			"""hx-target="#messages" """
+			"""hx-swap="innerHTML" """
+			">"
+				"<div>\n"
+					f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
+						f"""<label class="{_CSS_CLASS_COMMON}" for="name">{tl}</label>""" "\n"
+						f"""<input class="{_CSS_CLASS_COMMON}" """
+							"""name="name" """
+							"""type="text" """
+							"""max-length=32 """
+							">\n"
+					"</div>"
 	)
 
 	tl={
@@ -223,11 +215,8 @@ def write_form_search_assets(lang)->str:
 	html_text=(
 		f"{html_text}\n"
 		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-			# "<div>\n"
-				f"""<label class="{_CSS_CLASS_COMMON}" for="asset-sign">{tl}</label>""" "\n"
-			# "</div>\n"
+			f"""<label class="{_CSS_CLASS_COMMON}" for="sign">{tl}</label>""" "\n"
 			f"""<input class="{_CSS_CLASS_COMMON}" """
-				"""id="asset-sign" """
 				"""name="sign" """
 				"""type="text" """
 				"""max-length=32 """
@@ -243,17 +232,14 @@ def write_form_search_assets(lang)->str:
 	html_text=(
 			f"{html_text}\n"
 			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-				# "<div>\n"
-					f"""<label class="{_CSS_CLASS_COMMON}" for="asset-tag">{tl}</label>""" "\n"
-				# "</div>\n"
+				f"""<label class="{_CSS_CLASS_COMMON}" for="tag">{tl}</label>""" "\n"
 				f"""<input class="{_CSS_CLASS_COMMON}" """
-					"""id="asset-tag" """
 					"""name="tag" """
 					"""type="text" """
 					"""max-length=32 """
 					">\n"
 			"</div>\n"
-		"</div>\n"
+		"</div>"
 	)
 
 	tl={
@@ -264,8 +250,7 @@ def write_form_search_assets(lang)->str:
 	return (
 			f"{html_text}\n"
 
-			"""<button """
-				"""type="submit" """
+			"""<button type="submit" """
 				f"""class="{_CSS_CLASS_COMMON}" """
 				">"
 				f"{tl}"
@@ -279,7 +264,6 @@ def write_form_add_modev(lang:str,asset_id:str)->str:
 		_LANG_EN:"Add or remove",
 		_LANG_ES:"Agregar o sustraer"
 	}[lang]
-
 	html_text=(
 		"<form "
 			f"""hx-post="/api/assets/history/{asset_id}/add" """
@@ -297,9 +281,8 @@ def write_form_add_modev(lang:str,asset_id:str)->str:
 			"<div>"
 
 				f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-					f"""<label class="{_CSS_CLASS_COMMON}" for="modev-mod">{tl}</label>""" "\n"
+					f"""<label class="{_CSS_CLASS_COMMON}" for="mod">{tl}</label>""" "\n"
 					f"""<input class="{_CSS_CLASS_COMMON}" """
-						"""id="modev-mod" """
 						""" name="mod" """
 						"""type="number" """
 						"""value=0 """
@@ -314,9 +297,8 @@ def write_form_add_modev(lang:str,asset_id:str)->str:
 	html_text=(
 		f"{html_text}\n"
 		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-			f"""<label class="{_CSS_CLASS_COMMON}" for="modev-sign">{tl}</label>""" "\n"
+			f"""<label class="{_CSS_CLASS_COMMON}" for="sign">{tl}</label>""" "\n"
 			f"""<input class="{_CSS_CLASS_COMMON}" """
-				"""  id="modev-sign" """
 				""" name="sign" """
 				""" type="text" """
 				"""max-length=32 """
@@ -332,9 +314,8 @@ def write_form_add_modev(lang:str,asset_id:str)->str:
 	html_text=(
 		f"{html_text}\n"
 		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-			f"""<label class="{_CSS_CLASS_COMMON}" for="modev-tag">{tl}</label>""" "\n"
+			f"""<label class="{_CSS_CLASS_COMMON}" for="tag">{tl}</label>""" "\n"
 			f"""<input class="{_CSS_CLASS_COMMON}" """
-				""" id="modev-tag" """
 				""" name="tag" """
 				""" type="text" """
 				"""max-length=32 """
@@ -349,9 +330,8 @@ def write_form_add_modev(lang:str,asset_id:str)->str:
 	html_text=(
 			f"{html_text}\n"
 		"</div>\n"
-		f"""<label class="{_CSS_CLASS_COMMON}" for="modev-comment">{tl}</label>""" "\n"
+		f"""<label class="{_CSS_CLASS_COMMON}" for="comment">{tl}</label>""" "\n"
 		f"""<textarea class="{_CSS_CLASS_COMMON}" """ 
-			"""id="modev-comment" """
 			"""name="comment" """
 			"max-length=256 "
 			">"
@@ -365,8 +345,7 @@ def write_form_add_modev(lang:str,asset_id:str)->str:
 
 	return (
 			f"{html_text}\n"
-			"""<button """
-				"""type="submit" """
+			"""<button type="submit" """
 				f"""class="{_CSS_CLASS_COMMON}" """
 				">"
 				f"{tl}"
@@ -484,14 +463,13 @@ def write_html_modev_history(
 
 	return html_text
 
-
 def write_html_asset(
 		lang:str,
 		data:Mapping,
 		fullview:bool=False,
 	)->str:
 
-	print(data)
+	# print(data)
 
 	asset_id=util_valid_str(data.get("id"))
 	if not isinstance(asset_id,str):
@@ -509,7 +487,6 @@ def write_html_asset(
 	}[lang]
 	html_text=(
 		f"""<div id="asset-{asset_id}-info" class="{_CSS_CLASS_COMMON}">""" "\n"
-		# f"""<div id="asset-{asset_id}-info">""" "\n"
 			f"<div>ID: <code>{asset_id}</code></div>\n"
 			f"<div>{tl}: <code>{asset_name}</code></div>"
 	)
@@ -567,7 +544,7 @@ def write_html_asset(
 
 	html_text_get_asset_button=(
 		f"""<button class="{_CSS_CLASS_COMMON}" """
-			f"""hx-get="/fgmt/assets/get/{asset_id}" """
+			f"""hx-get="/fgmt/assets/editor/{asset_id}" """
 			"""hx-target="#messages" """
 			"""hx-swap="innerHTML" """
 			">"
@@ -644,7 +621,6 @@ def write_html_asset(
 			f"{html_text}\n"
 			f"<h3>{tl}</h3>\n"
 			f"""<div id="asset-{asset_id}-history-ctl" class="{_CSS_CLASS_COMMON}">""" "\n"
-			# f"""<div id="asset-{asset_id}-history-ctl">""" "\n"
 				f"{write_form_add_modev(lang,asset_id)}\n"
 			"</div>"
 			f"""<div id="asset-{asset_id}-history">""" "\n"
@@ -656,7 +632,7 @@ def write_html_asset(
 
 def write_html_list_of_assets(
 		lang:str,assetlist:list,
-		reverse:bool=False
+		order_id:Optional[str]=None
 	)->str:
 
 	html_text="""<div id="list-of-assets">""" "\n"
@@ -677,23 +653,15 @@ def write_html_list_of_assets(
 
 	if not empty:
 
-		if not reverse:
-			for asset in assetlist:
-				html_text=(
-					f"{html_text}\n"
-					f"{write_html_asset(lang,asset)}"
-				)
-
-		if reverse:
-			x=len(assetlist)
-			while True:
-				x=x-1
-				if x<0:
-					break
-				html_text=(
-					f"{html_text}\n"
-					f"{write_html_asset(lang,assetlist[x])}"
-				)
+		x=len(assetlist)
+		while True:
+			x=x-1
+			if x<0:
+				break
+			html_text=(
+				f"{html_text}\n"
+				f"{write_html_asset(lang,assetlist[x])}"
+			)
 
 	return (
 			f"{html_text}\n"

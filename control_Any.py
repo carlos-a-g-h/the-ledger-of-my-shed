@@ -148,12 +148,12 @@ def assert_referer(
 
 	referer_path=yarl.URL(referer).path
 
-	print(
-		"- Comparing:" "\n"
-		"\t" f"Host: {request.host}" "\n"
-		"\t" f"{referer_path}" "\n"
-		"\t" f"{url_path}" "\n"
-	)
+	# print(
+	# 	"- Comparing:" "\n"
+	# 	"\t" f"Host: {request.host}" "\n"
+	# 	"\t" f"{referer_path}" "\n"
+	# 	"\t" f"{url_path}" "\n"
+	# )
 
 	return (
 		Path(referer_path)==Path(url_path)

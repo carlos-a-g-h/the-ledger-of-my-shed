@@ -26,7 +26,8 @@ from control_admin import route_api_update_known_asset_names as route_Admin_api_
 from control_assets import _CACHE_ASSETS
 from control_assets import _ROUTE_PAGE as _ROUTE_PAGE_ASSETS
 from control_assets import route_main as route_Assets
-from control_assets import route_mixup_get_asset as route_Assets_mixup_GetAsset
+from control_assets import route_api_select_asset as route_Assets_api_GetAsset
+from control_assets import route_fgmt_asset_editor as route_Assets_fgmt_EditAsset
 from control_assets import route_fgmt_new_asset as route_Assets_fgmt_NewAsset
 from control_assets import route_api_new_asset as route_Assets_api_NewAsset
 from control_assets import route_fgmt_search_assets as route_Assets_fgmt_SearchAssets
@@ -38,7 +39,12 @@ from control_assets import util_update_known_assets as init_assets_cache
 from control_orders import _ROUTE_PAGE as _ROUTE_PAGE_ORDERS
 from control_orders import route_main as route_Orders
 from control_orders import route_fgmt_new_order as route_Orders_fgmt_NewOrder
+from control_orders import route_fgmt_list_orders as route_Orders_fgmt_ListOrders
+from control_orders import route_fgmt_order_editor as route_Order_fgmt_Editor
 from control_orders import route_api_new_order as route_Orders_api_NewOrder
+from control_orders import route_api_delete_order as route_Orders_api_DeleteOrder
+from control_orders import route_api_update_asset_in_order as route_Orders_api_UpdateAsset
+from control_orders import route_api_remove_asset_from_order as route_Orders_api_RemoveAsset
 
 from internals import read_yaml_file
 from internals import util_valid_int
@@ -168,26 +174,6 @@ def build_app(
 				route_Admin_api_UpdateKnownAssetNames
 			),
 
-		# ORDERS
-
-		web_GET(
-			_ROUTE_PAGE_ORDERS,
-			route_Orders
-		),
-			web_GET(
-				"/fgmt/orders/new",
-				route_Orders_fgmt_NewOrder
-			),
-				web_GET(
-					"/api/orders/new",
-					route_Orders_api_NewOrder
-				),
-
-			# web_GET(
-			# 	"/fgmt/orders/list",
-			# 	route_Orders_fgmt_ListOrders
-			# ),
-
 		# ASSETS
 
 		web_GET(
@@ -195,36 +181,84 @@ def build_app(
 			route_Assets
 		),
 
-		web_GET(
-			"/fgmt/assets/new",
-			route_Assets_fgmt_NewAsset
-		),
-			web_POST(
-				"/api/assets/new",
-				route_Assets_api_NewAsset
+			web_GET(
+				"/fgmt/assets/new",
+				route_Assets_fgmt_NewAsset
+			),
+				web_POST(
+					"/api/assets/new",
+					route_Assets_api_NewAsset
+				),
+
+			web_GET(
+				"/fgmt/assets/search",
+				route_Assets_fgmt_SearchAssets
+			),
+				web_POST(
+					"/api/assets/search",
+					route_Assets_api_SearchAssets
+				),
+
+			web_GET(
+				"/fgmt/assets/editor/{asset_id}",
+				route_Assets_fgmt_EditAsset
+			),
+				web_POST(
+					"/api/assets/select/{asset_id}",
+					route_Assets_api_GetAsset
+				),
+			web_DELETE(
+				"/api/assets/drop",
+				route_Assets_api_DropAsset
 			),
 
-		web_GET(
-			"/fgmt/assets/search",
-			route_Assets_fgmt_SearchAssets
-		),
-			web_POST(
-				"/api/assets/search",
-				route_Assets_api_SearchAssets
-			),
+		# ORDERS
 
 		web_GET(
-			"/fgmt/assets/get/{asset_id}",
-			route_Assets_mixup_GetAsset
+			# "/page/orders",
+			_ROUTE_PAGE_ORDERS,
+			route_Orders
 		),
-			web_POST(
-				"/api/assets/get/{asset_id}",
-				route_Assets_mixup_GetAsset
+			web_GET(
+				"/fgmt/orders/new",
+				route_Orders_fgmt_NewOrder
 			),
-		web_DELETE(
-			"/api/assets/drop",
-			route_Assets_api_DropAsset
-		),
+				web_POST(
+					"/api/orders/new",
+					route_Orders_api_NewOrder
+				),
+
+			web_GET(
+				"/fgmt/orders/list",
+				route_Orders_fgmt_ListOrders
+			),
+
+			web_GET(
+				"/fgmt/orders/panel/{order_id}/asset-search",
+				route_Assets_fgmt_SearchAssets
+			),
+				web_POST(
+					"/api/orders/panel/{order_id}/asset-search",
+					route_Assets_api_SearchAssets
+				),
+
+			web_GET(
+				"/fgmt/orders/panel/{order_id}/editor",
+				route_Order_fgmt_Editor
+			),
+			web_POST(
+				"/api/orders/update",
+				route_Orders_api_UpdateAsset
+			),
+			web_DELETE(
+				"/api/orders/update",
+				route_Orders_api_RemoveAsset
+			),
+
+			web_DELETE(
+				"/api/orders/drop",
+				route_Orders_api_DeleteOrder
+			),
 
 		# web_GET(
 		# 	"/page/assets/new",

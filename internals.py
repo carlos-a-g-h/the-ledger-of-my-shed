@@ -114,7 +114,7 @@ def util_valid_int(
 	if not data[1:].isdigit():
 		return fallback
 
-	return int(data[1:])
+	return int(data)
 
 def util_valid_bool(
 		data:Union[Optional[str],bool],

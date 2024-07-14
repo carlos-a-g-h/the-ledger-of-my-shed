@@ -6,9 +6,9 @@ _LANG_ES="es"
 _CSS_CLASS_COMMON="common"
 _CSS_CLASS_HORIZONTAL="horizontal"
 
-_CSS_CLASS_BUTTON="button"
+# _CSS_CLASS_BUTTON="button"
 _CSS_CLASS_DANGER="danger"
-_CSS_CLASS_INPUT_TEXT="input-text"
+# _CSS_CLASS_INPUT_TEXT="input-text"
 
 def write_link_homepage(lang:str):
 	text={
@@ -96,3 +96,19 @@ def write_ul(
 			f"{html_text}"
 		"</ul>"
 	)
+
+def write_div_display_error(lang:str)->str:
+	html_text=(
+		"""<div class="display-error">""" "\n"
+	)
+
+	html_text=f"{html_text}"+{
+		_LANG_EN:"Display error",
+		_LANG_ES:"Error al mostrar"
+	}[lang]
+
+	return (
+			f"{html_text}\n"
+		"<div>"
+	)
+

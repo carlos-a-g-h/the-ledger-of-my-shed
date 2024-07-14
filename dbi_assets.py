@@ -16,7 +16,7 @@ from internals import util_valid_int
 # from internals import util_valid_list
 
 _COL_ASSETS="assets"
-_COL_USERS="users"
+# _COL_USERS="users"
 
 def util_get_total_from_history(history:list)->int:
 	if len(history)==0:
@@ -216,7 +216,7 @@ async def dbi_assets_ModEv_Filter(
 
 	results=None
 
-	# TODO: Optimize with Mongodb Query Language
+	# TODO: Learn how to optimize with MQL
 
 	try:
 		results=await rdbc[name_db][_COL_ASSETS].find_one(
