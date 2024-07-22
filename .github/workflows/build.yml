@@ -57,6 +57,14 @@ jobs:
         run: |
           # python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.bin"
           python -m nuitka --standalone --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.bin"
+
+      - name: Build for Linux (after)
+        if: ${{ contains(matrix.os,'windows') == false && inputs.TEST_ONLY == false }}
+        working-directory: repo
+        run: |
+          echo "[ LINKING ]"
+          ldd "the-output/main.dist/${{ env.THE_NAME }}.bin"
+          echo "[ CONTENTS ]"
           find the-output
 
       - name: Build for Windows
@@ -65,6 +73,11 @@ jobs:
         run: |
           # python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.exe"
           python -m nuitka --standalone --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.exe"
+
+      - name: Build for Windows (after)
+        if: ${{ contains(matrix.os,'windows') == true && inputs.TEST_ONLY == false }}
+        working-directory: repo
+        run: |
           dir /s /b the-output
 
       - uses: actions/upload-artifact@v3
