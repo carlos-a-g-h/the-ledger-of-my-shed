@@ -68,6 +68,7 @@ jobs:
           dir /s /b the-output
 
       - uses: actions/upload-artifact@v3
+        if: ${{ inputs.TEST_ONLY == false }}
         with:
           if-no-files-found: error
           name: "${{ matrix.os }}"
