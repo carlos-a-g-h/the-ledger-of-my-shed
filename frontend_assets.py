@@ -1,6 +1,5 @@
 #!/usr/bin/python3.9
 
-
 from typing import Mapping
 from typing import Optional
 
@@ -18,6 +17,7 @@ from frontend_Any import write_div_display_error
 from internals import util_valid_list
 from internals import util_valid_str
 from internals import util_valid_int
+from internals import util_valid_date
 
 def write_button_nav_new_asset(lang:str)->str:
 
@@ -43,7 +43,7 @@ def write_button_nav_search_assets(lang:str)->str:
 	}[lang]
 	return (
 		f"""<button class="{_CSS_CLASS_COMMON}" """
-			"""hx-get="/fgmt/assets/search" """
+			"""hx-get="/fgmt/assets/search-assets" """
 			"""hx-swap="innerHTML" """
 			"""hx-target="#main" """
 			">"
@@ -146,7 +146,6 @@ def write_form_new_asset(lang:str)->str:
 		"</form>"
 	)
 
-# def write_form_search_assets(lang:str,api_route:str)->str:
 def write_form_search_assets(
 		lang:str,
 		order_id:Optional[str]=None
@@ -155,13 +154,13 @@ def write_form_search_assets(
 	order_specific=isinstance(order_id,str)
 
 	the_route={
-		True:f"/api/orders/panel/{order_id}/asset-search",
-		False:"/api/assets/search"
+		True:f"/api/orders/current/{order_id}/search-assets",
+		False:"/api/assets/search-assets"
 	}[order_specific]
 
 	tl={
-		_LANG_EN:"Asset search",
-		_LANG_ES:"Buscar activo(s)"
+		_LANG_EN:"Asset searcher",
+		_LANG_ES:"Buscador de activos"
 	}[lang]
 	html_text=(
 		f"<h3>{tl}</h3>\n"
@@ -173,13 +172,17 @@ def write_form_search_assets(
 			_LANG_ES:"Ir al editor"
 		}[lang]
 		html_text=(
-			"<div>"
+			f"{html_text}\n"
+			"<div>\n"
+				f"ID: {order_id}"
+			"</div>\n"
+			"<div>\n"
 				f"""<button class="{_CSS_CLASS_COMMON}" """
-					f"""hx-get="/fgmt/orders/panel/{order_id}/editor" """
+					f"""hx-get="/fgmt/orders/current/{order_id}/editor" """
 					"""hx-target="#messages" """
 					"""hx-swap="innerHTML" """
 					">\n"
-					f"{tl} ({order_id})\n"
+					f"{tl}\n"
 				"</button>\n"
 			"</div>"
 		)
@@ -198,7 +201,8 @@ def write_form_search_assets(
 			">"
 				"<div>\n"
 					f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-						f"""<label class="{_CSS_CLASS_COMMON}" for="name">{tl}</label>""" "\n"
+						f"""<label class="{_CSS_CLASS_COMMON}" for="name">{tl}</label>"""
+						"\n"
 						f"""<input class="{_CSS_CLASS_COMMON}" """
 							"""name="name" """
 							"""type="text" """
@@ -232,7 +236,8 @@ def write_form_search_assets(
 	html_text=(
 			f"{html_text}\n"
 			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-				f"""<label class="{_CSS_CLASS_COMMON}" for="tag">{tl}</label>""" "\n"
+				f"""<label class="{_CSS_CLASS_COMMON}" for="tag">{tl}</label>"""
+				"\n"
 				f"""<input class="{_CSS_CLASS_COMMON}" """
 					"""name="tag" """
 					"""type="text" """
@@ -355,6 +360,8 @@ def write_form_add_modev(lang:str,asset_id:str)->str:
 
 def write_html_modev(lang:str,data:Mapping)->str:
 
+	print("MODEV:",data)
+
 	modev_uid=util_valid_str(data.get("uid"))
 	if not isinstance(modev_uid,str):
 		return write_div_display_error(lang)
@@ -363,7 +370,10 @@ def write_html_modev(lang:str,data:Mapping)->str:
 	if not isinstance(modev_sign,str):
 		return write_div_display_error(lang)
 
-	modev_date=util_valid_str(data.get("date"))
+	modev_date=util_valid_date(
+		util_valid_str(data.get("date"))
+	)
+
 	if not isinstance(modev_date,str):
 		return write_div_display_error(lang)
 
@@ -431,13 +441,6 @@ def write_html_modev_history(
 	)->str:
 
 	html_text=""
-
-	# outer=(isinstance(asset_id,str))
-
-	# if outer:
-	# 	html_text=(
-	# 		f"""<div id="asset-{asset_id}-history">"""
-	# 	)
 
 	zero=True
 	size=len(history)

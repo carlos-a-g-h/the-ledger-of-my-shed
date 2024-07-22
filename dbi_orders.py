@@ -1,16 +1,24 @@
 #!/usr/bin/python3.9
 
-# from motor.core import AgnosticCursor
-from motor.motor_asyncio import AsyncIOMotorClient
-from motor.motor_asyncio import AsyncIOMotorCursor
-
 from typing import Mapping
 from typing import Optional,Union
+from secrets import token_hex
+
+from motor.motor_asyncio import AsyncIOMotorClient
+from motor.motor_asyncio import AsyncIOMotorCursor
+from motor.motor_asyncio import AsyncIOMotorCollection
+from pymongo import UpdateOne
+from pymongo.results import BulkWriteResult
+# from pymongo.results import UpdateResult
 
 from internals import util_rnow
-# from internals import util_valid_str
-# from internals import util_valid_int
+from internals import util_valid_str
+from internals import util_valid_int
+from internals import util_valid_date
 # from internals import util_valid_list
+
+from dbi_assets import _COL_ASSETS
+# from dbi_assets import 
 
 _COL_ORDERS="orders"
 
@@ -61,11 +69,6 @@ async def dbi_orders_GetOrders(
 		find_match.update({"sign":order_sign})
 	if isinstance(order_tag,str):
 		find_match.update({"tag":order_tag})
-
-	# aggr=[
-	# 	{"$match":find_match},
-	# 	{"$set":{"id":"$_id","_id":"$$REMOVE"}}
-	# ]
 
 	agg_params=[
 		{"$match":find_match}
@@ -205,3 +208,118 @@ async def dbi_orders_Editor_AssetDrop(
 		return False
 
 	return True
+
+async def dbi_Orders_ApplyOrder(
+		rdbc:AsyncIOMotorClient,
+		name_db:str,order_id:str
+	)->bool:
+
+	the_order:Mapping=await dbi_orders_GetOrders(
+		rdbc,name_db,
+		order_id=order_id,
+		include_assets=True
+	)
+	if not the_order:
+		print("Order not found")
+		return False
+
+	the_sign=util_valid_str(
+		the_order.get("sign"),True
+	)
+	if not the_sign:
+		print("'Sign' field missing")
+		return False
+
+	the_tag=util_valid_str(
+		the_order.get("tag"),True
+	)
+	if not the_tag:
+		print("'tag' field missing")
+		return False
+
+	the_date=util_valid_date(
+		util_valid_str(
+			the_order.get("date")
+		),
+	)
+	if not the_date:
+		print("'date' field missing")
+		return False
+
+	if not isinstance(
+		the_order.get("assets"),
+		Mapping
+	):
+		print("No assets ¿?")
+		return False
+
+	if len(the_order["assets"])==0:
+		print("No assets ¿? (empty map)")
+		return False
+
+	col_orders:AsyncIOMotorCollection=rdbc[name_db][_COL_ORDERS]
+
+	try:
+		await col_orders.update_one(
+			{"_id":order_id},
+			{"$set":{"locked":True}}
+		)
+
+	except Exception as exc:
+		print("Failed to lock the order",exc)
+		return False
+
+	total_ops=0
+	bulk_write_ops=[]
+	for asset_id in the_order["assets"]:
+
+		the_mod=util_valid_int(
+			the_order["assets"].get(asset_id)
+		)
+		if not isinstance(the_mod,int):
+			continue
+
+		print(asset_id,the_mod)
+
+		total_ops=total_ops+1
+		bulk_write_ops.append(
+			UpdateOne(
+				{"_id":asset_id},
+				{
+					"$push":{
+						"history":{
+							"uid":token_hex(8),
+							"date":the_date,
+							"sign":the_sign,
+							"tag":the_tag,
+							"mod":the_mod
+						}
+					}
+				}
+			)
+		)
+
+	if total_ops==0:
+		print("No write ops detected")
+		return False
+
+	col_assets:AsyncIOMotorCollection=rdbc[name_db][_COL_ASSETS]
+
+	results:BulkWriteResult=await col_assets.bulk_write(
+		bulk_write_ops
+	)
+	print(
+		f"TOTAL: {total_ops}" "\n"
+		f"MODIFIED: {results.modified_count}" "\n"
+	)
+
+	if not total_ops==results.modified_count:
+		print("Not everything got written!")
+		return False
+
+	print("Dropping...")
+	return (
+		await dbi_orders_DropOrder(
+			rdbc,name_db,order_id
+		)
+	)

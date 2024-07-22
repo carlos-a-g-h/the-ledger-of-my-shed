@@ -9,7 +9,7 @@ from frontend_Any import _CSS_CLASS_DANGER
 from frontend_Any import write_div_display_error
 
 from internals import util_valid_str
-from internals import util_valid_int
+# from internals import util_valid_int
 
 def write_button_nav_new_order(lang:str)->str:
 
@@ -37,7 +37,7 @@ def write_button_nav_list_orders(lang:str)->str:
 
 	return (
 		f"""<button class="{_CSS_CLASS_COMMON}" """
-			"""hx-get="/fgmt/orders/list" """
+			"""hx-get="/fgmt/orders/current" """
 			"""hx-swap="innerHTML" """
 			"""hx-target="#messages" """
 			">"
@@ -55,12 +55,12 @@ def write_button_add_asset_to_order(
 		_LANG_ES:"Agregar a la orden"
 	}[lang]
 	return (
-		"""<form hx-post="/api/orders/update" """
+		f"""<form hx-post="/api/orders/current/{order_id}/update" """
 			"""hx-target="#messages" """
 			"""hx-swap="innerHTML" """
 			">\n"
 
-			f"""<input type="hidden" name="id" value="{order_id}">"""
+			# f"""<input type="hidden" name="id" value="{order_id}">"""
 			f"""<input type="hidden" name="asset" value="{asset_id}">"""
 			"""<input type="hidden" name="justbool" value="true">"""
 
@@ -69,6 +69,34 @@ def write_button_add_asset_to_order(
 			"</button>\n"
 
 		"</form>"
+	)
+
+def write_button_run_order(
+		lang:str,order_id:str
+	)->str:
+
+	tl={
+		_LANG_EN:"Are you sure?",
+		_LANG_ES:"¿Está seguro?"
+	}[lang]
+	html_text=(
+		"<button "
+			f"""class="{_CSS_CLASS_COMMON}" """
+			f"""hx-post="/api/orders/current/{order_id}/run" """
+			"""hx-target="#messages" """
+			"""hx-swap="innerHTML" """
+			f"""hx-confirm="{tl}" """
+			">"
+	)
+
+	tl={
+		_LANG_EN:"Run order",
+		_LANG_ES:"Ejecutar orden"
+	}[lang]
+	return (
+			f"{html_text}\n"
+			f"{tl}\n"
+		"</button>"
 	)
 
 def write_form_remove_asset_from_order(
@@ -82,13 +110,13 @@ def write_form_remove_asset_from_order(
 	}[lang]
 
 	return (
-		"""<form """
-			"""hx-delete="/api/orders/update" """
+		"<form "
+			"""style="text-align:right" """
+			f"""hx-delete="/api/orders/current/{order_id}/update" """
 			"""hx-target="#messages" """
 			"""hx-swap="innerHTML">"""
 			"\n"
 
-			f"""<input type="hidden" name="id" value="{order_id}">"""
 			f"""<input type="hidden" name="asset" value="{asset_id}">"""
 
 			"""<button type="submit" """
@@ -111,7 +139,7 @@ def write_form_update_asset_in_order(
 		_LANG_ES:"Actualizar"
 	}[lang]
 	html_text=(
-		"""<form hx-post="/api/orders/update" """
+		f"""<form hx-post="/api/orders/current/{order_id}/update" """
 			"""hx-target="#messages" """
 			"""hx-swap="innerHTML" """
 			">\n"
@@ -119,7 +147,7 @@ def write_form_update_asset_in_order(
 			"<div>\n"
 
 				f"""<div class="{_CSS_CLASS_HORIZONTAL}">"""
-					f"""<input type="hidden" name="id" value="{order_id}">"""
+					# f"""<input type="hidden" name="id" value="{order_id}">"""
 					f"""<input type="hidden" name="asset" value="{asset_id}">"""
 					f"""<input type="number" name="imod" value=0 class="{_CSS_CLASS_COMMON}">"""
 				"</div>\n"
@@ -161,7 +189,7 @@ def write_button_goto_order_editor(lang:str,order_id:str)->str:
 	}[lang]
 	return (
 		f"""<button class="{_CSS_CLASS_COMMON}" """
-			f"""hx-get="/fgmt/orders/panel/{order_id}/editor" """
+			f"""hx-get="/fgmt/orders/current/{order_id}/editor" """
 			"""hx-swap="innerHTML" """
 			"""hx-target="#messages" """
 			">"
@@ -176,7 +204,7 @@ def write_button_goto_order_asset_search(lang:str,order_id:str)->str:
 	}[lang]
 	return (
 		f"""<button class="{_CSS_CLASS_COMMON}" """
-			f"""hx-get="/fgmt/orders/panel/{order_id}/asset-search" """
+			f"""hx-get="/fgmt/orders/current/{order_id}/search-assets" """
 			"""hx-swap="innerHTML" """
 			"""hx-target="#messages" """
 			">"
@@ -184,15 +212,25 @@ def write_button_goto_order_asset_search(lang:str,order_id:str)->str:
 		"</button>"
 	)
 
-def write_button_order_delete(lang:str,order_id:str)->str:
+def write_button_delete_order(
+		lang:str,
+		order_id:str,
+		fol:bool=False
+	)->str:
+
+	route=f"/api/orders/current/{order_id}/drop"
+	if fol:
+		route=f"{route}-fol"
 
 	tl={
 		_LANG_EN:"Are you sure you want to delete this order?",
 		_LANG_ES:"¿Está seguro que quiere eliminar la orden?"
 	}[lang]
 	html_text=(
-		"<form "
-			"""hx-delete="/api/orders/drop" """
+		"<button "
+			# """style="float:right;" """
+			f"""class="{_CSS_CLASS_COMMON} {_CSS_CLASS_DANGER}" """
+			f"""hx-delete="{route}" """
 			"""hx-target="#messages" """
 			"""hx-swap="innerHTML" """
 			f"""hx-confirm="{tl}" """
@@ -205,14 +243,8 @@ def write_button_order_delete(lang:str,order_id:str)->str:
 	}[lang]
 	html_text=(
 			f"{html_text}\n"
-
-			f"""<input type="hidden" name="id" value="{order_id}">"""
-
-			"""<button type="submit" """
-				f"""class="{_CSS_CLASS_COMMON}">"""
-				f"{tl}"
-			"</button>"
-		"</form>"
+			f"{tl}"
+		"</button>"
 	)
 
 	return html_text
@@ -298,56 +330,6 @@ def write_form_new_order(lang:str)->str:
 		"</div>"
 	)
 
-# def write_html_asset_from_order(
-# 		lang:str,
-# 		data:Mapping,
-# 		order_id:str,
-# 	)->str:
-
-# 	asset_id=util_valid_str(data.get("id"))
-# 	if not isinstance(asset_id,str):
-# 		return write_div_display_error(lang)
-
-# 	asset_name=util_valid_str(data.get("name"))
-# 	if not isinstance(asset_name,str):
-# 		return write_div_display_error(lang)
-
-# 	asset_total=util_valid_int(data.get("total"))
-# 	if not isinstance(asset_total,int):
-# 		return write_div_display_error(lang)
-
-# 	html_text=(
-# 		f"""<div id="asset-{asset_id}-ok" class="{_CSS_CLASS_COMMON}">""" "\n"
-
-# 			f"""<div class={_CSS_CLASS_HORIZONTAL}>""" "\n"
-# 				# f"""<div id="asset-{asset_id}-in-{order_id}-updater">"""
-# 				f"{write_form_update_asset_in_order(lang,order_id,asset_id,asset_total)}"
-# 				# "</div>"
-# 			"</div>"
-# 	)
-
-# 	tl={
-# 		_LANG_EN:"Apply order",
-# 		_LANG_ES:"Aplicar orden"
-# 	}[lang]
-
-# 	return (
-# 					f"{html_text}\n"
-# 					"<button type=submit "
-# 						f"""class="{_CSS_CLASS_COMMON}" """
-# 						">"
-# 						f"{tl}"
-# 					"</button>"
-# 				"</form>"
-# 			"</div>"
-
-# 			f"""<div class={_CSS_CLASS_HORIZONTAL}>"""
-# 				f"{asset_name}"
-# 			"</div>"
-
-# 		"</div>"
-# 	)
-
 def write_html_order_assets(
 		lang:str,
 		order_id:str,
@@ -403,14 +385,17 @@ def write_html_order(
 		return write_div_display_error(lang)
 
 	html_text=(
-		f"""<div id="order-{order_id}" class="{_CSS_CLASS_COMMON}">"""
 
-			"\n<div>\n"
+		f"""<div id="order-{order_id}">"""
 
-				"""<!-- ID, SIGN, AND TAG, (NO COMMENT, AND NO ASSETS) -->"""
-				"\n"
+			f"""<div class="{_CSS_CLASS_COMMON}">"""
 
-				f"""<div class="{_CSS_CLASS_HORIZONTAL}">ID: {order_id}</div>"""
+				"\n<div>\n"
+
+					"""<!-- ID, SIGN, AND TAG, (NO COMMENT, AND NO ASSETS) -->"""
+					"\n"
+
+					f"<div><strong>ID: {order_id}</strong></div>"
 	)
 
 	tl={
@@ -419,7 +404,8 @@ def write_html_order(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"""<div class="{_CSS_CLASS_HORIZONTAL}">{tl}: {order_sign}</div>"""
+		# f"""<div class="{_CSS_CLASS_HORIZONTAL}">{tl}: {order_sign}</div>"""
+		f"""<div>{tl}: {order_sign}</div>"""
 	)
 
 	tl={
@@ -428,7 +414,8 @@ def write_html_order(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"""<div class="{_CSS_CLASS_HORIZONTAL}">{tl}: {order_date}</div>"""
+		# f"""<div class="{_CSS_CLASS_HORIZONTAL}">{tl}: {order_date}</div>"""
+		f"""<div>{tl}: {order_date}</div>"""
 	)
 
 	tl={
@@ -437,8 +424,8 @@ def write_html_order(
 	}[lang]
 	html_text=(
 			f"{html_text}\n"
-			f"""<div class="{_CSS_CLASS_HORIZONTAL}">{tl}: {order_tag}</div>"""
-			"\n"
+			# f"""<div class="{_CSS_CLASS_HORIZONTAL}">{tl}: {order_tag}</div>""" "\n"
+			f"""<div>{tl}: {order_tag}</div>""" "\n"
 		"</div>"
 	)
 
@@ -447,18 +434,26 @@ def write_html_order(
 	if not edit_mode:
 		html_text=(
 			f"{html_text}\n"
-			f"{write_button_goto_order_editor(lang,order_id)}"
+			f"{write_button_goto_order_editor(lang,order_id)}\n"
+			"""<div style="float:right;">"""
+				f"{write_button_delete_order(lang,order_id,True)}\n"
+			"</div>"
 		)
 
 	if edit_mode:
 		html_text=(
 			f"{html_text}\n"
-			f"{write_button_goto_order_asset_search(lang,order_id)}"
+			f"{write_button_goto_order_asset_search(lang,order_id)}\n"
+			f"{write_button_run_order(lang,order_id)}\n"
+			"""<div style="float:right;">"""
+				f"{write_button_delete_order(lang,order_id)}\n"
+			"</div>"
 		)
 
-	# end of 'the div'
+	# end of both divs
 
 	return (
-			f"{html_text}\n"
+				f"{html_text}\n"
+			"</div>"
 		"</div>"
 	)

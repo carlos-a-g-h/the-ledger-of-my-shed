@@ -45,6 +45,8 @@ from control_orders import route_api_new_order as route_Orders_api_NewOrder
 from control_orders import route_api_delete_order as route_Orders_api_DeleteOrder
 from control_orders import route_api_update_asset_in_order as route_Orders_api_UpdateAsset
 from control_orders import route_api_remove_asset_from_order as route_Orders_api_RemoveAsset
+from control_orders import route_api_run_order as route_Orders_api_RunOrder
+
 
 from internals import read_yaml_file
 from internals import util_valid_int
@@ -191,11 +193,11 @@ def build_app(
 				),
 
 			web_GET(
-				"/fgmt/assets/search",
+				"/fgmt/assets/search-assets",
 				route_Assets_fgmt_SearchAssets
 			),
 				web_POST(
-					"/api/assets/search",
+					"/api/assets/search-assets",
 					route_Assets_api_SearchAssets
 				),
 
@@ -207,9 +209,15 @@ def build_app(
 					"/api/assets/select/{asset_id}",
 					route_Assets_api_GetAsset
 				),
+
 			web_DELETE(
 				"/api/assets/drop",
 				route_Assets_api_DropAsset
+			),
+
+			web_POST(
+				"/api/assets/history/{asset_id}/add",
+				route_Assets_api_AddModEv
 			),
 
 		# ORDERS
@@ -229,34 +237,41 @@ def build_app(
 				),
 
 			web_GET(
-				"/fgmt/orders/list",
+				"/fgmt/orders/current",
 				route_Orders_fgmt_ListOrders
 			),
 
 			web_GET(
-				"/fgmt/orders/panel/{order_id}/asset-search",
+				"/fgmt/orders/current/{order_id}/search-assets",
 				route_Assets_fgmt_SearchAssets
 			),
 				web_POST(
-					"/api/orders/panel/{order_id}/asset-search",
+					"/api/orders/current/{order_id}/search-assets",
 					route_Assets_api_SearchAssets
 				),
 
 			web_GET(
-				"/fgmt/orders/panel/{order_id}/editor",
+				"/fgmt/orders/current/{order_id}/editor",
 				route_Order_fgmt_Editor
 			),
 			web_POST(
-				"/api/orders/update",
+				"/api/orders/current/{order_id}/update",
 				route_Orders_api_UpdateAsset
 			),
 			web_DELETE(
-				"/api/orders/update",
+				"/api/orders/current/{order_id}/update",
 				route_Orders_api_RemoveAsset
 			),
-
+			web_POST(
+				"/api/orders/current/{order_id}/run",
+				route_Orders_api_RunOrder
+			),
 			web_DELETE(
-				"/api/orders/drop",
+				"/api/orders/current/{order_id}/drop",
+				route_Orders_api_DeleteOrder
+			),
+			web_DELETE(
+				"/api/orders/current/{order_id}/drop-fol",
 				route_Orders_api_DeleteOrder
 			),
 
@@ -287,10 +302,6 @@ def build_app(
 		# 	route_Assets_api_DropAsset
 		# ),
 
-		web_POST(
-			"/api/assets/history/{asset_id}/add",
-			route_Assets_api_AddModEv
-		),
 		# web_GET(
 		# 	"/api/assets/select/{asset_id}/modev-view/{modev_date}/{modev_uid}",
 		# 	route_Assets_api_GetModEv

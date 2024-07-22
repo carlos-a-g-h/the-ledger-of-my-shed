@@ -15,6 +15,7 @@ More will be added but this is what you can do right now:
 - Create (define) and delete assets
 - Small search engine to quickly find assets
 - Add modification records to assets
+- Create, update, and run orders
 
 ### Pending
 

@@ -1,10 +1,11 @@
 #!/usr/bin/python3.9
 
+from pathlib import Path
 from secrets import token_hex
-from typing import Any
+# from typing import Any
 from typing import Mapping
 from typing import Union
-from typing import Optional
+# from typing import Optional
 
 # from aiohttp.web import Application
 from aiohttp.web import Request
@@ -26,18 +27,19 @@ from control_Any import response_errormsg
 
 from control_assets import _CACHE_ASSETS
 
-from dbi_assets import dbi_assets_ModEv_Add
-from dbi_assets import dbi_assets_AssetQuery
+# from dbi_assets import dbi_assets_ModEv_Add
+# from dbi_assets import dbi_assets_AssetQuery
 from dbi_orders import dbi_orders_DropOrder
 from dbi_orders import dbi_orders_GetOrders
 from dbi_orders import dbi_orders_NewOrder
 from dbi_orders import dbi_orders_Editor_AssetDrop
 from dbi_orders import dbi_orders_Editor_AssetPatch
+from dbi_orders import dbi_Orders_ApplyOrder
 
 from frontend_Any import _LANG_EN
 from frontend_Any import _LANG_ES
 from frontend_Any import _CSS_CLASS_COMMON
-from frontend_Any import _CSS_CLASS_DANGER
+# from frontend_Any import _CSS_CLASS_DANGER
 from frontend_Any import _CSS_CLASS_HORIZONTAL
 from frontend_Any import write_fullpage
 from frontend_Any import write_popupmsg
@@ -48,14 +50,14 @@ from internals import util_valid_bool
 from internals import util_valid_int
 from internals import util_valid_str
 
-from frontend_assets import write_form_search_assets
+# from frontend_assets import write_form_search_assets
 
 from frontend_orders import write_button_nav_new_order
 from frontend_orders import write_button_nav_list_orders
 from frontend_orders import write_button_goto_order_editor
-from frontend_orders import write_button_goto_order_asset_search
-from frontend_orders import write_button_order_delete
-from frontend_orders import write_button_add_asset_to_order
+# from frontend_orders import write_button_goto_order_asset_search
+from frontend_orders import write_button_delete_order
+# from frontend_orders import write_button_add_asset_to_order
 from frontend_orders import write_form_update_asset_in_order
 from frontend_orders import write_form_new_order
 from frontend_orders import write_html_order
@@ -78,9 +80,21 @@ _ERR_TITLE_DISPLAY_ORDER={
 	_LANG_ES:"Fallo al mostrar la orden"
 }
 
+_ERR_TITLE_DROP_ORDER={
+	_LANG_EN:"Failed to delete the order",
+	_LANG_ES:"Fallo al eliminar la orden"
+}
+
+_ERR_TITLE_EXECUTE_ORDER={
+	_LANG_EN:"Failed to execute the order",
+	_LANG_ES:"Fallo al ejecutar la orden"
+}
+
 async def route_fgmt_new_order(
 		request:Request
 	)->Union[Response,json_response]:
+
+	# GET: /fgmt/orders/new
 
 	ct=get_client_type(request)
 	if not isinstance(ct,str):
@@ -115,9 +129,9 @@ async def route_fgmt_new_order(
 
 			"\n\n"
 
-			# """<section hx-swap-oob="innerHTML:#main-2">""" "\n"
-			# 	"<!-- EMPTY -->"
-			# "</section>"
+			"""<section hx-swap-oob="innerHTML:#main-2">""" "\n"
+				"<!-- EMPTY -->"
+			"</section>"
 
 		),
 		content_type=_MIMETYPE_HTML
@@ -126,6 +140,8 @@ async def route_fgmt_new_order(
 async def route_api_new_order(
 		request:Request
 	)->Union[Response,json_response]:
+
+	# POST: /api/orders/new
 
 	ct=get_client_type(request)
 	if not isinstance(ct,str):
@@ -201,25 +217,10 @@ async def route_api_new_order(
 			f"""<div class="{_CSS_CLASS_HORIZONTAL}">"""
 				f"{write_button_goto_order_editor(lang,order_id)}"
 			"</div>"
-			f"""<div class="{_CSS_CLASS_HORIZONTAL}">"""
-				f"{write_button_order_delete(lang,order_id)}"
+			f"""<div style="float:right;">"""
+				f"{write_button_delete_order(lang,order_id)}"
 			"</div>"
 		"</div>"
-	)
-
-	tl={
-		_LANG_EN:"Delete",
-		_LANG_ES:"Eliminar"
-	}[lang]
-	html_text=(
-		f"{html_text}\n"
-		f"""<button class="{_CSS_CLASS_COMMON}" class="{_CSS_CLASS_DANGER}" """
-			f"""hx-delete="/fgmt/orders/delete/{order_id}" """
-			"""hx-swap="innerHTML" """
-			"""hx-target="#messages" """
-			">"
-			f"{tl}"
-		"</button>"
 	)
 
 	return Response(
@@ -248,6 +249,8 @@ async def route_api_new_order(
 async def route_fgmt_list_orders(
 		request:Request
 	)->Union[Response,json_response]:
+
+	# GET: /fgmt/orders/current
 
 	ct=get_client_type(request)
 	if not isinstance(ct,str):
@@ -312,6 +315,7 @@ async def route_fgmt_order_editor(
 		request:Request
 	)->Union[Response,json_response]:
 
+	# GET: /fgmt/orders/current/{order_id}/editor
 	# hx-target: #messages
 
 	ct=get_client_type(request)
@@ -363,6 +367,13 @@ async def route_fgmt_order_editor(
 		"\n"
 			f"{write_html_order(lang,the_order,True)}\n"
 		"</section>"
+
+		"\n\n"
+
+		"""<section hx-swap-oob="innerHTML:#main-2">"""
+		"\n"
+			"<!-- EMPTY -->\n"
+		"</section>"
 	)
 
 	if isinstance(the_order.get("assets"),Mapping):
@@ -397,7 +408,7 @@ async def route_api_update_asset_in_order(
 		request:Request
 	)->Union[json_response,Response]:
 
-	# POST:/api/orders/update
+	# POST:/api/orders/current/{order_id}/update
 
 	ct=get_client_type(request)
 	if not isinstance(ct,str):
@@ -407,6 +418,8 @@ async def route_api_update_asset_in_order(
 		return Response(status=406)
 
 	lang=get_lang(ct,request.app["lang"])
+
+	order_id=request.match_info["order_id"]
 
 	reqdata=await get_request_body_dict(ct,request)
 	if reqdata is None:
@@ -420,20 +433,6 @@ async def route_api_update_asset_in_order(
 	# 	"DATA:",
 	# 	reqdata
 	# )
-
-
-	order_id=util_valid_str(
-		reqdata.get("id")
-	)
-	if not isinstance(order_id,str):
-		return response_errormsg(
-			_ERR_TITLE_ADD_ORDER_UPDATE[lang],
-			{
-				_LANG_EN:"Problem in 'id' field",
-				_LANG_ES:"Problema en el campo 'id'"
-			}[lang],
-			ct,406
-		)
 
 	asset_id=util_valid_str(
 		reqdata.get("asset")
@@ -514,9 +513,8 @@ async def route_api_update_asset_in_order(
 async def route_api_remove_asset_from_order(
 		request:Request
 	)->Union[json_response,Response]:
-	pass
 
-	# DELETE:/api/orders/update
+	# DELETE:/api/orders/current/{order_id}/update
 
 	ct=get_client_type(request)
 	if not isinstance(ct,str):
@@ -527,24 +525,13 @@ async def route_api_remove_asset_from_order(
 
 	lang=get_lang(ct,request.app["lang"])
 
+	order_id=request.match_info["order_id"]
+
 	reqdata=await get_request_body_dict(ct,request)
 	if reqdata is None:
 		return response_errormsg(
 			_ERR_TITLE_ADD_ORDER_UPDATE[lang],
 			_ERR_DETAIL_DATA_NOT_VALID[lang],
-			ct,406
-		)
-
-	order_id=util_valid_str(
-		reqdata.get("id")
-	)
-	if not isinstance(order_id,str):
-		return response_errormsg(
-			_ERR_TITLE_ADD_ORDER_UPDATE[lang],
-			{
-				_LANG_EN:"Problem in 'id' field",
-				_LANG_ES:"Problema en el campo 'id'"
-			}[lang],
 			ct,406
 		)
 
@@ -570,7 +557,7 @@ async def route_api_remove_asset_from_order(
 		return response_errormsg(
 			_ERR_TITLE_ADD_ORDER_UPDATE[lang],
 			_ERR_DETAIL_DBI_FAIL[lang],
-			ct,406
+			ct,400
 		)
 
 	if ct==_TYPE_CUSTOM:
@@ -630,11 +617,8 @@ async def route_api_delete_order(
 		request:Request
 	)->Union[Response,json_response]:
 
-	pass
-
-async def route_api_run_order(
-		request:Request
-	)->Union[json_response,Response]:
+	# DELETE: /api/orders/current/{order_id}/drop
+	# DELETE: /api/orders/current/{order_id}/drop-fol
 
 	ct=get_client_type(request)
 	if not isinstance(ct,str):
@@ -643,56 +627,135 @@ async def route_api_run_order(
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
-	reqdata=get_request_body_dict(ct,request)
-	if reqdata is None:
-		return Response(status=406)
+	order_id=request.match_info["order_id"]
 
-	if len(reqdata)==0:
-		return Response(status=406)
+	lang=get_lang(ct,request.app["lang"])
 
-	order_id=util_valid_str(
-		reqdata.get("id")
+	result=await dbi_orders_DropOrder(
+		request.app["rdbc"],
+		request.app["rdbn"],
+		order_id
 	)
-	if not isinstance(order_id,str):
-		return json_response()
+	if not result:
+		return response_errormsg(
+			_ERR_TITLE_DROP_ORDER[lang],
+			_ERR_DETAIL_DBI_FAIL[lang],
+			ct,400
+		)
 
-	rdbc=request.app["rdbc"]
-	rdbn=request.app["rdbn"]
+	if ct==_TYPE_CUSTOM:
+		return json_response(data={})
 
-	the_order=(
-		await dbi_orders_GetOrders(
-			rdbc,rdbn,
+	html_text=write_popupmsg(
+		"<h2>"+{
+			_LANG_EN:"You deleted this order",
+			_LANG_ES:"Ha eliminado esta orden"
+		}[lang]+"</h2>"
+	)
+
+	from_orders_list=(
+		Path(request.url.path).name=="drop-fol"
+	)
+
+	if from_orders_list:
+		html_text=(
+			f"{html_text}\n"
+
+			f"""<div hx-swap-oob="innerHTML:#order-{order_id}">"""
+				"<!-- DEELTED! -->"
+			"</div>"
+
+		)
+
+	if not from_orders_list:
+		html_text=(
+			f"{html_text}\n"
+
+			"""<section hx-swap-oob="innerHTML:#navigation">""" "\n"
+				"<ul>\n"
+					f"<li>\n{write_button_nav_new_order(lang)}\n</li>\n"
+					f"<li>\n{write_button_nav_list_orders(lang)}\n</li>\n"
+				"</ul>\n"
+			"</section>\n"
+
+			"""<section hx-swap-oob="innerHTML:#main-1">""" "\n"
+				"<!-- EMPTY -->\n"
+			"</section>\n"
+
+			"""<section hx-swap-oob="innerHTML:#main-2">""" "\n"
+				"<!-- EMPTY -->\n"
+			"</section>\n"
+		)
+
+	return Response(
+		body=html_text,
+		content_type=_MIMETYPE_HTML
+	)
+
+
+
+async def route_api_run_order(
+		request:Request
+	)->Union[json_response,Response]:
+
+	# POST: /api/orders/current/{order_id}/run
+
+	ct=get_client_type(request)
+	if not isinstance(ct,str):
+		return Response(status=406)
+
+	if not assert_referer(ct,request,_ROUTE_PAGE):
+		return Response(status=406)
+
+	lang=get_lang(ct,request.app["lang"])
+
+	order_id=request.match_info["order_id"]
+
+	ok=(
+		await dbi_Orders_ApplyOrder(
+			request.app["rdbc"],
+			request.app["rdbn"],
 			order_id
 		)
 	)
-
-	if len(the_order)==0:
-		return False
-
-	if "assets" not in the_order.keys():
-		return False
-
-	if not isinstance(the_order["assets"],Mapping):
-		return False
-
-	if len(the_order["assets"])==0:
-		return False
-
-	modev_sign=the_order.get("sign")
-	modev_tag=the_order.get("tag")
-
-	for asset_id in the_order["assets"]:
-		modev_mod=the_order["assets"][asset_id]
-		modev_result=await dbi_assets_ModEv_Add(
-			rdbc,rdbn,
-			asset_id,
-			modev_sign,modev_mod,
-			modev_tag=modev_tag
+	if not ok:
+		return response_errormsg(
+			_ERR_TITLE_EXECUTE_ORDER[lang],
+			_ERR_DETAIL_DBI_FAIL[lang],
+			ct
 		)
-		if modev_result is None:
-			continue
 
-	return True
+	if ct==_TYPE_CUSTOM:
+		return json_response(data={})
+
+	html_text=write_popupmsg(
+		"<h2>"+{
+			_LANG_EN:"Applied changes to the involved assets",
+			_LANG_ES:"Se aplicaron los cambios a los activos involucrados"
+		}[lang]+"</h2>"
+	)
+
+	return Response(
+		body=(
+			f"{html_text}\n"
+
+			"""<section hx-swap-oob="innerHTML:#navigation">""" "\n"
+				"<ul>\n"
+					f"<li>\n{write_button_nav_new_order(lang)}\n</li>\n"
+					f"<li>\n{write_button_nav_list_orders(lang)}\n</li>\n"
+				"</ul>\n"
+			"</section>\n"
+
+			"""<section hx-swap-oob="innerHTML:#main-1">""" "\n"
+				"<!-- EMPTY -->\n"
+			"</section>\n"
+
+			"""<section hx-swap-oob="innerHTML:#main-2">""" "\n"
+				"<!-- EMPTY -->\n"
+			"</section>\n"
+		),
+		content_type=_MIMETYPE_HTML
+	)
 
 async def route_main(
 		request:Request
