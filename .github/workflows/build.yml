@@ -56,15 +56,16 @@ jobs:
         working-directory: repo
         run: |
           # python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.bin"
-          python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.bin"
+          python -m nuitka --standalone --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.bin"
           find the-output
 
       - name: Build for Windows
         if: ${{ contains(matrix.os,'windows') == true }}
         working-directory: repo
         run: |
-          python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.exe"
-          ls the-output
+          # python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.exe"
+          python -m nuitka --standalone --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.exe"
+          dir /s /b the-output
 
       - uses: actions/upload-artifact@v3
         with:
