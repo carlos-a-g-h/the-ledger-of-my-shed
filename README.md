@@ -6,7 +6,7 @@ This is a very simple inventory manager, it only supports fungible assets at the
 
 ### DISCLAIMER
 
-I do not know anything about accounting, or have any background on warehousing or inventory management solutions, this is my first project of that nature, and I'm relying on my common-sense, so if you check out the code, expect some non-standard terminology in the naming of things
+I do not know anything about accounting, or have any background on warehousing or inventory management solutions, this is my first project of that nature, and I'm relying on my common-sense on how fungible assets with physical presence in an inventory should be handled, so if you check out the code or use the program, expect some non-standard terminology in the naming of things
 
 ## Features
 
@@ -15,12 +15,13 @@ More will be added but this is what you can do right now:
 - Create (define) and delete assets
 - Small search engine to quickly find assets
 - Add modification records to assets
-- Create, update, and run orders
+- Create, update, (delete) and run orders that can add modification records to multiple assets
 
 ### Pending
 
-- User (and external app) authentication
+- User authentication and authorization
 - Propper API for external clients and frontends
+- Safer execution of orders
 
 ## This is built on what?
 
@@ -35,6 +36,8 @@ More will be added but this is what you can do right now:
 - HTMX (It is bundled along with this project but you can provide your own if you want to)
 
 ## How Do I run this ?
+
+First of all, Make sure you have a MongoDB server instance available to use, wether you have it locally or remotely, it doesn't matter
 
 First of all, open up the "config.yaml" file and adjust it to your needs
 
