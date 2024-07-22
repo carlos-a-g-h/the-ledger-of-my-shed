@@ -2,6 +2,13 @@
 
 from frontend_Any import _LANG_EN,_LANG_ES
 
+# from frontend_Any import _CSS_CLASS_BUTTON
+# from frontend_Any import _CSS_CLASS_DANGER
+# from frontend_Any import _CSS_CLASS_INPUT
+
+from frontend_Any import _CSS_CLASS_COMMON
+from frontend_Any import _CSS_CLASS_HORIZONTAL
+
 _LABEL_APPLY={
 	_LANG_EN:"Apply",
 	_LANG_ES:"Aplicar"
@@ -9,7 +16,12 @@ _LABEL_APPLY={
 
 def write_form_update_config(lang:str)->str:
 
+	tl={
+		_LANG_EN:"Change configuration",
+		_LANG_ES:"Cambiar configuración"
+	}[lang]
 	html_text=(
+		f"<h2>{tl}</h2>"
 		"<form "
 			"""hx-post="/api/admin/update-config" """
 			"""hx-trigger="submit" """
@@ -22,53 +34,48 @@ def write_form_update_config(lang:str)->str:
 		_LANG_EN:"Language",
 		_LANG_ES:"Idioma"
 	}[lang]
-	chk=""
-	if lang==_LANG_EN:
-		chk=" checked"
 	html_text=(
 		f"{html_text}\n"
-		# """<div class="common">"""
+		f"<h3>{tl}</h3>\n"
 		"<div>"
-			f"<h3>{tl}</h3>\n"
-			"""<div class="hcontainer">""" "\n"
-				f"""<input id="lang-{_LANG_EN}" """
+	)
+
+	lang_table=[
+		(_LANG_EN,"English"),
+		(_LANG_ES,"Español")
+	]
+
+	for row in lang_table:
+		chk=""
+		if lang==row[0]:
+			chk=" checked"
+		html_text=(
+			f"{html_text}\n"
+			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
+				f"""<input id="lang-{row[0]}" """
 					"""name="lang" """
-					f"""value="{_LANG_EN}" """
+					f"""value="{row[0]}" """
 					f"""type="radio"{chk} """
 					">\n"
-				f"""<label for="lang-{_LANG_EN}">English</label>""" "\n"
+				f"""<label for="lang-{row[0]}">{row[1]}</label>""" "\n"
 			"</div>"
-	)
+		)
 
-	chk=""
-	if lang==_LANG_ES:
-		chk=" checked"
 	html_text=(
-		f"{html_text}\n"
-			"""<div class="hcontainer">""" "\n"
-				f"""<input id="lang-{_LANG_ES}" """
-					"""name="lang" """
-					f"""value="{_LANG_ES}" """
-					f"""type="radio"{chk} """
-					">\n"
-				f"""<label for="lang-{_LANG_ES}">Español</label>""" "\n"
-			"</div>\n"
-		"</div>\n"
+			f"{html_text}\n"
+		"</div>"
 	)
 
-	# NOTE: <input> min and max are not a good idea
+	# NOTE: <input> min and max attrs are not good for this form
 	tl={
 		_LANG_EN:"Port number",
 		_LANG_ES:"Puerto"
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
+		f"<h3>{tl}</h3>\n"
 		"<div>\n"
-			f"<h3>{tl}</h3>\n"
-			# """<label style="display:block;" """
-			# 	f"""for="port-number">{tl}</label>""" "\n"
-			"""<input class="common" """
-				"""id="port-number" """
+			f"""<input class="{_CSS_CLASS_COMMON}" """
 				""" name="port" """
 				"""type="number" """
 				"""value=0 """
@@ -85,23 +92,38 @@ def write_form_update_config(lang:str)->str:
 			f"{html_text}\n"
 			"""<button """
 				"""type="submit" """
-				"""class="common" """
+				f"""class="{_CSS_CLASS_COMMON}" """
 				">"
 				f"{tl}"
 			"</button>"
 		"</form>"
 	)
 
-def write_button_update_known_item_names(lang:str)->str:
+def write_button_update_known_asset_names(lang:str)->str:
+
+	tl={
+		_LANG_EN:"Update known asset names",
+		_LANG_ES:"Actualizar nombres de activos conocidos"
+	}[lang]
+	html_text=f"<h2>{tl}</h2>"
+
+	tl={
+		_LANG_EN:"Do this only if the asset definitions were modified recently by external means",
+		_LANG_ES:"Haga esto solamente si las definiciones de los activos han sido modificadas recientemente usando aplicaciones externas"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		f"<p>{tl}</p>"
+	)
 
 	tl={
 		_LANG_EN:"Update",
 		_LANG_ES:"Actualizar"
 	}[lang]
-
 	return (
+		f"{html_text}\n"
 		"""<button class="common" """
-			"""hx-post="/api/admin/update-known-items" """
+			"""hx-post="/api/admin/update-known-assets" """
 			"""hx-swap="innerHTML" """
 			"""hx-target="#messages" """
 			">\n"

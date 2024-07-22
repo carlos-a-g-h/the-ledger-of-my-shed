@@ -18,23 +18,39 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from control_Any import route_src
 from control_Any import route_main as route_Home
 
+from control_admin import _ROUTE_PAGE as _ROUTE_PAGE_ADMIN
 from control_admin import route_main as route_Admin
 from control_admin import route_api_update_config as route_Admin_api_UpdateConfig
-from control_admin import route_api_update_known_item_names as route_Admin_api_UpdateKnownItemNames
+from control_admin import route_api_update_known_asset_names as route_Admin_api_UpdateKnownAssetNames
 
-from control_items import _CACHE_ITEMS
-from control_items import route_main as route_Items
-from control_items import route_mixup_get_item as route_Items_mixup_GetItem
-from control_items import route_fgmt_new_item as route_Items_fgmt_NewItem
-from control_items import route_api_new_item as route_Items_api_NewItem
-from control_items import route_fgmt_search_items as route_Items_fgmt_SearchItems
-from control_items import route_api_search_items as route_Items_api_SearchItems
-from control_items import route_api_drop_item as route_Items_api_DropItem
-from control_items import route_api_add_modev as route_Items_api_AddModEv
-from control_items import util_update_known_items as init_items_cache
+from control_assets import _CACHE_ASSETS
+from control_assets import _ROUTE_PAGE as _ROUTE_PAGE_ASSETS
+from control_assets import route_main as route_Assets
+from control_assets import route_api_select_asset as route_Assets_api_GetAsset
+from control_assets import route_fgmt_asset_editor as route_Assets_fgmt_EditAsset
+from control_assets import route_fgmt_new_asset as route_Assets_fgmt_NewAsset
+from control_assets import route_api_new_asset as route_Assets_api_NewAsset
+from control_assets import route_fgmt_search_assets as route_Assets_fgmt_SearchAssets
+from control_assets import route_api_search_assets as route_Assets_api_SearchAssets
+from control_assets import route_api_drop_asset as route_Assets_api_DropAsset
+from control_assets import route_api_add_modev as route_Assets_api_AddModEv
+from control_assets import util_update_known_assets as init_assets_cache
+
+from control_orders import _ROUTE_PAGE as _ROUTE_PAGE_ORDERS
+from control_orders import route_main as route_Orders
+from control_orders import route_fgmt_new_order as route_Orders_fgmt_NewOrder
+from control_orders import route_fgmt_list_orders as route_Orders_fgmt_ListOrders
+from control_orders import route_fgmt_order_editor as route_Order_fgmt_Editor
+from control_orders import route_api_new_order as route_Orders_api_NewOrder
+from control_orders import route_api_delete_order as route_Orders_api_DeleteOrder
+from control_orders import route_api_update_asset_in_order as route_Orders_api_UpdateAsset
+from control_orders import route_api_remove_asset_from_order as route_Orders_api_RemoveAsset
+from control_orders import route_api_run_order as route_Orders_api_RunOrder
+
 
 from internals import read_yaml_file
 from internals import util_valid_int
+from internals import util_valid_int_inrange
 from internals import util_valid_str
 
 def read_config(path_config:Path)->dict:
@@ -43,21 +59,16 @@ def read_config(path_config:Path)->dict:
 
 	# port
 
-	cfg_port=util_valid_int(
-		rawconfig.get("port"),
+	cfg_port=util_valid_int_inrange(
+		util_valid_int(
+			rawconfig.get("port"),
+		),
+		minimum=1024,
+		maximum=65536
 	)
 	if not isinstance(cfg_port,int):
 		print(
-			"'port' key not found in config"
-		)
-		return {}
-
-	if not (
-		cfg_port>1023 and
-		cfg_port<65536
-	):
-		print(
-			"Port must be larger than 1023 and smaller than 65536"
+			"'port' key not found in config or not in the range 1024 < x < 65536"
 		)
 		return {}
 
@@ -121,15 +132,21 @@ def build_app(
 	app=Application()
 
 	app["path_programdir"]=path_programdir
-	app[_CACHE_ITEMS]={}
+	app[_CACHE_ASSETS]={}
 	app["rdbn"]=rdb_name
 	app["lang"]=lang
 
 	has_connection_url=isinstance(rdb_name,str)
 	if has_connection_url:
+		print(
+			"Connecting to a local MongoDB database"
+		)
 		app["rdbc"]=AsyncIOMotorClient()
 	if not has_connection_url:
-		print("MongoDB Connection string:",rdb_url)
+		print(
+			"Connecting to a remote MongoDB database:",
+			rdb_url
+		)
 		app["rdbc"]=AsyncIOMotorClient(rdb_url)
 	
 	app.add_routes([
@@ -147,7 +164,7 @@ def build_app(
 		# ADMIN
 
 		web_GET(
-			"/page/admin",
+			_ROUTE_PAGE_ADMIN,
 			route_Admin
 		),
 			web_POST(
@@ -155,91 +172,148 @@ def build_app(
 				route_Admin_api_UpdateConfig
 			),
 			web_POST(
-				"/api/admin/update-known-items",
-				route_Admin_api_UpdateKnownItemNames
+				"/api/admin/update-known-assets",
+				route_Admin_api_UpdateKnownAssetNames
 			),
 
-		# ITEMS
+		# ASSETS
 
 		web_GET(
-			"/page/items",
-			route_Items
+			_ROUTE_PAGE_ASSETS,
+			route_Assets
 		),
 
-		web_GET(
-			"/fgmt/items/new",
-			route_Items_fgmt_NewItem
-		),
+			web_GET(
+				"/fgmt/assets/new",
+				route_Assets_fgmt_NewAsset
+			),
+				web_POST(
+					"/api/assets/new",
+					route_Assets_api_NewAsset
+				),
+
+			web_GET(
+				"/fgmt/assets/search-assets",
+				route_Assets_fgmt_SearchAssets
+			),
+				web_POST(
+					"/api/assets/search-assets",
+					route_Assets_api_SearchAssets
+				),
+
+			web_GET(
+				"/fgmt/assets/editor/{asset_id}",
+				route_Assets_fgmt_EditAsset
+			),
+				web_POST(
+					"/api/assets/select/{asset_id}",
+					route_Assets_api_GetAsset
+				),
+
+			web_DELETE(
+				"/api/assets/drop",
+				route_Assets_api_DropAsset
+			),
+
 			web_POST(
-				"/api/items/new",
-				route_Items_api_NewItem
+				"/api/assets/history/{asset_id}/add",
+				route_Assets_api_AddModEv
 			),
 
-		web_GET(
-			"/fgmt/items/search",
-			route_Items_fgmt_SearchItems
-		),
-			web_POST(
-				"/api/items/search",
-				route_Items_api_SearchItems
-			),
+		# ORDERS
 
 		web_GET(
-			"/fgmt/items/get/{item_id}",
-			route_Items_mixup_GetItem
+			# "/page/orders",
+			_ROUTE_PAGE_ORDERS,
+			route_Orders
 		),
-			web_POST(
-				"/api/items/get/{item_id}",
-				route_Items_mixup_GetItem
+			web_GET(
+				"/fgmt/orders/new",
+				route_Orders_fgmt_NewOrder
 			),
-		web_DELETE(
-			"/api/items/drop",
-			route_Items_api_DropItem
-		),
+				web_POST(
+					"/api/orders/new",
+					route_Orders_api_NewOrder
+				),
+
+			web_GET(
+				"/fgmt/orders/current",
+				route_Orders_fgmt_ListOrders
+			),
+
+			web_GET(
+				"/fgmt/orders/current/{order_id}/search-assets",
+				route_Assets_fgmt_SearchAssets
+			),
+				web_POST(
+					"/api/orders/current/{order_id}/search-assets",
+					route_Assets_api_SearchAssets
+				),
+
+			web_GET(
+				"/fgmt/orders/current/{order_id}/editor",
+				route_Order_fgmt_Editor
+			),
+			web_POST(
+				"/api/orders/current/{order_id}/update",
+				route_Orders_api_UpdateAsset
+			),
+			web_DELETE(
+				"/api/orders/current/{order_id}/update",
+				route_Orders_api_RemoveAsset
+			),
+			web_POST(
+				"/api/orders/current/{order_id}/run",
+				route_Orders_api_RunOrder
+			),
+			web_DELETE(
+				"/api/orders/current/{order_id}/drop",
+				route_Orders_api_DeleteOrder
+			),
+			web_DELETE(
+				"/api/orders/current/{order_id}/drop-fol",
+				route_Orders_api_DeleteOrder
+			),
 
 		# web_GET(
-		# 	"/page/items/new",
-		# 	route_Items_page_NewItem
+		# 	"/page/assets/new",
+		# 	route_Assets_page_NewAsset
 		# ),
 
 		# web_GET(
-		# 	"/page/items/view/{item_id}",
-		# 	route_Items_page_ViewItem
+		# 	"/page/assets/view/{asset_id}",
+		# 	route_Assets_page_ViewAsset
 		# ),
 
 		# web_POST(
-		# 	"/api/items/create",
-		# 	route_Items_api_CreateItem
+		# 	"/api/assets/create",
+		# 	route_Assets_api_CreateAsset
 		# ),
 		# web_GET(
-		# 	"/api/items/select/{item_id}",
-		# 	route_Items_api_GetItem
+		# 	"/api/assets/select/{asset_id}",
+		# 	route_Assets_api_GetAsset
 		# ),
 		# web_GET(
-		# 	"/api/items/search",
-		# 	route_Items_api_SearchItems
+		# 	"/api/assets/search",
+		# 	route_Assets_api_SearchAssets
 		# ),
 		# web_DELETE(
-		# 	"/api/items/delete/{item_id}",
-		# 	route_Items_api_DropItem
+		# 	"/api/assets/delete/{asset_id}",
+		# 	route_Assets_api_DropAsset
 		# ),
 
-		web_POST(
-			"/api/items/history/{item_id}/add",
-			route_Items_api_AddModEv
-		),
 		# web_GET(
-		# 	"/api/items/select/{item_id}/modev-view/{modev_date}/{modev_uid}",
-		# 	route_Items_api_GetModEv
+		# 	"/api/assets/select/{asset_id}/modev-view/{modev_date}/{modev_uid}",
+		# 	route_Assets_api_GetModEv
 		# ),
 		# web_DELETE(
-		# 	"/api/items/select/{item_id}/modev-drop",
-		# 	route_Items_api_DropModEv
+		# 	"/api/assets/select/{asset_id}/modev-drop",
+		# 	route_Assets_api_DropModEv
 		# )
 
 	])
 
-	app.on_startup.append(init_items_cache)
+	app.on_startup.append(init_assets_cache)
 
 	return app
 

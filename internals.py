@@ -12,6 +12,29 @@ from yaml import load as yaml_load
 from yaml import dump as yaml_dump
 from yaml import Dumper as yaml_Dumper
 
+def util_valid_date(
+		dt_string:str,
+		get_dt:bool=False
+	)->Optional[Union[str,datetime]]:
+
+	dtobj:Optional[datetime]=None
+	try:
+		dtobj=datetime.strptime(
+			dt_string,
+			"%Y-%m-%d-%H-%M-%S"
+		)
+	except Exception as exc:
+		print("date parsing error:",exc)
+		if get_dt:
+			return None
+		return None
+
+	if get_dt:
+		return dtobj
+
+	return dt_string
+
+
 def util_rnow()->str:
 	now=datetime.now()
 	t=f"{now.year}"
@@ -114,7 +137,7 @@ def util_valid_int(
 	if not data[1:].isdigit():
 		return fallback
 
-	return int(data[1:])
+	return int(data)
 
 def util_valid_bool(
 		data:Union[Optional[str],bool],

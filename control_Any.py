@@ -9,10 +9,15 @@ from aiohttp.web import Request
 from aiohttp.web import json_response
 from aiohttp.web import Response
 
+import yarl
+
 from frontend_Any import _LANG_EN
 from frontend_Any import _LANG_ES
+from frontend_Any import _CSS_CLASS_COMMON
 from frontend_Any import write_popupmsg
 from frontend_Any import write_fullpage
+
+from internals import util_valid_str
 
 _TYPE_BROWSER="CLIENT_IS_A_BROWSER"
 _TYPE_CUSTOM="CLIENT_IS_CUSTOMIZED"
@@ -34,7 +39,10 @@ _STYLE_POPUP="""<link rel="stylesheet" href="/src/baked/popup.css">"""
 _STYLE_POPUP_CONTENTS="""
 div.popup-background {
 
-	/*PLEASE DON'T TOUCH ANY OF THIS*/
+	/*
+		PLEASE DON'T TOUCH ANY OF THIS
+		UNLESS YOU KNOW WHAT YOU'RE DOING
+	*/
 
 	z-index:999;
 	position:fixed;
@@ -52,15 +60,18 @@ div.popup-background {
 
 div.popup-area {
 
-	/*PLEASE DON'T TOUCH ANY OF THIS*/
+	/*
+		PLEASE DON'T TOUCH ANY OF THIS
+		UNLESS YOU KNOW WHAT YOU'RE DOING
+	*/
 
 	grid-column:2/3;
 	grid-row:2/3;
 }
 
-div.popup-body {
+/* EVERYTHING BELOW THIS LINE IS SAFE TO OVERRIDE ON THE 'CUSTOM.CSS' FILE */
 
-	/*SAFE TO OVERRIDE*/
+div.popup-body {
 
 	color:black;
 	border:1px solid black;
@@ -68,7 +79,6 @@ div.popup-body {
 }
 
 div.popup-button-area {text-align: center;}
-
 .popup-centered {text-align: center;}
 """
 
@@ -108,15 +118,46 @@ def get_client_type(request:Request)->Optional[str]:
 	if len(accept)==0:
 		return None
 
-	if accept.find("application/json")>-1:
+	accepts_json=(accept.find("application/json")>-1)
+	accepts_html=(accept.find("text/html")>-1)
+	accepts_any=(accept.find("*/*")>-1)
+
+	if accepts_json and (not accepts_html):
 		return _TYPE_CUSTOM
 
-	if accept.find("text/html")>-1 or accept.find("*/*")>-1:
+	if (not accepts_json) and (accepts_html or accepts_any):
 		ua=request.headers.get("User-Agent")
 		if isinstance(ua,str):
 			return _TYPE_BROWSER
 
 	return None
+
+def assert_referer(
+		ct:str,request:Request,
+		url_path:str
+	)->bool:
+
+	if ct==_TYPE_CUSTOM:
+		return True
+
+	referer=util_valid_str(
+		request.headers.get("Referer")
+	)
+	if not isinstance(referer,str):
+		return False
+
+	referer_path=yarl.URL(referer).path
+
+	# print(
+	# 	"- Comparing:" "\n"
+	# 	"\t" f"Host: {request.host}" "\n"
+	# 	"\t" f"{referer_path}" "\n"
+	# 	"\t" f"{url_path}" "\n"
+	# )
+
+	return (
+		Path(referer_path)==Path(url_path)
+	)
 
 async def get_request_body_dict(
 		client_type:str,
@@ -275,12 +316,21 @@ async def route_main(
 	html_text=f"<h1>{tl}</h1>"
 
 	tl={
-		_LANG_EN:"Basic item manager",
-		_LANG_ES:"Gestor básico de objetos"
+		_LANG_EN:"Basic asset manager",
+		_LANG_ES:"Gestor básico de activos"
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"""<p><a href="/page/items">{tl}</a></p>"""
+		f"""<p><a class="{_CSS_CLASS_COMMON}" href="/page/assets">- {tl} -</a></p>"""
+	)
+
+	tl={
+		_LANG_EN:"Order book",
+		_LANG_ES:"Libro de órdenes"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		f"""<p><a class="{_CSS_CLASS_COMMON}" href="/page/orders">- {tl} -</a></p>"""
 	)
 
 	tl={
@@ -289,7 +339,7 @@ async def route_main(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"""<p><a href="/page/admin">{tl}</a></p>"""
+		f"""<p><a class="{_CSS_CLASS_COMMON}" href="/page/admin">- {tl} -</a></p>"""
 	)
 
 	return Response(
@@ -300,6 +350,7 @@ async def route_main(
 				_LANG_ES:"Página principal"
 			}[lang],
 			html_text,
+			html_header_extra=[_STYLE_CUSTOM]
 		),
 		content_type=_MIMETYPE_HTML
 	)
