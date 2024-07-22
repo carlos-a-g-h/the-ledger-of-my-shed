@@ -1,7 +1,18 @@
 name: Build release
 
 on:
-  [workflow_dispatch]
+  workflow_dispatch:
+    inputs:
+      NO_WINDOWS:
+        description: "No Windows"
+        type: boolean
+        required: true
+        default: false
+      TEST_ONLY:
+        description: "Test only"
+        type: boolean
+        required: true
+        default: false
 
 env:
   MAIN_PY: "main.py"
@@ -44,6 +55,7 @@ jobs:
         if: ${{ contains(matrix.os,'windows') == false }}
         working-directory: repo
         run: |
+          # python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.bin"
           python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.bin"
           find the-output
 
@@ -77,6 +89,7 @@ jobs:
         run: echo "${{ steps.step_date.outputs.VAR_DATE }}"
 
       - name: Create release
+        if: ${{ inputs.TEST_ONLY == false }}
         id: step_release
         uses: actions/create-release@v1
         env:
@@ -113,7 +126,8 @@ jobs:
 
     runs-on: ubuntu-latest
     steps:
-      - name: Download repo (one last time)
+      - name: Download repo (again)
+        if: ${{ inputs.TEST_ONLY == false }}
         uses: actions/checkout@v4
         with:
           path: repo
@@ -135,12 +149,14 @@ jobs:
           echo "UPLOAD URL = ${{ steps.step_notes.outputs.THE_URL }}"
 
       - name: Download artifact
+        if: ${{ inputs.TEST_ONLY == false }}
         uses: actions/download-artifact@v3
         with:
           name: ${{ matrix.binary }}
           path: "${{ env.THE_NAME }}"
 
       - name: Create the package
+        if: ${{ inputs.TEST_ONLY == false }}
         run: |
           cp -v repo/config.yaml "${{ env.THE_NAME }}/config.yaml"
           mkdir -v "${{ env.THE_NAME }}/sources"
@@ -154,6 +170,7 @@ jobs:
           find .
 
       - name: Attach the artifact
+        if: ${{ inputs.TEST_ONLY == false }}
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
