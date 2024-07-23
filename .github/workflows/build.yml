@@ -3,13 +3,13 @@ name: Builder
 on:
   workflow_dispatch:
     inputs:
-      NO_WINDOWS:
-        description: "No Windows"
+      TEST_VARIABLES:
+        description: "(Debug) Test variable moved accross jobs and steps"
         type: boolean
         required: true
         default: false
-      TEST_VARIABLES:
-        description: "(Debug) Test variables"
+      NO_WINDOWS:
+        description: "No Windows"
         type: boolean
         required: true
         default: false
