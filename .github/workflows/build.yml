@@ -212,7 +212,10 @@ jobs:
           cat repo/README.md >> "${{ env.THE_NAME }}/README.md"
 
           zip -0 -r "${{ env.THE_NAME }}-${{ matrix.binary }}.zip" "${{ env.THE_NAME }}"
+          echo "[ CONTENTS] "
           find .
+          echo "[ SIZE ]"
+          du -h "${{ env.THE_NAME }}
 
       - name: Attach the artifact
         if: ${{ inputs.DO_NOT_CREATE_RELEASE == false }}
