@@ -54,9 +54,10 @@ jobs:
       - name: Build for Linux
         if: ${{ contains(matrix.os,'windows') == false }}
         working-directory: repo
-        # python -m nuitka --standalone --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.bin"
         run: |
-          python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.bin"
+          python -m nuitka --standalone --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.bin"
+#        run: |
+#          python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.bin"
 
       - name: Build for Linux (after)
         if: ${{ contains(matrix.os,'windows') == false && inputs.TEST_ONLY == true }}
@@ -70,9 +71,10 @@ jobs:
       - name: Build for Windows
         if: ${{ contains(matrix.os,'windows') == true }}
         working-directory: repo
-        # python -m nuitka --standalone --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.exe"
         run: |
-          python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.exe"
+          python -m nuitka --standalone --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.exe"
+#        run: |
+#          python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.exe"
 
       - name: Build for Windows (after)
         if: ${{ contains(matrix.os,'windows') == true && inputs.TEST_ONLY == true }}
