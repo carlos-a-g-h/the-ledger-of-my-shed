@@ -8,6 +8,11 @@ on:
         type: boolean
         required: true
         default: false
+#      ONE_FILE:
+#        description: "ONE FILE (Nuitka)"
+#        type: boolean
+#        required: true
+#        default: false
       NO_WINDOWS:
         description: "No Windows"
         type: boolean
