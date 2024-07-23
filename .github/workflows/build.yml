@@ -8,6 +8,11 @@ on:
         type: boolean
         required: true
         default: false
+      TEST_VARIABLES:
+        description: "(Debug) Test variables"
+        type: boolean
+        required: true
+        default: false
       DO_NOT_CREATE_RELEASE:
         description: "Do not create release"
         type: boolean
@@ -122,6 +127,7 @@ jobs:
           echo "VAR_DATE=$(date +%Y-%m-%d-%H-%M-%S)" >> $GITHUB_OUTPUT
 
       - name: (dbg) Printing date
+        if: $${{ inputs.TEST_VARIABLES == true }}
         run: echo "${{ steps.step_date.outputs.VAR_DATE }}"
 
       - name: Create release
@@ -179,6 +185,7 @@ jobs:
           cat NOTES.txt >> $GITHUB_OUTPUT
 
       - name: (dbg) Test Notes
+        if: $${{ inputs.TEST_VARIABLES == true }}
         run: |
           echo "CURRENT DATE = ${{ steps.step_notes.outputs.THE_DATE }}"
           echo "UPLOAD URL = ${{ steps.step_notes.outputs.THE_URL }}"
