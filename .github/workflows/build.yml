@@ -80,7 +80,8 @@ jobs:
         if: ${{ contains(matrix.os,'windows') == true && inputs.TEST_ONLY == true }}
         working-directory: repo
         run: |
-          dir /s /b .\the-output\
+          dir the-output
+          dir the-output/main.dist
 
       - uses: actions/upload-artifact@v3
         if: ${{ inputs.TEST_ONLY == false }}
