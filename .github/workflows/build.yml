@@ -53,16 +53,19 @@ jobs:
           path: repo
 
       - name: Setup Python
+        if: $${{ inputs.DO_NOT_COMPILE_CREATE_DUMMY == false }}
         uses: actions/setup-python@v3
         with:
           python-version: "3.9.6"
 
       - name: Setup Python (project dependencies)
+        if: $${{ inputs.DO_NOT_COMPILE_CREATE_DUMMY == false }}
         working-directory: repo
         run: |
           pip install -r "${{ env.REQFILE }}"
 
       - name: Setup Python (install Nuitka)
+        if: $${{ inputs.DO_NOT_COMPILE_CREATE_DUMMY == false }}
         run: |
           pip install nuitka
 
