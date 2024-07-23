@@ -8,8 +8,18 @@ on:
         type: boolean
         required: true
         default: false
-      TEST_ONLY:
-        description: "Test only"
+      DO_NOT_CREATE_RELEASE:
+        description: "Do not create release"
+        type: boolean
+        required: true
+        default: false
+      DO_NOT_MOVE_ARTIFACTS:
+        description: "Do not upload/download the artifacts"
+        type: boolean
+        required: true
+        default: false
+      DO_NOT_COMPILE_CREATE_DUMMY:
+        description: "Do not compile, create a dummy"
         type: boolean
         required: true
         default: false
@@ -51,8 +61,15 @@ jobs:
         run: |
           pip install nuitka
 
+      - name: Build dummy
+        if: $${{ inputs.DO_NOT_COMPILE_CREATE_DUMMY == true }}
+        working-directory: repo
+        run: |
+          mkdir -p the-output/main.dist/
+          echo "test" > the-output/main.dist/test.dummy
+
       - name: Build for Linux
-        if: ${{ contains(matrix.os,'windows') == false }}
+        if: ${{ contains(matrix.os,'windows') == false && inputs.DO_NOT_COMPILE_CREATE_DUMMY == false }}
         working-directory: repo
         run: |
           python -m nuitka --standalone --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.bin"
@@ -60,7 +77,7 @@ jobs:
 #          python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.bin"
 
       - name: Build for Linux (after)
-        if: ${{ contains(matrix.os,'windows') == false && inputs.TEST_ONLY == true }}
+        if: ${{ contains(matrix.os,'windows') == false && inputs.DO_NOT_CREATE_RELEASE == true }}
         working-directory: repo
         run: |
           echo "[ LINKING ]"
@@ -69,7 +86,7 @@ jobs:
           find the-output
 
       - name: Build for Windows
-        if: ${{ contains(matrix.os,'windows') == true }}
+        if: ${{ contains(matrix.os,'windows') == true && inputs.DO_NOT_COMPILE_CREATE_DUMMY == false }}
         working-directory: repo
         run: |
           python -m nuitka --standalone --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.exe"
@@ -77,20 +94,21 @@ jobs:
 #          python -m nuitka --onefile --onefile-no-compression --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.exe"
 
       - name: Build for Windows (after)
-        if: ${{ contains(matrix.os,'windows') == true && inputs.TEST_ONLY == true }}
+        if: ${{ contains(matrix.os,'windows') == true && inputs.DO_NOT_CREATE_RELEASE == true }}
         working-directory: repo
         run: |
           dir the-output
           dir the-output/main.dist
 
       - uses: actions/upload-artifact@v3
-        if: ${{ inputs.TEST_ONLY == false }}
+        if: ${{ inputs.DO_NOT_MOVE_ARTIFACTS == false }}
         with:
           if-no-files-found: error
           name: "${{ matrix.os }}"
           path: |
-            ./repo/the-output/${{ env.THE_NAME }}.bin
-            ./repo/the-output/${{ env.THE_NAME }}.exe
+            ./repo/the-output/main.dist
+#            ./repo/the-output/${{ env.THE_NAME }}.bin
+#            ./repo/the-output/${{ env.THE_NAME }}.exe
 
   job-release:
     name: Create release
@@ -107,7 +125,7 @@ jobs:
         run: echo "${{ steps.step_date.outputs.VAR_DATE }}"
 
       - name: Create release
-        if: ${{ inputs.TEST_ONLY == false }}
+        if: ${{ inputs.DO_NOT_CREATE_RELEASE == false }}
         id: step_release
         uses: actions/create-release@v1
         env:
@@ -145,7 +163,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download repo (again)
-        if: ${{ inputs.TEST_ONLY == false }}
         uses: actions/checkout@v4
         with:
           path: repo
@@ -167,14 +184,14 @@ jobs:
           echo "UPLOAD URL = ${{ steps.step_notes.outputs.THE_URL }}"
 
       - name: Download artifact
-        if: ${{ inputs.TEST_ONLY == false }}
+        if: ${{ inputs.DO_NOT_MOVE_ARTIFACTS == false }}
         uses: actions/download-artifact@v3
         with:
           name: ${{ matrix.binary }}
           path: "${{ env.THE_NAME }}"
 
       - name: Create the package
-        if: ${{ inputs.TEST_ONLY == false }}
+        if: ${{ inputs.DO_NOT_MOVE_ARTIFACTS == false }}
         run: |
           cp -v repo/config.yaml "${{ env.THE_NAME }}/config.yaml"
           mkdir -v "${{ env.THE_NAME }}/sources"
@@ -188,7 +205,7 @@ jobs:
           find .
 
       - name: Attach the artifact
-        if: ${{ inputs.TEST_ONLY == false }}
+        if: ${{ inputs.DO_NOT_CREATE_RELEASE == false }}
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
