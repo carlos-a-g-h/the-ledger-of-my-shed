@@ -1,43 +1,88 @@
-div.common, button.common, textarea.common, input.common {
+div.common,
+button.common,
+button.popup-button,
+input.common,
+textarea.common {
   padding-top:6px;
   padding-bottom:6px;
   padding-left:12px;
   padding-right:12px;
   margin-bottom:8px;
   margin-top:8px;
-  background-color: white;
-  color:black;
 }
 
-button.common, input.common, textarea.common {border:2px solid;}
-input.common, textarea.common {display:block;}
-textarea.common {
-  min-width:calc(100vw - 48px);
-  max-width:calc(100vw - 48px);
-}
-div.common {border:1px solid;}
-
-div.inner-controls {padding-top:32px;}
-div.hcontainer {display:inline-block;margin-right:16px;}
-
-div.popup-content {padding:16px;text-align:center;}
-button.popup-button {
-  padding-top:12px;
-  padding-bottom:12px;
+a.common {
+  text-decoration: none;
+  padding-top:4px;
+  padding-bottom:4px;
   padding-left:24px;
   padding-right:24px;
-  margin-bottom:16px;
-  border:2px solid;
+}
+
+div.common,
+input.common,
+textarea.common {
+  background-color:white;
+  color:black;
+}
+
+div.common {border:1px solid black;}
+
+label.common,
+textarea.common {display:block;}
+
+textarea.common,
+input.common,
+a.common,
+button.common,
+button.popup-button {
+  border:2px solid black;
+}
+
+a.common,a:not(.disabled),
+button.common,button:not(.disabled),
+button.popup-button, {
+  background-color:black;
+  color:white;
+  cursor:pointer;
+}
+
+a.disabled
+button.disabled
+button.disabled {
+  border:2px solid gray;
+  background-color:gray;
+  color: black;
+  cursor:not-allowed;
+}
+
+a.common:hover,
+button.common:hover,
+button.popup-button:hover {
+  background-color: skyblue;
+  border:2px solid skyblue;
+  color:white;
+}
+
+button.danger:hover {
+  border:2px solid red;
+  background-color: red;
+}
+
+button.common:active,
+button.popup-button:active {
   background-color: white;
   color:black;
 }
-button.common:hover, button.popup-button:hover {
-  border:2px solid;
-  border-color:blue;
+
+button.danger:active {color:red;}
+
+div.horizontal {
+  display:inline-block;
+  margin-right:32px
 }
-button.common:active, button.popup-button:active {
-  border:2px solid;
-  border-color:blue;
-  color:white;
-  background-color:black;
+
+div.popup-content {
+  padding:16px;
+  text-align:center;
 }
