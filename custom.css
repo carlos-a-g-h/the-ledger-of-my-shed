@@ -19,6 +19,7 @@ a.common {
   padding-right:24px;
 }
 
+button.common,
 div.common,
 input.common,
 textarea.common {
@@ -39,7 +40,7 @@ button.popup-button {
   border:2px solid black;
 }
 
-a.common,a:not(.disabled),
+a.common,a:not(.disabled),a:visited,
 button.common,button:not(.disabled),
 button.popup-button, {
   background-color:black;
@@ -59,8 +60,8 @@ button.disabled {
 a.common:hover,
 button.common:hover,
 button.popup-button:hover {
-  background-color: skyblue;
-  border:2px solid skyblue;
+  background-color: #0074E8;
+  border:2px solid #0074E8;
   color:white;
 }
 
@@ -75,7 +76,13 @@ button.popup-button:active {
   color:black;
 }
 
-button.danger:active {color:red;}
+button.danger:active {color: red;}
+
+button.common:active,
+button.popup-button {color: #0074E8;}
+
+a.common:visited {color:black;}
+a.common:visited:hover {color:white;}
 
 div.horizontal {
   display:inline-block;
