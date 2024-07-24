@@ -37,7 +37,7 @@ from dbi_assets import dbi_assets_ModEv_Add
 from frontend_Any import _LANG_EN
 from frontend_Any import _LANG_ES
 from frontend_Any import _CSS_CLASS_COMMON
-from frontend_Any import _CSS_CLASS_HORIZONTAL
+# from frontend_Any import _CSS_CLASS_HORIZONTAL
 from frontend_Any import write_fullpage
 from frontend_Any import write_popupmsg
 from frontend_Any import write_link_homepage
@@ -536,21 +536,21 @@ async def route_api_select_asset(
 		False
 	)
 
-	dbi_results=await dbi_assets_AssetQuery(
+	the_asset=await dbi_assets_AssetQuery(
 		request.app["rdbc"],request.app["rdbn"],
 		asset_id=asset_id,
 		get_comment=inc_comment,
 		get_total=inc_total,
 		get_history=inc_history
 	)
-	if not len(dbi_results)==1:
-		return response_errormsg(
-			_ERR_TITLE_GET_ASSET[_LANG_EN],
-			f"{_ERR_DETAIL_DBI_FAIL[_LANG_EN]} (1)",
-			ct,status_code=400
-		)
+	# if not len(dbi_results)==1:
+	# 	return response_errormsg(
+	# 		_ERR_TITLE_GET_ASSET[_LANG_EN],
+	# 		f"{_ERR_DETAIL_DBI_FAIL[_LANG_EN]} (1)",
+	# 		ct,status_code=400
+	# 	)
 
-	the_asset=dbi_results.pop()
+	# the_asset=dbi_results.pop()
 	if len(the_asset)==0:
 		return response_errormsg(
 			_ERR_TITLE_GET_ASSET[_LANG_EN],
@@ -593,21 +593,21 @@ async def route_fgmt_asset_editor(
 	inc_total=True
 	inc_comment=True
 
-	dbi_results=await dbi_assets_AssetQuery(
+	the_asset=await dbi_assets_AssetQuery(
 		request.app["rdbc"],request.app["rdbn"],
 		asset_id=asset_id,
 		get_comment=inc_comment,
 		get_total=inc_total,
 		get_history=inc_history
 	)
-	if not len(dbi_results)==1:
-		return response_errormsg(
-			_ERR_TITLE_GET_ASSET[lang],
-			f"{_ERR_DETAIL_DBI_FAIL[lang]} (1)",
-			ct,status_code=400
-		)
+	# if not len(dbi_results)==1:
+	# 	return response_errormsg(
+	# 		_ERR_TITLE_GET_ASSET[lang],
+	# 		f"{_ERR_DETAIL_DBI_FAIL[lang]} (1)",
+	# 		ct,status_code=400
+	# 	)
 
-	the_asset=dbi_results.pop()
+	# the_asset=dbi_results.pop()
 	if len(the_asset)==0:
 		return response_errormsg(
 			_ERR_TITLE_GET_ASSET[lang],

@@ -12,16 +12,16 @@ I do not know anything about accounting, or have any background on warehousing o
 
 More will be added but this is what you can do right now:
 
-- Create (define) and delete assets
-- Small search engine to quickly find assets
-- Add modification records to assets
-- Create, update, (delete) and run orders that can add modification records to multiple assets
+- CRUD operations for assets definitions
+- Add modification records within each asset
+- CRUD operations with orders (The order book)
 
 ### Pending
 
 - User authentication and authorization
 - Propper API for external clients and frontends
-- Safer execution of orders
+- Safer order handling
+- Modification records query by date
 
 ## This is built on what?
 
