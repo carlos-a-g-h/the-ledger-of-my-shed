@@ -19,7 +19,7 @@ More will be added but this is what you can do right now:
 ### Pending
 
 - A better frontend for the order book
-- Full CRUD ops for asset history (there is no deletion, and no detailed view, noly creation)
+- Full CRUD ops for asset history (there is no deletion and no detailed view yet)
 - Exporting/Importing asset definitions, orders, etc...
 - Propper API (route naming, etc... ) for custom frontends
 - User authentication and authorization
