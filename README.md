@@ -22,7 +22,7 @@ More will be added but this is what you can do right now:
 - Propper API for external clients and frontends
 - Safer order handling
 - Custom asset records querying
-- Exporting/Importing mechanisms
+- Exporting/Importing asset definitions, orders, etc...
 
 ## This is built on what?
 
