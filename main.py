@@ -55,6 +55,11 @@ from internals import util_valid_str
 
 def read_config(path_config:Path)->dict:
 
+	print(
+		"Reading config:",
+		path_config.absolute()
+	)
+
 	rawconfig=read_yaml_file(path_config)
 
 	# port
