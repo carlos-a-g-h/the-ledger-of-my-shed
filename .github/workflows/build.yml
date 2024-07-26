@@ -220,7 +220,7 @@ jobs:
           echo "[ CONTENTS] "
           find .
           echo "[ SIZE ]"
-          du -h "${{ env.THE_NAME }}
+          du -h "${{ env.THE_NAME }}"
 
       - name: Attach the artifact
         if: ${{ inputs.DO_NOT_CREATE_RELEASE == false }}
