@@ -13,16 +13,16 @@ I do not know anything about accounting, or have any background on warehousing o
 More will be added but this is what you can do right now:
 
 - CRUD operations for assets definitions
-- Add modification records within each asset
+- CRUD operations whthin each asset history (quantity modifications)
 - CRUD operations with orders (The order book)
 
 ### Pending
 
-- User authentication and authorization
-- Propper API for external clients and frontends
-- Safer order handling
-- Custom asset records querying
+- A better frontend for the order book
+- Full CRUD ops for asset history (there is no deletion, and no detailed view, noly creation)
 - Exporting/Importing asset definitions, orders, etc...
+- Propper API (route naming, etc... ) for custom frontends
+- User authentication and authorization
 
 ## This is built on what?
 
@@ -53,7 +53,7 @@ or like this if you're not running directly from the source code
 $ python3 main.py
 ```
 
-### How to customize the CSS
+### How to customize
 
 You can customize the looks of this thing by editing the "custom.css" file, feel free to adjust it to your needs
 
