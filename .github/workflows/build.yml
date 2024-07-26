@@ -85,7 +85,7 @@ jobs:
         if: ${{ contains(matrix.os,'windows') == false && inputs.DO_NOT_COMPILE_CREATE_DUMMY == false }}
         working-directory: repo
         run: |
-          python -m nuitka --onefile --assume-yes-for-downloads --remove-output --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.bin" "main.py"
+          python -m nuitka --onefile --follow-imports --assume-yes-for-downloads --remove-output --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.bin" "main.py"
 #        run: |
 #          python -m nuitka --standalone --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.bin"
 
@@ -102,7 +102,7 @@ jobs:
         if: ${{ contains(matrix.os,'windows') == true && inputs.DO_NOT_COMPILE_CREATE_DUMMY == false }}
         working-directory: repo
         run: |
-          python -m nuitka --onefile --assume-yes-for-downloads --remove-output --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.exe" "main.py"
+          python -m nuitka --onefile --follow-imports --assume-yes-for-downloads --remove-output --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.exe" "main.py"
 #        run: |
 #          python -m nuitka --standalone --assume-yes-for-downloads "main.py" --output-dir="the-output" --output-filename="${{ env.THE_NAME }}.exe"
 
