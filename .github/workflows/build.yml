@@ -70,9 +70,10 @@ jobs:
           pip install -r "${{ env.REQFILE }}"
 
       - name: Setup Python (install Nuitka)
+        # https://github.com/Nuitka/Nuitka/issues/3015
         if: $${{ inputs.DO_NOT_COMPILE_CREATE_DUMMY == false }}
         run: |
-          pip install nuitka
+          python -m pip install "https://github.com/Nuitka/Nuitka/archive/factory.zip"
 
       - name: Build dummy
         if: $${{ inputs.DO_NOT_COMPILE_CREATE_DUMMY == true }}
