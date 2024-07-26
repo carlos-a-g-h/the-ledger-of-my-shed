@@ -1,3 +1,4 @@
+a.common,
 div.common,
 button.common,
 button.popup-button,
@@ -11,15 +12,9 @@ textarea.common {
   margin-top:8px;
 }
 
-a.common {
-  text-decoration: none;
-  padding-top:4px;
-  padding-bottom:4px;
-  padding-left:24px;
-  padding-right:24px;
-}
-
+a.common,
 button.common,
+button.popup-button,
 div.common,
 input.common,
 textarea.common {
@@ -27,34 +22,31 @@ textarea.common {
   color:black;
 }
 
-div.common {border:1px solid black;}
-
-label.common,
-textarea.common {display:block;}
-
+a.common,
 textarea.common,
 input.common,
+button.common,
+button.popup-button {border:2px solid black;}
+
+a.common:disabled,
+button.common:disabled,
+button.popup-button:disabled {
+  background-color: gray;
+  cursor:not-allowed;
+}
+
+a.common:link,
+a.common:visited {
+  text-decoration: none;
+  text-align: center;
+}
+
 a.common,
 button.common,
 button.popup-button {
-  border:2px solid black;
-}
-
-a.common,a:not(.disabled),a:visited,
-button.common,button:not(.disabled),
-button.popup-button, {
-  background-color:black;
-  color:white;
+  background-color:white;
+  color:black;
   cursor:pointer;
-}
-
-a.disabled
-button.disabled
-button.disabled {
-  border:2px solid gray;
-  background-color:gray;
-  color: black;
-  cursor:not-allowed;
 }
 
 a.common:hover,
@@ -63,6 +55,15 @@ button.popup-button:hover {
   background-color: #0074E8;
   border:2px solid #0074E8;
   color:white;
+  cursor:pointer;
+}
+
+a.common:active,
+button.common:active,
+button.popup-button:active {
+  background-color: white;
+  border:2px solid #0074E8;
+  color:#0074E8;
 }
 
 button.danger:hover {
@@ -70,23 +71,20 @@ button.danger:hover {
   background-color: red;
 }
 
-button.common:active,
-button.popup-button:active {
+button.danger:active {
+  border:2px solid red;
   background-color: white;
-  color:black;
+  color: red;
 }
 
-button.danger:active {color: red;}
+div.common {border:1px solid black;}
 
-button.common:active,
-button.popup-button {color: #0074E8;}
-
-a.common:visited {color:black;}
-a.common:visited:hover {color:white;}
+label.common,
+textarea.common {display:block;}
 
 div.horizontal {
   display:inline-block;
-  margin-right:32px
+  margin-right:32px;
 }
 
 div.popup-content {

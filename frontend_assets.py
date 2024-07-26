@@ -464,7 +464,10 @@ def write_html_modev_history(
 
 	html_text=""
 
-	for modev_id in history:
+	history_keys=list(history.keys())
+	history_keys.reverse()
+
+	for modev_id in history_keys:
 		html_text=(
 			f"{html_text}\n"
 			f"{write_html_modev(lang,history[modev_id])}"
