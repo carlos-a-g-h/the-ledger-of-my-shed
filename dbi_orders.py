@@ -2,7 +2,7 @@
 
 from typing import Mapping
 from typing import Optional,Union
-from secrets import token_hex
+# from secrets import token_hex
 
 from motor.motor_asyncio import AsyncIOMotorClient
 from motor.motor_asyncio import AsyncIOMotorCursor
@@ -155,8 +155,6 @@ async def dbi_orders_Editor_GetAsset(
 	data.pop("_id")
 	data.update({"id":order_id})
 
-	# { id: order_id , assets: { asset_id : mod } }
-
 	return data
 
 async def dbi_orders_Editor_AssetPatch(
@@ -196,9 +194,9 @@ async def dbi_orders_Editor_AssetDrop(
 	)->bool:
 
 	try:
+		col:AsyncIOMotorCollection=rdbc[name_db][_COL_ORDERS]
 		print(
-			"\t",
-			await rdbc[name_db][_COL_ORDERS].update_one(
+			await col.update_one(
 				{"_id":order_id},
 				{"$unset":{f"assets.{asset_id}":1}}
 			)
@@ -279,22 +277,31 @@ async def dbi_Orders_ApplyOrder(
 		if not isinstance(the_mod,int):
 			continue
 
-		print(asset_id,the_mod)
+		# print(asset_id,the_mod)
 
 		total_ops=total_ops+1
 		bulk_write_ops.append(
 			UpdateOne(
 				{"_id":asset_id},
 				{
-					"$push":{
-						"history":{
-							"uid":token_hex(8),
+					"$set":{
+						f"history.{order_id}":{
 							"date":the_date,
 							"sign":the_sign,
 							"tag":the_tag,
 							"mod":the_mod
 						}
 					}
+
+					# "$push":{
+					# 	"history":{
+					# 		"_id":order_id,
+					# 		"date":the_date,
+					# 		"sign":the_sign,
+					# 		"tag":the_tag,
+					# 		"mod":the_mod
+					# 	}
+					# }
 				}
 			)
 		)
@@ -311,10 +318,10 @@ async def dbi_Orders_ApplyOrder(
 	print(
 		f"TOTAL: {total_ops}" "\n"
 		f"MODIFIED: {results.modified_count}" "\n"
+		f"MATCHED: {results.matched_count}" "\n"
 	)
 
-	if not total_ops==results.modified_count:
-		print("Not everything got written!")
+	if not total_ops==results.matched_count:
 		return False
 
 	print("Dropping...")

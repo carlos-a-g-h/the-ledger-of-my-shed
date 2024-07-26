@@ -14,7 +14,7 @@ from frontend_Any import _CSS_CLASS_HORIZONTAL
 
 from frontend_Any import write_div_display_error
 
-from internals import util_valid_list
+# from internals import util_valid_list
 from internals import util_valid_str
 from internals import util_valid_int
 from internals import util_valid_date
@@ -291,7 +291,7 @@ def write_form_add_modev(lang:str,asset_id:str)->str:
 						""" name="mod" """
 						"""type="number" """
 						"""value=0 """
-						">\n"
+						"required>\n"
 				"</div>"
 	)
 
@@ -307,7 +307,7 @@ def write_form_add_modev(lang:str,asset_id:str)->str:
 				""" name="sign" """
 				""" type="text" """
 				"""max-length=32 """
-				">\n"
+				"required>\n"
 		"</div>"
 	)
 
@@ -363,8 +363,6 @@ def write_html_modev(lang:str,data:Mapping)->str:
 	print("MODEV:",data)
 
 	modev_uid=util_valid_str(data.get("uid"))
-	if not isinstance(modev_uid,str):
-		return write_div_display_error(lang)
 
 	modev_sign=util_valid_str(data.get("sign"))
 	if not isinstance(modev_sign,str):
@@ -396,12 +394,19 @@ def write_html_modev(lang:str,data:Mapping)->str:
 		_LANG_ES:"Ajuste"
 	}[lang]
 
+	html_text=f"""<div class="{_CSS_CLASS_COMMON}">"""
+
+	if isinstance(modev_uid,str):
+		html_text=(
+			f"{html_text}\n"
+			f"<div>UID: <code>{modev_uid}</code></div>"
+		)
+
 	html_text=(
-		f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
-			f"<div>UID: <code>{modev_uid}</code></div>\n"
-			f"<div>{tl_mod}: <code>{modev_mod}</code></div>\n"
-			f"<div>{tl_sign}: <code>{modev_sign}</code></div>\n"
-			f"<div>{tl_date}: <code>{modev_date}</code></div>"
+		f"{html_text}\n"
+		f"<div>{tl_mod}: <code>{modev_mod}</code></div>\n"
+		f"<div>{tl_sign}: <code>{modev_sign}</code></div>\n"
+		f"<div>{tl_date}: <code>{modev_date}</code></div>"
 	)
 
 	modev_tag=util_valid_str(
@@ -437,32 +442,63 @@ def write_html_modev(lang:str,data:Mapping)->str:
 	)
 
 def write_html_modev_history(
-		lang:str,history:list,
-	)->str:
+		lang:str,
+		history:Optional[Mapping]
+	):
+
+	if not isinstance(history,Mapping):
+		return (
+			"<p>"+{
+				_LANG_EN:"History is empty/unknown",
+				_LANG_ES:"Historial vacío/desconocido"
+			}[lang]+"</p>"
+		)
+
+	if len(history)==0:
+		return (
+			"<p>"+{
+				_LANG_EN:"History is empty/unknown",
+				_LANG_ES:"Historial vacío/desconocido"
+			}[lang]+"</p>"
+		)
 
 	html_text=""
 
-	zero=True
-	size=len(history)
-	if size>0:
-		zero=False
-		while True:
-			size=size-1
-			if size<0:
-				break
-			html_text=(
-				f"{html_text}\n"
-			)+write_html_modev(
-				lang,history[size]
-			)
+	history_keys=list(history.keys())
+	history_keys.reverse()
 
-	if zero:
+	for modev_id in history_keys:
 		html_text=(
 			f"{html_text}\n"
-		)+"<p>"+{
-			_LANG_EN:"History is empty/unknown",
-			_LANG_ES:"Historial vacío/desconocido"
-		}[lang]+"</p>"
+			f"{write_html_modev(lang,history[modev_id])}"
+		)
+
+	# 	lang:str,history:list,
+	# )->str:
+
+	# html_text=""
+
+	# zero=True
+	# size=len(history)
+	# if size>0:
+	# 	zero=False
+	# 	while True:
+	# 		size=size-1
+	# 		if size<0:
+	# 			break
+	# 		html_text=(
+	# 			f"{html_text}\n"
+			# )+write_html_modev(
+			# 	lang,history[size]
+			# )
+
+	# if zero:
+	# 	html_text=(
+	# 		f"{html_text}\n"
+	# 	)+"<p>"+{
+	# 		_LANG_EN:"History is empty/unknown",
+	# 		_LANG_ES:"Historial vacío/desconocido"
+	# 	}[lang]+"</p>"
 
 	return html_text
 
@@ -515,6 +551,18 @@ def write_html_asset(
 			f"{html_text}\n"
 			f"<div>{tl}: <code>{asset_sign}</code></div>"
 		)
+
+	if fullview:
+		asset_comment=util_valid_str(data.get("comment"))
+		if isinstance(asset_comment,str):
+			tl={
+				_LANG_EN:"Comment",
+				_LANG_ES:"Comentario"
+			}[lang]
+			html_text=(
+				f"{html_text}\n"
+				f"<div>{tl}: <code>{asset_comment}</code></div>"
+			)
 
 	asset_total=util_valid_int(data.get("total"))
 	if isinstance(asset_total,int):
@@ -616,9 +664,10 @@ def write_html_asset(
 			_LANG_ES:"Historial"
 		}[lang]
 		html_modev_history=write_html_modev_history(
-			lang,util_valid_list(
-				data.get("history"),True
-			)
+			# lang,util_valid_list(
+			# 	data.get("history"),True
+			# )
+			lang,data.get("history")
 		)
 		html_text=(
 			f"{html_text}\n"
