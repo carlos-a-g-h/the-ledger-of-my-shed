@@ -21,7 +21,8 @@ More will be added but this is what you can do right now:
 - User authentication and authorization
 - Propper API for external clients and frontends
 - Safer order handling
-- Modification records query by date
+- Custom asset records querying
+- Exporting/Importing mechanisms
 
 ## This is built on what?
 
