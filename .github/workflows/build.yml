@@ -44,13 +44,13 @@ jobs:
     name: Build and upload executable binary
     strategy:
       matrix:
-        os: [ubuntu-20.04,windows-2019 ]
+        os: [ ubuntu-20.04 , windows-2019 ]
 
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Check if on Windows
-        if: ${{ contains(matrix.os,'windows') == true && inputs.NO_WINDOWS == true }}
-        run: exit 1
+#      - name: Check if on Windows
+#        if: ${{ contains(matrix.os,'windows') == true && inputs.NO_WINDOWS == true }}
+#        run: exit 1
 
       - name: Download repo
         uses: actions/checkout@v4
@@ -69,11 +69,17 @@ jobs:
         run: |
           pip install -r "${{ env.REQFILE }}"
 
-      - name: Setup Python (install Nuitka)
-        # https://github.com/Nuitka/Nuitka/issues/3015
-        if: $${{ inputs.DO_NOT_COMPILE_CREATE_DUMMY == false }}
+      - name: Setup Python (install Nuitka for Linux)
+        if: $${{ contains(matrix.os,'windows') == false && inputs.DO_NOT_COMPILE_CREATE_DUMMY == false }}
         run: |
-          python -m pip install "https://github.com/Nuitka/Nuitka/archive/factory.zip"
+          python -m pip install nuitka
+
+      - name: Setup Python (install Nuitka for Windows)
+        # https://github.com/Nuitka/Nuitka/issues/3015
+        # Latest version does not work, and factory version either, trying out on 2.3.11
+        if: $${{ contains(matrix.os,'windows') == true && inputs.DO_NOT_COMPILE_CREATE_DUMMY == false }}
+        run: |
+          python -m pip install nuitka==2.3.11
 
       - name: Build dummy
         if: $${{ inputs.DO_NOT_COMPILE_CREATE_DUMMY == true }}
