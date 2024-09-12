@@ -146,6 +146,145 @@ def write_form_new_asset(lang:str)->str:
 		"</form>"
 	)
 
+def write_form_edit_asset_metadata(
+		lang:str,asset_id:str,
+		full:bool=True,
+	)->str:
+
+	tl={
+		_LANG_EN:"Apply changes",
+		_LANG_ES:"Aplicar cambios"
+	}[lang]
+	html_text=(
+		f"<summary>Edit info</summary>\n"
+		"<div>\n"
+			f"""<form hx-post="/api/assets/change-metadata" """
+				"""hx-swap="innerHTML" """
+				"""hx-target="#messages" """
+				">\n"
+
+				f"""<div class="{_CSS_CLASS_COMMON}">"""
+
+					"<!-- EDITOR FORM STARTS HERE -->\n"
+
+					f"""<input name="id" type=hidden value="{asset_id}">"""
+
+					f"""<label class="{_CSS_CLASS_COMMON}" for="name">New Name</label>"""
+					"<div>"
+						f"""<input name="ignore-name" type=checkbox>"""
+						f"""<label for=ignore-name>Ignore Name</label>"""
+					"</div>"
+					f"""<input class="{_CSS_CLASS_COMMON}" name="name" type=text max-length=32>"""
+	
+					f"""<label class="{_CSS_CLASS_COMMON}" for="tag">New Tag</label>"""
+					"<div>"
+						f"""<input name="ignore-tag" type=checkbox>"""
+						f"""<label for=ignore-tag>Ignore Tag</label>"""
+					"</div>"
+					f"""<input class="{_CSS_CLASS_COMMON}" name="tag" type=text  max-length=32>"""
+
+					f"""<label class="{_CSS_CLASS_COMMON}" for="comment">Comment</label>""" "\n"
+					"<div>"
+						f"""<input name="ignore-comment" type=checkbox>"""
+						f"""<label for=ignore-comment>Ignore Comment</label>"""
+					"</div>"
+					f"""<textarea class="{_CSS_CLASS_COMMON}" """
+						"""name="comment" """
+						"max-length=256 "
+						">"
+					"</textarea>"
+
+					"<!-- EDITOR FORM ENDS HERE -->\n"
+
+				"</div>"
+				f"""<button class="common" type="submit">{tl}</button>""" "\n"
+			"</form>\n"
+		"</div>"
+	)
+
+	if full:
+		html_text=(
+			f"""<details id="asset-{asset_id}-editor">""" "\n"
+				f"{html_text}\n"
+			"</details>"
+		)
+		# tl={
+		# 	_LANG_EN:"Edit info",
+		# 	_LANG_ES:"Editar info"
+		# }[lang]
+		# html_text=(
+		# 	f"""<details id="asset-{asset_id}-editor">""" "\n"
+		# 		f"<summary>{tl}</summary>\n"
+		# 		f"""<div class={_CSS_CLASS_COMMON} id="asset-{asset_id}-editor-form">"""
+		# 			f"{html_text}\n"
+		# 		"</div>"
+		# 	"</details>"
+		# )
+
+	return html_text
+
+def write_button_asset_fullview_or_update(
+		lang:str,
+		asset_id:str,
+		in_fullview:bool
+	)->str:
+
+	tl={
+		True:{
+			_LANG_EN:"Refresh now",
+			_LANG_ES:"Actualizar ahora"
+		}[lang],
+		False:{
+			_LANG_EN:"Manage",
+			_LANG_ES:"Administrar"
+		}[lang]
+	}[in_fullview]
+
+	return (
+		f"""<button class="{_CSS_CLASS_COMMON}" """
+			f"""hx-get="/fgmt/assets/editor/{asset_id}" """
+			"""hx-target="#messages" """
+			"""hx-swap="innerHTML" """
+			">"
+			f"{tl}"
+		"</button>"
+	)
+
+def write_form_delete_asset(
+		lang:str,
+		asset_id:str,
+	)->str:
+
+	tl={
+		_LANG_EN:"Are you sure you want to delete this asset?",
+		_LANG_ES:"¿Está seguro de que quiere eliminar este activo?"
+	}[lang]
+	html_text=(
+		"<form"
+			"""hx-trigger="submit" """
+			"""hx-delete="/api/assets/drop" """
+			"""hx-target="#messages" """
+			"""hx-swap="innerHTML" """
+			f"""hx-confirm="{tl}" """
+			">"
+	)
+
+	tl={
+		_LANG_EN:"Delete this asset",
+		_LANG_ES:"Eliminar este activo"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+			f"""<input name="id" type="hidden" value="{asset_id}">"""
+			f"""<button class="{_CSS_CLASS_COMMON} {_CSS_CLASS_DANGER}" """
+				"""type="submit">"""
+				f"{tl}"
+			"</button>\n"
+		"</form>\n"
+	)
+
+	return html_text
+
 def write_form_search_assets(
 		lang:str,
 		order_id:Optional[str]=None
@@ -448,10 +587,10 @@ def write_html_modev_history(
 
 	if not isinstance(history,Mapping):
 		return (
-			"<p>"+{
+			"<div>"+{
 				_LANG_EN:"History is empty/unknown",
 				_LANG_ES:"Historial vacío/desconocido"
-			}[lang]+"</p>"
+			}[lang]+"</div>"
 		)
 
 	if len(history)==0:
@@ -502,13 +641,10 @@ def write_html_modev_history(
 
 	return html_text
 
-def write_html_asset(
-		lang:str,
-		data:Mapping,
-		fullview:bool=False,
+def write_html_asset_info(
+		lang:str,data:Mapping,
+		full:bool=True
 	)->str:
-
-	# print(data)
 
 	asset_id=util_valid_str(data.get("id"))
 	if not isinstance(asset_id,str):
@@ -518,19 +654,16 @@ def write_html_asset(
 	if not isinstance(asset_name,str):
 		return write_div_display_error(lang)
 
-	# asset info
-
 	tl={
 		_LANG_EN:"Name",
 		_LANG_ES:"Nombre"
 	}[lang]
 	html_text=(
-		f"""<div id="asset-{asset_id}-info" class="{_CSS_CLASS_COMMON}">""" "\n"
-			f"<div>ID: <code>{asset_id}</code></div>\n"
-			f"<div>{tl}: <code>{asset_name}</code></div>"
+		f"<div>ID: <code>{asset_id}</code></div>\n"
+		f"<div>{tl}: <code>{asset_name}</code></div>"
 	)
 
-	asset_tag=util_valid_str(data.get("tag"))
+	asset_tag=util_valid_str(data.get("tag"),True)
 	if isinstance(asset_tag,str):
 		tl={
 			_LANG_EN:"Tag",
@@ -552,17 +685,42 @@ def write_html_asset(
 			f"<div>{tl}: <code>{asset_sign}</code></div>"
 		)
 
-	if fullview:
-		asset_comment=util_valid_str(data.get("comment"))
-		if isinstance(asset_comment,str):
-			tl={
-				_LANG_EN:"Comment",
-				_LANG_ES:"Comentario"
-			}[lang]
-			html_text=(
+	asset_comment=util_valid_str(data.get("comment"))
+	if isinstance(asset_comment,str):
+		tl={
+			_LANG_EN:"Comment",
+			_LANG_ES:"Comentario"
+		}[lang]
+		html_text=(
+			f"{html_text}\n"
+			f"<div>{tl}: <code>{asset_comment}</code></div>"
+		)
+
+	if full:
+		html_text=(
+			f"""<div id="asset-{asset_id}-info">"""
 				f"{html_text}\n"
-				f"<div>{tl}: <code>{asset_comment}</code></div>"
-			)
+			"</div>"
+		)
+
+	return html_text
+
+def write_html_asset(
+		lang:str,
+		data:Mapping,
+		fullview:bool=False,
+	)->str:
+
+	asset_id=util_valid_str(data.get("id"))
+	if not isinstance(asset_id,str):
+		return write_div_display_error(lang)
+
+	# info
+
+	html_text=(
+		f"""<div class={_CSS_CLASS_COMMON} id="asset-{asset_id}">""" "\n"
+			f"{write_html_asset_info(lang,data,fullview)}"
+	)
 
 	asset_total=util_valid_int(data.get("total"))
 	if isinstance(asset_total,int):
@@ -575,80 +733,25 @@ def write_html_asset(
 			f"""<div>{tl}: <code id="asset-{asset_id}-total">{asset_total}</code></div>"""
 		)
 
-	html_text=(
-		f"{html_text}\n"
-		f"""<div class="inner-controls" id="asset-{asset_id}-controls">"""
-	)
-
-	# view/edit button only,or, delete and refresh buttons
-
-	tl={
-		True:{
-			_LANG_EN:"Refresh now",
-			_LANG_ES:"Actualizar ahora"
-		}[lang],
-		False:{
-			_LANG_EN:"View or edit",
-			_LANG_ES:"Ver o editar"
-		}[lang]
-	}[fullview]
-
-	html_text_get_asset_button=(
-		f"""<button class="{_CSS_CLASS_COMMON}" """
-			f"""hx-get="/fgmt/assets/editor/{asset_id}" """
-			"""hx-target="#messages" """
-			"""hx-swap="innerHTML" """
-			">"
-			f"{tl}"
-		"</button>"
-	)
-
-	if not fullview:
-		tl={
-			_LANG_EN:"View or edit",
-			_LANG_ES:"Ver o editar"
-		}[lang]
+	if fullview:
 		html_text=(
 			f"{html_text}\n"
-			f"{html_text_get_asset_button}"
+			f"{write_form_edit_asset_metadata(lang,asset_id)}\n"
 		)
+
+	# actions
+
+	html_text=(
+		f"{html_text}\n"
+		f"""<div class="inner-controls" id="asset-{asset_id}-controls">""" "\n"
+			f"{write_button_asset_fullview_or_update(lang,asset_id,fullview)}\n"
+	)
 
 	if fullview:
 
-		tl={
-			_LANG_EN:"Are you sure you want to delete this asset?",
-			_LANG_ES:"¿Está seguro de que quiere eliminar este activo?"
-		}[lang]
 		html_text=(
 			f"{html_text}\n"
-			"<div>\n"
-				f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-					f"{html_text_get_asset_button}\n"
-				"</div>\n"
-				f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-					"<form "
-						"""hx-trigger="submit" """
-						"""hx-delete="/api/assets/drop" """
-						"""hx-target="#messages" """
-						"""hx-swap="innerHTML" """
-						f"""hx-confirm="{tl}" """
-						">"
-		)
-
-		tl={
-			_LANG_EN:"Delete this asset",
-			_LANG_ES:"Eliminar este activo"
-		}[lang]
-		html_text=(
-						f"{html_text}\n"
-						f"""<input name="id" type="hidden" value="{asset_id}">"""
-						f"""<button class="{_CSS_CLASS_COMMON} {_CSS_CLASS_DANGER}" """
-							"""type="submit">"""
-							f"{tl}"
-						"</button>\n"
-					"</form>\n"
-				"</div>\n"
-			"</div>"
+			f"{write_form_delete_asset(lang,asset_id)}"
 		)
 
 	html_text=(
@@ -658,6 +761,8 @@ def write_html_asset(
 	)
 
 	if fullview:
+
+		# History
 
 		tl={
 			_LANG_EN:"History",

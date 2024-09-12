@@ -29,6 +29,7 @@ from control_Any import response_errormsg
 
 # from control_assets_cache import _CACHE_ASSETS
 
+from dbi_assets import dbi_assets_UpdateAssetMetadata
 from dbi_assets import dbi_assets_CreateAsset
 from dbi_assets import dbi_assets_AssetQuery
 from dbi_assets import dbi_assets_DropAsset
@@ -50,7 +51,9 @@ from frontend_assets import write_form_search_assets
 from frontend_assets import write_form_add_modev
 from frontend_assets import write_html_modev
 from frontend_assets import write_html_asset
+from frontend_assets import write_html_asset_info
 from frontend_assets import write_html_list_of_assets
+from frontend_assets import write_form_edit_asset_metadata
 
 from frontend_orders import write_button_add_asset_to_order
 
@@ -79,6 +82,12 @@ _ERR_TITLE_NEW_ASSET={
 	_LANG_EN:"Asset creation error",
 	_LANG_ES:"Error al crear el activo"
 }
+
+_ERR_TITLE_METADATA_CHANGE={
+	_LANG_EN:"Asset metadata change error",
+	_LANG_ES:"Error de edición de metadatos"
+}
+
 _ERR_TITLE_GET_ASSET={
 	_LANG_EN:"Asset request error",
 	_LANG_ES:"Error de petición de activo"
@@ -422,10 +431,14 @@ async def route_api_new_asset(
 	if not isinstance(asset_id,str):
 		asset_id=token_hex(8)
 
-	get_copy=True
+	outverb=2
 	if ct==_TYPE_CUSTOM:
-		# TODO: get get_copy from json body
-		get_copy=True
+		outverb=util_valid_int(
+			request_data.get("v"),
+			fallback=2,
+			minimum=0,
+			maximum=2
+		)
 
 	result=await dbi_assets_CreateAsset(
 		request.app["rdbc"],
@@ -433,39 +446,24 @@ async def route_api_new_asset(
 		asset_id,asset_name,
 		asset_sign,asset_tag=asset_tag,
 		asset_comment=asset_comment,
-		rcopy=get_copy
+		outverb=outverb
 	)
 
-	ok=False
-	if isinstance(result,bool):
-		ok=result
-
-	ismapping=isinstance(result,Mapping)
-	if ismapping:
-		ok=(len(result)>0)
-
-	if not ok:
+	error_msg:Optional[str]=result.get("err")
+	if error_msg is not None:
 		return response_errormsg(
 			_ERR_TITLE_NEW_ASSET[lang],
-			_ERR_DETAIL_DBI_FAIL[lang],
+			f"{_ERR_DETAIL_DBI_FAIL[lang]}"
+			f": {error_msg}",
 			ct,400
-		)
-
-	# request.app["assets_cache"].update({asset_id:asset_name})
-
-	if ct==_TYPE_CUSTOM:
-		return json_response(
-			data={
-				True:result,
-				False:{},
-			}[ismapping]
 		)
 
 	request.app[_CACHE_ASSETS].update({
 		asset_id:asset_name
 	})
 
-	lang=request.app["lang"]
+	if ct==_TYPE_CUSTOM:
+		return json_response(data=result)
 
 	html_popup=write_popupmsg(
 		"<h2>"+{
@@ -499,6 +497,115 @@ async def route_api_new_asset(
 		),
 		content_type=_MIMETYPE_HTML
 	)
+
+async def route_api_asset_metadata_change(
+		request:Request
+	)->Union[json_response,Response]:
+
+	ct=get_client_type(request)
+	if not isinstance(ct,str):
+		return Response(status=406)
+
+	lang=get_lang(ct,request.app["lang"])
+
+	request_data=await get_request_body_dict(ct,request)
+	if not isinstance(request_data,Mapping):
+		return response_errormsg(
+			_ERR_TITLE_METADATA_CHANGE[lang],
+			_ERR_DETAIL_DATA_NOT_VALID[lang],
+			ct,status_code=406
+		)
+
+	asset_id=util_valid_str(
+		request_data.get("id")
+	)
+	if asset_id is None:
+		return response_errormsg(
+			_ERR_TITLE_METADATA_CHANGE[lang],
+			_ERR_DETAIL_DATA_NOT_VALID[lang],
+			ct,status_code=406
+		)
+
+	asset_name=util_valid_str(
+		request_data.get("name")
+	)
+	asset_tag=util_valid_str(
+		request_data.get("tag")
+	)
+	asset_comment=util_valid_str(
+		request_data.get("comment")
+	)
+
+	ignore_name=util_valid_bool(
+		request_data.get("ignore-name"),
+		dval=False
+	)
+	ignore_tag=util_valid_bool(
+		request_data.get("ignore-tag"),
+		dval=False
+	)
+	ignore_comment=util_valid_bool(
+		request_data.get("ignore-comment"),
+		dval=False
+	)
+	result=await dbi_assets_UpdateAssetMetadata(
+		request.app["rdbc"],request.app["rdbn"],
+		asset_id,asset_name,asset_tag,asset_comment,
+		ignore_name,ignore_tag,ignore_comment
+	)
+
+	error_msg:Optional[str]=result.get("err")
+	if error_msg is not None:
+		return response_errormsg(
+			_ERR_TITLE_METADATA_CHANGE[lang],
+			f"{_ERR_DETAIL_DBI_FAIL[lang]}"
+			f": {error_msg}",
+			ct,status_code=400
+		)
+
+	if not ignore_name:
+		request.app[_CACHE_ASSETS].update({
+			asset_id:asset_name
+		})
+
+	if ct==_TYPE_CUSTOM:
+		return json_response(data=result)
+
+	new_version=await dbi_assets_AssetQuery(
+		request.app["rdbc"],
+		request.app["rdbn"],
+		asset_id,
+		get_comment=True,
+		get_sign=True,
+		get_tag=True
+	)
+
+	if len(new_version)==0:
+		new_version.update({
+			"id":"???",
+			"sign":"???",
+			"name":"???",
+			"tag":"???",
+			"comment":"???"
+		})
+
+	return Response(
+		body=(
+
+			f"""<div hx-swap-oob="innerHTML:#asset-{asset_id}-info">""" "\n"
+				f"{write_html_asset_info(lang,new_version,False)}\n"
+			"</div>\n"
+
+			f"""<details hx-swap-oob="innerHTML:#asset-{asset_id}-editor">""" "\n"
+				f"{write_form_edit_asset_metadata(lang,asset_id,False)}\n"
+			"</details>\n"
+
+			f"<!-- CHANGED METADATA FOR {asset_id}-->"
+		),
+		content_type=_MIMETYPE_HTML
+	)
+
+
 
 async def route_api_select_asset(
 		request:Request
@@ -536,29 +643,24 @@ async def route_api_select_asset(
 		False
 	)
 
-	the_asset=await dbi_assets_AssetQuery(
+	result=await dbi_assets_AssetQuery(
 		request.app["rdbc"],request.app["rdbn"],
 		asset_id=asset_id,
 		get_comment=inc_comment,
 		get_total=inc_total,
 		get_history=inc_history
 	)
-	# if not len(dbi_results)==1:
-	# 	return response_errormsg(
-	# 		_ERR_TITLE_GET_ASSET[_LANG_EN],
-	# 		f"{_ERR_DETAIL_DBI_FAIL[_LANG_EN]} (1)",
-	# 		ct,status_code=400
-	# 	)
 
-	# the_asset=dbi_results.pop()
-	if len(the_asset)==0:
+	error_msg:Optional[str]=result.get("err")
+	if error_msg is not None:
 		return response_errormsg(
 			_ERR_TITLE_GET_ASSET[_LANG_EN],
-			f"{_ERR_DETAIL_DBI_FAIL[_LANG_EN]} (2)",
+			f"{_ERR_DETAIL_DBI_FAIL[_LANG_EN]}"
+			f": {error_msg}",
 			ct,status_code=400
 		)
 
-	return json_response(data=the_asset)
+	return json_response(data=result)
 
 async def route_fgmt_asset_editor(
 		request:Request
@@ -589,29 +691,29 @@ async def route_fgmt_asset_editor(
 			ct,status_code=406
 		)
 
+	inc_sign=True
+	inc_tag=True
+	inc_comment=True
 	inc_history=True
 	inc_total=True
-	inc_comment=True
 
-	the_asset=await dbi_assets_AssetQuery(
-		request.app["rdbc"],request.app["rdbn"],
+	result=await dbi_assets_AssetQuery(
+		request.app["rdbc"],
+		request.app["rdbn"],
 		asset_id=asset_id,
+		get_sign=inc_sign,
+		get_tag=inc_tag,
 		get_comment=inc_comment,
 		get_total=inc_total,
 		get_history=inc_history
 	)
-	# if not len(dbi_results)==1:
-	# 	return response_errormsg(
-	# 		_ERR_TITLE_GET_ASSET[lang],
-	# 		f"{_ERR_DETAIL_DBI_FAIL[lang]} (1)",
-	# 		ct,status_code=400
-	# 	)
 
-	# the_asset=dbi_results.pop()
-	if len(the_asset)==0:
+	error_msg:Optional[str]=result.get("err")
+	if error_msg is not None:
 		return response_errormsg(
 			_ERR_TITLE_GET_ASSET[lang],
-			f"{_ERR_DETAIL_DBI_FAIL[lang]} (2)",
+			f"{_ERR_DETAIL_DBI_FAIL[lang]}"
+			f": {error_msg}",
 			ct,status_code=400
 		)
 
@@ -634,7 +736,7 @@ async def route_fgmt_asset_editor(
 
 			"""<section hx-swap-oob="innerHTML:#main">"""
 				f"<h3>{tl}</h3>\n"
-				f"{write_html_asset(lang,the_asset,True)}"
+				f"{write_html_asset(lang,result,True)}"
 			"</section>"
 		),
 		content_type=_MIMETYPE_HTML
@@ -734,12 +836,9 @@ async def route_api_search_assets(
 	html_text=f"<!-- sign: {search_sign} ; tag: {search_tag}-->\n"
 
 	if in_assets_page:
+
 		html_text=(
 			f"{html_text}\n"
-
-			# """<section hx-swap-oob="innerHTML:#navigation">""" "\n"
-			# 	f"{write_ul([write_button_new_asset(lang)])}\n"
-			# "</section>\n"
 
 			"""<section hx-swap-oob="innerHTML:#main">""" "\n"
 				f"{write_form_search_assets(lang)}\n"
@@ -829,37 +928,31 @@ async def route_api_drop_asset(
 			ct,status_code=406
 		)
 
-	recover_asset=False
+	outverb=0
 	if ct==_TYPE_CUSTOM:
-		recover_asset=util_valid_bool(
-			request_data.get("recover"),
-			dval=False
+		outverb=util_valid_int(
+			request_data.get("v"),
+			fallback=2,
+			minimum=0,
+			maximum=2
 		)
 
 	dbi_result=await dbi_assets_DropAsset(
-		request.app["rdbc"],request.app["rdbn"],
-		asset_id,rcopy=recover_asset
+		request.app["rdbc"],
+		request.app["rdbn"],
+		asset_id,outverb=outverb
 	)
-
-	ok=False
-	if isinstance(dbi_result,bool):
-		ok=dbi_result
-	is_mapping=isinstance(dbi_result,Mapping)
-	if is_mapping:
-		ok=len(dbi_result)>0
-
-	if not ok:
+	error_msg:Optional[str]=dbi_result.get("err")
+	if error_msg is not None:
 		return response_errormsg(
-			_ERR_TITLE_DROP_ASSET[lang],
-			_ERR_DETAIL_DBI_FAIL[lang],
-			ct,status_code=406
+			_ERR_TITLE_GET_ASSET[lang],
+			f"{_ERR_DETAIL_DBI_FAIL[lang]}"
+			f": {error_msg}",
+			ct,status_code=400
 		)
 
 	if ct==_TYPE_CUSTOM:
-		if not is_mapping:
-			return {}
-
-		return dbi_result
+		return json_response(data=dbi_result)
 
 	html_popup=write_popupmsg(
 		"<h2>"+{
@@ -957,29 +1050,35 @@ async def route_api_add_modev(
 		request_data.get("comment")
 	)
 
+	outverb=2
+	if ct==_TYPE_CUSTOM:
+		outverb=util_valid_int(
+			request_data.get("v"),
+			fallback=2,minimum=0,maximum=2
+		)
+
 	dbi_result=await dbi_assets_ModEv_Add(
 		request.app["rdbc"],
 		request.app["rdbn"],
 		asset_id,
 		the_sign,the_mod,
 		modev_tag=the_tag,
-		modev_comment=the_comment
+		modev_comment=the_comment,
+		outverb=outverb
 	)
-	if dbi_result is None:
+
+	error_msg:Optional[str]=dbi_result.get("error")
+	if error_msg is not None:
 		return response_errormsg(
-			_ERR_TITLE_MODEV_MOD[lang],
-			_ERR_DETAIL_DBI_FAIL[lang],
+			_ERR_TITLE_GET_ASSET[lang],
+			f"{_ERR_DETAIL_DBI_FAIL[lang]}"
+			f": {error_msg}",
 			ct,status_code=400
 		)
 
-	modev_uid,modev_date=dbi_result
-
 	if ct==_TYPE_CUSTOM:
 		return json_response(
-			data={
-				"uid":modev_uid,
-				"date":modev_date
-			}
+			data=dbi_result
 		)
 
 	html_text="<h2>"+{
@@ -987,17 +1086,8 @@ async def route_api_add_modev(
 		_LANG_ES:"Se realizó la modificación"
 	}[lang]+"</h2>\n"
 
-
 	html_modev=write_html_modev(
-		lang,
-		{
-			"uid":modev_uid,
-			"date":modev_date,
-			"mod":the_mod,
-			"tag":the_tag,
-			"sign":the_sign,
-			"comment":the_comment,
-		}
+		lang,dbi_result
 	)
 
 	return Response(

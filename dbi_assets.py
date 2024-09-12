@@ -11,15 +11,15 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from motor.motor_asyncio import AsyncIOMotorCursor
 from motor.motor_asyncio import AsyncIOMotorCollection
 
+# from pymongo.results import InsertOneResult
+from pymongo.results import UpdateResult
+
 from internals import util_rnow
-from internals import util_valid_str
 from internals import util_valid_int
-# from internals import util_valid_list
+from internals import util_valid_str
 from internals import util_valid_date
 
 _COL_ASSETS="assets"
-# _COL_USERS="users"
-
 
 def util_get_total_from_history(history:Mapping)->Mapping:
 	if len(history)==0:
@@ -33,17 +33,6 @@ def util_get_total_from_history(history:Mapping)->Mapping:
 		)
 
 	return total
-
-# def util_get_total_from_history(history:list)->int:
-# 	if len(history)==0:
-# 		return 0
-# 	total=0
-# 	for modev in history:
-# 		total=total+util_valid_int(
-# 			modev.get("mod"),
-# 			fallback=0
-# 		)
-# 	return total
 
 def util_calculate_total_in_asset(
 		asset:Mapping,
@@ -74,8 +63,12 @@ async def dbi_assets_CreateAsset(
 		asset_sign:str,
 		asset_comment:Optional[str]=None,
 		asset_tag:Optional[str]=None,
-		rcopy:bool=False,
-	)->Union[bool,dict]:
+		outverb:int=2,
+	)->Mapping:
+
+	v=outverb
+	if outverb not in range(0,3):
+		v=2
 
 	new_asset={
 		"_id":asset_id,
@@ -93,27 +86,104 @@ async def dbi_assets_CreateAsset(
 
 	try:
 		tgtcol:AsyncIOMotorCollection=rdbc[name_db][_COL_ASSETS]
-		await tgtcol.insert_one(
-			new_asset
-		)
-	except Exception as e:
-		print(e)
-		if rcopy:
-			return {}
-		return False
+		await tgtcol.insert_one(new_asset)
+	except Exception as exc:
+		return {"err":f"{exc}"}
 
-	if rcopy:
-		new_asset.pop("_id")
-		new_asset.update({"id":asset_id})
-		return new_asset
+	if v==0:
+		return {}
 
-	return True
+	if v==1:
+		return {"id":asset_id}
+
+	new_asset.pop("_id")
+	new_asset.update({"id":asset_id})
+	return new_asset
+
+async def dbi_assets_UpdateAssetMetadata(
+		rdbc:AsyncIOMotorClient,name_db:str,
+		asset_id:str,
+		asset_name:Optional[str],
+		asset_tag:Optional[str]=None,
+		asset_comment:Optional[str]=None,
+		ignore_name:bool=False,
+		ignore_tag:bool=False,
+		ignore_comment=False,
+	)->Mapping:
+
+	changes_set={}
+	changes_unset=[]
+
+	if not ignore_name:
+		name_ok=util_valid_str(asset_name)
+		if name_ok:
+			changes_set.update({"name":asset_name})
+		if not name_ok:
+			changes_set.update({"name":asset_id})
+
+	if not ignore_tag:
+		tag_ok=util_valid_str(asset_tag)
+		if tag_ok:
+			changes_set.update({"tag":asset_tag})
+		if not tag_ok:
+			# changes_unset.update({"$unset":{"tag":1}})
+			changes_unset.append("tag")
+
+	if not ignore_comment:
+		comment_ok=util_valid_str(asset_comment)
+		if comment_ok:
+			changes_set.update({"comment":asset_comment})
+		if not comment_ok:
+			changes_unset.append("comment")
+
+	if len(changes_set)==0 and changes_unset==0:
+		return {"err":"Nothing to change"}
+
+	aggr_pipeline=[{"$match":{"_id":asset_id}}]
+
+	if len(changes_set)>0:
+		aggr_pipeline.append({"$set":changes_set})
+
+	if len(changes_unset)>0:
+		aggr_pipeline.append({"$unset":changes_unset})
+
+	# TODO: it should be dropped.....
+	# https://www.mongodb.com/docs/manual/reference/operator/aggregation/merge/
+
+	print("\nAGGREGATION PIPELINE:",aggr_pipeline)
+
+	aggr_pipeline.append(
+		{
+			"$merge":{
+				"into":_COL_ASSETS,
+				"whenMatched":"replace",
+				"whenNotMatched":"insert"
+			}
+		}
+	)
+
+	# print("PIPELINE:",aggr_pipeline)
+
+	try:
+		col:AsyncIOMotorCollection=rdbc[name_db][_COL_ASSETS]
+		cursor:AsyncIOMotorCursor=col.aggregate(aggr_pipeline)
+		async for x in cursor:
+			pass
+
+	except Exception as exc:
+		return {"err":f"{exc}"}
+
+	# print(cursor)
+
+	return {}
 
 async def dbi_assets_AssetQuery(
 		rdbc:AsyncIOMotorClient,name_db:str,
 		asset_id:Optional[str]=None,
 		asset_sign:Optional[str]=None,
 		asset_tag:Optional[str]=None,
+		get_sign:bool=False,
+		get_tag:bool=False,
 		get_comment:bool=False,
 		get_total:bool=False,
 		get_history:bool=False,
@@ -121,16 +191,24 @@ async def dbi_assets_AssetQuery(
 
 	only_one=isinstance(asset_id,str)
 
+	spec_sign=isinstance(asset_sign,str)
+	spec_tag=isinstance(asset_tag,str)
+
 	find_match={}
 	projection={"_id":1,"name":1}
 	if isinstance(asset_id,str):
 		find_match.update({"_id":asset_id})
-	if isinstance(asset_tag,str):
+	if spec_tag:
 		find_match.update({"tag":asset_tag})
 		projection.update({"tag":asset_tag})
-	if isinstance(asset_sign,str):
+	if spec_sign:
 		find_match.update({"sign":asset_sign})
 		projection.update({"sign":asset_sign})
+
+	if get_sign and (not spec_sign):
+		projection.update({"sign":1})
+	if get_tag and (not spec_tag):
+		projection.update({"tag":1})
 	if get_comment:
 		projection.update({"comment":1})
 	if get_total or get_history:
@@ -138,7 +216,6 @@ async def dbi_assets_AssetQuery(
 
 	list_of_assets=[]
 	try:
-		# database=rdbc.get_database(name_db)
 		tgtcol=rdbc[name_db][_COL_ASSETS]
 		cursor:AsyncIOMotorCursor=tgtcol.aggregate([
 			{"$match":find_match},
@@ -148,11 +225,12 @@ async def dbi_assets_AssetQuery(
 		async for asset in cursor:
 			list_of_assets.append(asset)
 
-	except Exception as e:
-		print(e)
+	except Exception as exc:
 		if only_one:
-			return {}
+			return {"err":f"{exc}"}
 
+		# NOTE: Never remove this
+		print(exc)
 		return []
 
 	if get_total:
@@ -166,8 +244,12 @@ async def dbi_assets_AssetQuery(
 
 async def dbi_assets_DropAsset(
 		rdbc:AsyncIOMotorClient,name_db:str,
-		asset_id:str,rcopy:bool=False
-	)->Union[bool,Mapping]:
+		asset_id:str,outverb:int=2
+	)->Mapping:
+
+	v=outverb
+	if outverb not in range(0,3):
+		v=2
 
 	result:Optional[Mapping]=None
 	try:
@@ -175,25 +257,16 @@ async def dbi_assets_DropAsset(
 		result=await tgtcol.find_one_and_delete(
 			{"_id":asset_id}
 		)
-	except Exception as e:
-		print(e)
-		if rcopy:
-			return {}
+	except Exception as exc:
+		return {"err":f"{exc}"}
 
-		return False
+	if v==0:
+		return {}
 
-	if not isinstance(result,(dict,Mapping)):
-		if rcopy:
-			return {}
+	if v==1:
+		return {"id":asset_id}
 
-		return False
-
-	if rcopy:
-		result.pop("_id")
-		result.update({"id":asset_id})
-		return result
-
-	return True
+	return result
 
 async def dbi_assets_ModEv_Add(
 		rdbc:AsyncIOMotorClient,name_db:str,
@@ -201,217 +274,275 @@ async def dbi_assets_ModEv_Add(
 		modev_sign:str,
 		modev_mod:int,
 		modev_tag:Optional[str]=None,
-		modev_comment:Optional[str]=None
-	)->Optional[tuple]:
+		modev_comment:Optional[str]=None,
+		outverb:int=2
+	)->Mapping:
+
+	v=outverb
+	if outverb not in range(0,3):
+		v=2
 
 	modev_date=util_rnow()
 	modev_uid=secrets.token_hex(8)
 
-	qmr_object={
+	modev_object={
 		"date":modev_date,
 		"mod":modev_mod,
 		"sign":modev_sign,
 	}
 
 	if isinstance(modev_tag,str):
-		qmr_object.update({"tag":modev_tag})
+		modev_object.update({"tag":modev_tag})
 
 	if isinstance(modev_comment,str):
-		qmr_object.update({"comment":modev_comment})
+		modev_object.update({"comment":modev_comment})
+
+	res:Optional[UpdateResult]=None
 
 	try:
 		col:AsyncIOMotorCollection=rdbc[name_db][_COL_ASSETS]
-		await col.update_one(
+		res=await col.update_one(
 			{"_id":asset_id},
 			{
 				"$set":{
-					f"history.{modev_uid}":qmr_object
+					f"history.{modev_uid}":modev_object
 				}
 			}
 		)
 
 	except Exception as exc:
-		print(exc)
-		return None
+		return {"err":f"{exc}"}
 
-	return (modev_uid,modev_date)
+	if res.modified_count==0:
+		return {"err":"???"}
 
-# async def dbi_assets_ModEv_Add_old(
-# 		rdbc:AsyncIOMotorClient,name_db:str,
-# 		asset_id:str,
-# 		modev_sign:str,
-# 		modev_mod:int,
-# 		modev_tag:Optional[str]=None,
-# 		modev_comment:Optional[str]=None
-# 	)->Optional[tuple]:
+	if v==0:
+		return {}
 
-# 	modev_date=util_rnow()
-# 	modev_uid=secrets.token_hex(8)
+	if v==1:
+		return {
+			"uid":modev_uid,
+			"date":modev_date
+		}
 
-# 	qmr_object={
-# 		"_id":modev_uid,
+	modev_object.update({"uid":modev_uid})
+
+	return modev_object
+
+# NOTE: Use in the future
+# def util_modev_filter(
+# 		modev_uid:str,
+# 		data:Mapping,
+# 		filter_uid:Optional[str]=None,
+# 		filter_date:Optional[str]=None,
+# 		filter_sign:Optional[str]=None,
+# 		filter_tag:Optional[str]=None
+# 	)->list:
+
+# 	modev_date:Optional[str]=data.get("date")
+# 	modev_sign:Optional[str]=data.get("sign")
+# 	modev_mod:Optional[int]=data.get("mod")
+
+# 	if not isinstance(modev_date,str):
+# 		return []
+
+# 	if not isinstance(modev_sign,str):
+# 		return []
+
+# 	if not isinstance(modev_mod,int):
+# 		return []
+
+# 	if isinstance(filter_uid,str):
+# 		if not filter_uid==modev_uid:
+# 			return []
+
+# 	if isinstance(filter_date,str):
+# 		if not modev_date.startswith(filter_date):
+# 			return []
+
+# 	if isinstance(filter_sign,str):
+# 		if not modev_sign==filter_sign:
+# 			return []
+
+# 	modev_tag:Optional[str]=data.get("tag")
+# 	if isinstance(filter_tag,str):
+# 		if not modev_tag==filter_tag:
+# 			return []
+
+# 	data_ok={
+# 		"uid":modev_uid,
 # 		"date":modev_date,
-# 		"mod":modev_mod,
 # 		"sign":modev_sign,
+# 		"mod":modev_mod
 # 	}
 
 # 	if isinstance(modev_tag,str):
-# 		qmr_object.update({"tag":modev_tag})
+# 		data_ok.update(
+# 			{"tag":modev_tag}
+# 		)
 
+# 	modev_comment:Optional[str]=data.get("comment")
 # 	if isinstance(modev_comment,str):
-# 		qmr_object.update({"comment":modev_comment})
+# 		data_ok.update(
+# 			{"comment":modev_comment}
+# 		)
+
+# 	return [data_ok]
+
+# NOTE: Use in the future
+# async def dbi_assets_ModEv_Filter(
+# 		rdbc:AsyncIOMotorClient,name_db:str,
+# 		asset_id:str,
+# 		modev_sign:Optional[str]=None,
+# 		modev_uid:Optional[str]=None,
+# 		modev_tag:Optional[str]=None,
+# 		modev_date:Optional[str]=None,
+# 	)->list:
+
+# 	results=None
+
+# 	# TODO: Learn how to optimize with MQL
 
 # 	try:
-# 		await rdbc[name_db][_COL_ASSETS].update_one(
+# 		tgtcol:AsyncIOMotorCollection=rdbc[name_db][_COL_ASSETS]
+# 		results=await tgtcol.find_one(
 # 			{"_id":asset_id},
-# 			{"$set":{"history":qmr_object}}
+# 			{"history":1,"_id":0}
 # 		)
-# 	except Exception as e:
-# 		print(e)
-# 		return None
 
-# 	return (modev_uid,modev_date)
+# 	except Exception as exc:
+# 		print(exc)
+# 		return []
 
+# 	if "history" not in results.keys():
+# 		return []
 
-def util_modev_filter(
-		modev_uid:str,
-		data:Mapping,
-		filter_uid:Optional[str]=None,
-		filter_date:Optional[str]=None,
-		filter_sign:Optional[str]=None,
-		filter_tag:Optional[str]=None
-	)->list:
+# 	if not isinstance(results["history"],list):
+# 		return []
 
-	modev_date:Optional[str]=data.get("date")
-	modev_sign:Optional[str]=data.get("sign")
-	modev_mod:Optional[int]=data.get("mod")
+# 	results_ok=[]
 
-	if not isinstance(modev_date,str):
-		return []
+# 	for key in results["history"]:
 
-	if not isinstance(modev_sign,str):
-		return []
+# 		results_ok.extend(
+# 			util_modev_filter(
+# 				key,
+# 				results["history"][key],
+# 				filter_uid=modev_uid,
+# 				filter_sign=modev_sign,
+# 				filter_date=modev_date,
+# 				filter_tag=modev_tag
+# 			)
+# 		)
 
-	if not isinstance(modev_mod,int):
-		return []
+# 	return results_ok
 
-	if isinstance(filter_uid,str):
-		if not filter_uid==modev_uid:
-			return []
+if __name__=="__main__":
 
-	if isinstance(filter_date,str):
-		if not modev_date.startswith(filter_date):
-			return []
+	import asyncio
 
-	if isinstance(filter_sign,str):
-		if not modev_sign==filter_sign:
-			return []
+	from motor.motor_asyncio import AsyncIOMotorClient
+	from openpyxl import Workbook
+	from openpyxl.cell.cell import Cell
+	from openpyxl.comments import Comment
+	from openpyxl.worksheet.worksheet import Worksheet
+	from pathlib import Path
 
-	modev_tag:Optional[str]=data.get("tag")
-	if isinstance(filter_tag,str):
-		if not modev_tag==filter_tag:
-			return []
+	from internals import util_excel_dectocol
 
-	data_ok={
-		"uid":modev_uid,
-		"date":modev_date,
-		"sign":modev_sign,
-		"mod":modev_mod
-	}
+	rdbc=AsyncIOMotorClient()
 
-	if isinstance(modev_tag,str):
-		data_ok.update(
-			{"tag":modev_tag}
+	all_assets=asyncio.run(
+		dbi_assets_AssetQuery(
+			rdbc,"my-inventory",
+			get_history=True
 		)
+	)
 
-	modev_comment:Optional[str]=data.get("comment")
-	if isinstance(modev_comment,str):
-		data_ok.update(
-			{"comment":modev_comment}
-		)
+	print(all_assets)
 
-	return [data_ok]
+	test_file=Path("TEST.xlsx")
+	if test_file.is_file():
+		test_file.unlink()
 
-async def dbi_assets_ModEv_Filter(
-		rdbc:AsyncIOMotorClient,name_db:str,
-		asset_id:str,
-		modev_sign:Optional[str]=None,
-		modev_uid:Optional[str]=None,
-		modev_tag:Optional[str]=None,
-		modev_date:Optional[str]=None,
-	)->list:
+	wb:Workbook=Workbook()
+	ws:Worksheet=wb.active
+	ws.title="Assets"
+	ws.append(["ID","Name","Total"])
+	row=1
+	for asset in all_assets:
+		row=row+1
 
-	results=None
+		asset_name=asset.get("name")
+		asset_id=asset.get("id")
 
-	# TODO: Learn how to optimize with MQL
+		ws[f"A{row}"]=asset_id
+		ws[f"B{row}"]=asset_name
 
-	try:
-		tgtcol:AsyncIOMotorCollection=rdbc[name_db][_COL_ASSETS]
-		results=await tgtcol.find_one(
-			{"_id":asset_id},
-			{"history":1,"_id":0}
-		)
+		has_history=isinstance(asset.get("history"),Mapping)
+		if not has_history:
+			ws[f"C{row}"]=0
+			continue
 
-	except Exception as exc:
-		print(exc)
-		return []
+		history_len=len(asset["history"])
+		if history_len==0:
+			ws[f"C{row}"]=0
+			continue
 
-	if "history" not in results.keys():
-		return []
+		col_start=4
+		col_end=col_start+history_len-1
 
-	if not isinstance(results["history"],list):
-		return []
+		ef=f"=SUM({util_excel_dectocol(col_start)}{row}:{util_excel_dectocol(col_end)}{row})"
 
-	results_ok=[]
+		ws[f"C{row}"]=ef
 
-	for key in results["history"]:
+		col_idx=-1
 
-		results_ok.extend(
-			util_modev_filter(
-				key,
-				results["history"][key],
-				filter_uid=modev_uid,
-				filter_sign=modev_sign,
-				filter_date=modev_date,
-				filter_tag=modev_tag
+		for uid in asset["history"]:
+
+			col_idx=col_idx+1
+
+			modev_mod=util_valid_int(
+				asset["history"][uid].get("mod")
 			)
-		)
 
-		# if isinstance(modev_uid,str):
-		# 	if not modev_uid==key:
-		# 		continue
+			modev_comment=util_valid_str(
+				asset["history"][uid].get("comment")
+			)
 
-		# if isinstance(modev_date,str):
-		# 	# res_field=res.get("date")
-		# 	res_field=results["history"][key].get("date")
-		# 	if not isinstance(res_field,str):
-		# 		continue
-		# 	if not res_field.startswith(modev_date):
-		# 		continue
+			modev_date=util_valid_date(
+				asset["history"][uid].get("date")
+			)
 
-		# if isinstance(modev_sign,str):
-		# 	res_field=results["history"][key].get("sign")
-		# 	if not isinstance(res_field,str):
-		# 		continue
-		# 	if not res_field==modev_sign:
-		# 		continue
+			cell_comment=(
+				f"UID:\n"
+				f"{uid}"
+			)
 
-		# if isinstance(modev_tag,str):
-		# 	res_field=results["history"][key].get("tag")
-		# 	if not isinstance(res_field,str):
-		# 		continue
-		# 	if not res_field==modev_tag:
-		# 		continue
+			if modev_date is not None:
+				cell_comment=(
+					f"{cell_comment}\n"
+					f"DATE:\n"
+					f"{modev_date}"
+				)
 
-		# real_id=res.pop("_id")
-		# res.update({"uid":real_id})
+			if modev_comment is not None:
+				cell_comment=(
+					f"{cell_comment}" "\n\n"
+					f"{modev_comment}"
+				)
 
-		# print("RECOVERED:",res)
+			if modev_mod is None:
+				cell_comment=(
+					f"{cell_comment}\n\n(WARNING)"
+				)
 
-		# results_ok.append({
-		# 	"uid":key,
-		# 	"mod":"lol"
-		# })
+			tgt_cell:Cell=ws[f"{util_excel_dectocol(col_start+col_idx)}{row}"]
+			tgt_cell.value=modev_mod
+			tgt_cell.comment=Comment(
+				cell_comment,
+				"?",
+				height=160,width=160
+			)
 
-	return results_ok
-
+	wb.save(test_file.name)

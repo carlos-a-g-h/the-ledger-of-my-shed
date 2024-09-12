@@ -3,11 +3,10 @@ div.common,
 button.common,
 button.popup-button,
 input.common,
-textarea.common {
+textarea.common,
+summary.common {
   padding-top:6px;
   padding-bottom:6px;
-  padding-left:12px;
-  padding-right:12px;
   margin-bottom:8px;
   margin-top:8px;
 }
@@ -18,6 +17,8 @@ button.popup-button,
 div.common,
 input.common,
 textarea.common {
+  padding-left:12px;
+  padding-right:12px;
   background-color:white;
   color:black;
 }

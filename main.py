@@ -30,6 +30,7 @@ from control_assets import route_api_select_asset as route_Assets_api_GetAsset
 from control_assets import route_fgmt_asset_editor as route_Assets_fgmt_EditAsset
 from control_assets import route_fgmt_new_asset as route_Assets_fgmt_NewAsset
 from control_assets import route_api_new_asset as route_Assets_api_NewAsset
+from control_assets import route_api_asset_metadata_change as route_Assets_api_ChangeMetadata
 from control_assets import route_fgmt_search_assets as route_Assets_fgmt_SearchAssets
 from control_assets import route_api_search_assets as route_Assets_api_SearchAssets
 from control_assets import route_api_drop_asset as route_Assets_api_DropAsset
@@ -56,8 +57,8 @@ from internals import util_valid_str
 def read_config(path_config:Path)->dict:
 
 	print(
-		"Reading config:",
-		path_config.absolute()
+		"CFG File:\n"
+		f"\t{path_config.absolute()}\n"
 	)
 
 	rawconfig=read_yaml_file(path_config)
@@ -143,10 +144,9 @@ def build_app(
 
 	has_connection_url=isinstance(rdb_name,str)
 	if has_connection_url:
-		print(
-			"Connecting to a local MongoDB database"
-		)
+		print("Connecting to a local MongoDB database")
 		app["rdbc"]=AsyncIOMotorClient()
+
 	if not has_connection_url:
 		print(
 			"Connecting to a remote MongoDB database:",
@@ -213,6 +213,10 @@ def build_app(
 				web_POST(
 					"/api/assets/select/{asset_id}",
 					route_Assets_api_GetAsset
+				),
+				web_POST(
+					"/api/assets/change-metadata",
+					route_Assets_api_ChangeMetadata
 				),
 
 			web_DELETE(
@@ -319,7 +323,6 @@ def build_app(
 	])
 
 	app.on_startup.append(init_assets_cache)
-
 	return app
 
 if __name__=="__main__":

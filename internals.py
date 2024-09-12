@@ -12,6 +12,34 @@ from yaml import load as yaml_load
 from yaml import dump as yaml_dump
 from yaml import Dumper as yaml_Dumper
 
+_excel_columns=[
+	"Z",
+	"A","B","C",
+	"D","E","F",
+	"G","H","I",
+	"J","K","L",
+	"M","N","O",
+	"P","Q","R",
+	"S","T","U",
+	"V","W","X",
+	"Y",
+]
+
+def util_excel_dectocol(decimal_start:int):
+
+	table_size=len(_excel_columns)
+
+	result:str=""
+	decimal:int=decimal_start
+
+	while decimal>0:
+
+		remainder=decimal%table_size
+		result=f"{_excel_columns[remainder]}{result}"
+		decimal=decimal//table_size
+	
+	return result
+
 def util_valid_date(
 		dt_string:str,
 		get_dt:bool=False
@@ -152,7 +180,7 @@ def util_valid_bool(
 
 	data_lowered=data.strip().lower()
 
-	if data_lowered=="true":
+	if data_lowered=="true" or data_lowered=="on":
 		return True
 
 	if data_lowered=="false":
