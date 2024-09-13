@@ -29,7 +29,7 @@ from control_Any import response_errormsg
 
 # from control_assets_cache import _CACHE_ASSETS
 
-from dbi_assets import dbi_assets_UpdateAssetMetadata
+from dbi_assets import dbi_assets_ChangeAssetMetadata
 from dbi_assets import dbi_assets_CreateAsset
 from dbi_assets import dbi_assets_AssetQuery
 from dbi_assets import dbi_assets_DropAsset
@@ -548,7 +548,7 @@ async def route_api_asset_metadata_change(
 		request_data.get("ignore-comment"),
 		dval=False
 	)
-	result=await dbi_assets_UpdateAssetMetadata(
+	result=await dbi_assets_ChangeAssetMetadata(
 		request.app["rdbc"],request.app["rdbn"],
 		asset_id,asset_name,asset_tag,asset_comment,
 		ignore_name,ignore_tag,ignore_comment
