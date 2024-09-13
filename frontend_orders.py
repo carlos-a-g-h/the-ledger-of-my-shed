@@ -135,28 +135,49 @@ def write_form_update_asset_in_order(
 	)->str:
 
 	tl={
-		_LANG_EN:"Update",
-		_LANG_ES:"Actualizar"
+		_LANG_EN:"Algebraic sum",
+		_LANG_ES:"Suma algebraica"
 	}[lang]
+
 	html_text=(
 		f"""<form hx-post="/api/orders/current/{order_id}/update" """
 			"""hx-target="#messages" """
 			"""hx-swap="innerHTML" """
 			">\n"
 
-			"<div>\n"
-
-				f"""<div class="{_CSS_CLASS_HORIZONTAL}">"""
-					# f"""<input type="hidden" name="id" value="{order_id}">"""
-					f"""<input type="hidden" name="asset" value="{asset_id}">"""
-					f"""<input type="number" name="imod" value=0 class="{_CSS_CLASS_COMMON}">"""
-				"</div>\n"
+			"<div>\n\n"
 
 				f"""<div class="{_CSS_CLASS_HORIZONTAL}">"""
 					f"""<div class="{_CSS_CLASS_COMMON}">"""
 						f"<strong>{currmod}</strong>"
 					"</div>\n"
 				"</div>\n"
+
+				"\n"
+
+				f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
+					f"""<input type="hidden" name="asset" value="{asset_id}">""" "\n"
+					f"""<input type="number" name="imod" value=0 class="{_CSS_CLASS_COMMON}">""" "\n"
+				"</div>\n"
+
+				"\n"
+
+				f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
+					"""<input type=checkbox name="algsum">""" "\n"
+					f"""<label for="algsum">{tl}</label>"""
+				"</div>"
+
+				"\n"
+	)
+
+
+	tl={
+		_LANG_EN:"Update",
+		_LANG_ES:"Actualizar"
+	}[lang]
+
+	html_text=(
+		f"{html_text}\n"
 
 				f"""<div class="{_CSS_CLASS_HORIZONTAL}">"""
 				"\n"

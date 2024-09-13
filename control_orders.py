@@ -187,25 +187,30 @@ async def route_api_new_order(
 	)
 	order_id=token_hex(16)
 
-	ok=(
-		await dbi_orders_NewOrder(
-			request.app["rdbc"],
-			request.app["rdbn"],
-			order_id,order_sign,order_tag,
-			order_comment=order_comment,
+	outverb=1
+	if ct==_TYPE_CUSTOM:
+		outverb=util_valid_int(
+			req_data.get("v")
 		)
+
+	dbi_result=await dbi_orders_NewOrder(
+		request.app["rdbc"],
+		request.app["rdbn"],
+		order_id,order_sign,order_tag,
+		order_comment=order_comment,
+		outverb=outverb
 	)
-	if not ok:
-		return response_errormsg(
+	error_msg=dbi_result.get("err")
+	if error_msg is not None:
+		response_errormsg(
 			_ERR_TITLE_NEW_ORDER[lang],
-			_ERR_DETAIL_DBI_FAIL[lang],
+			f"{_ERR_DETAIL_DBI_FAIL[lang]}"
+			f": {error_msg}",
 			ct,status=406
 		)
 
 	if ct==_TYPE_CUSTOM:
-		return json_response(
-			data={"id":order_id}
-		)
+		return json_response(data=dbi_result)
 
 	tl={
 		_LANG_EN:"Most recent order",
@@ -455,12 +460,17 @@ async def route_api_update_asset_in_order(
 		reqdata.get("justbool"),dval=False
 	)
 
+	algsum=util_valid_bool(
+		reqdata.get("algsum"),dval=False
+	)
+
 	result=await dbi_orders_Editor_AssetPatch(
 		request.app["rdbc"],
 		request.app["rdbn"],
 		order_id,asset_id,
 		imod=imod,
-		justbool=justbool
+		justbool=justbool,
+		algsum=algsum
 	)
 	if not result:
 		return response_errormsg(

@@ -26,7 +26,12 @@ async def dbi_orders_NewOrder(
 		rdbc:AsyncIOMotorClient,name_db:str,
 		order_id:str,order_sign:str,order_tag:str,
 		order_comment:Optional[str]=None,
-	)->bool:
+		outverb:int=2,
+	)->Mapping:
+
+	v=outverb
+	if outverb not in range(0,3):
+		v=2
 
 	new_order={
 		"_id":order_id,
@@ -40,16 +45,21 @@ async def dbi_orders_NewOrder(
 		})
 
 	try:
-		print(
-			await rdbc[name_db][_COL_ORDERS].insert_one(
-				new_order
-			)
-		)
-	except Exception as e:
-		print("ERROR:",e)
-		return False
+		tgtcol:AsyncIOMotorCollection=rdbc[name_db][_COL_ORDERS]
+		await tgtcol.insert_one(new_order)
+	except Exception as exc:
+		return {"error":f"{exc}"}
 
-	return True
+	if v==0:
+		return {}
+
+	if v==1:
+		return {"id":order_id}
+
+	new_order.pop("_id")
+	new_order.update({"id":order_id})
+
+	return new_order
 
 async def dbi_orders_GetOrders(
 		rdbc:AsyncIOMotorClient,
@@ -77,9 +87,6 @@ async def dbi_orders_GetOrders(
 		agg_params.append(
 			{
 				"$project":{
-					# "_id":1,
-					# "sign":1,
-					# "tag":1,
 					"assets":0
 				}
 			}
@@ -98,10 +105,9 @@ async def dbi_orders_GetOrders(
 			list_of_orders.append(order)
 			print("\t-",list_of_orders[-1])
 
-	except Exception as e:
-		print("ERROR:",e)
+	except Exception as exc:
 		if only_one:
-			return {}
+			return {"err":f"{exc}"}
 
 		return []
 
@@ -161,14 +167,20 @@ async def dbi_orders_Editor_AssetPatch(
 		rdbc:AsyncIOMotorClient,name_db:str,
 		order_id:str,asset_id:str,
 		imod:int=0,justbool:bool=False,
+		algsum:bool=True,
 	)->Union[bool,Mapping]:
+
+	what_to_do={
+		False:"$set",
+		True:"$inc"
+	}[algsum]
 
 	try:
 		print(
 			"\t",
 			await rdbc[name_db][_COL_ORDERS].update_one(
 				{"_id":order_id},
-				{"$inc":{f"assets.{asset_id}":imod}}
+				{what_to_do:{f"assets.{asset_id}":imod}}
 			)
 		)
 	except Exception as e:
@@ -277,8 +289,6 @@ async def dbi_Orders_ApplyOrder(
 		if not isinstance(the_mod,int):
 			continue
 
-		# print(asset_id,the_mod)
-
 		total_ops=total_ops+1
 		bulk_write_ops.append(
 			UpdateOne(
@@ -292,16 +302,6 @@ async def dbi_Orders_ApplyOrder(
 							"mod":the_mod
 						}
 					}
-
-					# "$push":{
-					# 	"history":{
-					# 		"_id":order_id,
-					# 		"date":the_date,
-					# 		"sign":the_sign,
-					# 		"tag":the_tag,
-					# 		"mod":the_mod
-					# 	}
-					# }
 				}
 			)
 		)
