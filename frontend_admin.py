@@ -2,17 +2,8 @@
 
 from frontend_Any import _LANG_EN,_LANG_ES
 
-# from frontend_Any import _CSS_CLASS_BUTTON
-# from frontend_Any import _CSS_CLASS_DANGER
-# from frontend_Any import _CSS_CLASS_INPUT
-
 from frontend_Any import _CSS_CLASS_COMMON
 from frontend_Any import _CSS_CLASS_HORIZONTAL
-
-_LABEL_APPLY={
-	_LANG_EN:"Apply",
-	_LANG_ES:"Aplicar"
-}
 
 def write_form_update_config(lang:str)->str:
 
@@ -90,12 +81,14 @@ def write_form_update_config(lang:str)->str:
 
 	return (
 			f"{html_text}\n"
+
 			"""<button """
 				"""type="submit" """
 				f"""class="{_CSS_CLASS_COMMON}" """
 				">"
 				f"{tl}"
-			"</button>"
+			"</button>" "\n"
+
 		"</form>"
 	)
 

@@ -654,33 +654,6 @@ def write_html_modev_history(
 			f"{write_html_modev(lang,history[modev_id])}"
 		)
 
-	# 	lang:str,history:list,
-	# )->str:
-
-	# html_text=""
-
-	# zero=True
-	# size=len(history)
-	# if size>0:
-	# 	zero=False
-	# 	while True:
-	# 		size=size-1
-	# 		if size<0:
-	# 			break
-	# 		html_text=(
-	# 			f"{html_text}\n"
-			# )+write_html_modev(
-			# 	lang,history[size]
-			# )
-
-	# if zero:
-	# 	html_text=(
-	# 		f"{html_text}\n"
-	# 	)+"<p>"+{
-	# 		_LANG_EN:"History is empty/unknown",
-	# 		_LANG_ES:"Historial vacío/desconocido"
-	# 	}[lang]+"</p>"
-
 	return html_text
 
 def write_html_asset_info(
@@ -740,7 +713,7 @@ def write_html_asset_info(
 
 	if full:
 		html_text=(
-			f"""<div id="asset-{asset_id}-info">"""
+			f"""<div id="asset-{asset_id}-info">""" "\n"
 				f"{html_text}\n"
 			"</div>"
 		)
@@ -778,7 +751,7 @@ def write_html_asset(
 	if fullview:
 		html_text=(
 			f"{html_text}\n"
-			f"{write_form_edit_asset_metadata(lang,asset_id)}\n"
+			f"{write_form_edit_asset_metadata(lang,asset_id)}"
 		)
 
 	# actions
@@ -811,9 +784,6 @@ def write_html_asset(
 			_LANG_ES:"Historial"
 		}[lang]
 		html_modev_history=write_html_modev_history(
-			# lang,util_valid_list(
-			# 	data.get("history"),True
-			# )
 			lang,data.get("history")
 		)
 		html_text=(
@@ -821,7 +791,7 @@ def write_html_asset(
 			f"<h3>{tl}</h3>\n"
 			f"""<div id="asset-{asset_id}-history-ctl" class="{_CSS_CLASS_COMMON}">""" "\n"
 				f"{write_form_add_modev(lang,asset_id)}\n"
-			"</div>"
+			"</div>\n"
 			f"""<div id="asset-{asset_id}-history">""" "\n"
 				f"{html_modev_history}\n"
 			"</div>"
@@ -834,7 +804,7 @@ def write_html_list_of_assets(
 		order_id:Optional[str]=None
 	)->str:
 
-	html_text="""<div id="list-of-assets">""" "\n"
+	html_text="""<div id="list-of-assets">"""
 
 	empty=(len(assetlist)==0)
 
@@ -845,9 +815,7 @@ def write_html_list_of_assets(
 		}[lang]
 		html_text=(
 			f"{html_text}\n"
-			"<div>\n"
-				f"{tl}\n"
-			"</div>"
+			f"<div>{tl}</div>"
 		)
 
 	if not empty:

@@ -276,14 +276,9 @@ async def route_fgmt_new_asset(
 	)->Union[json_response,Response]:
 
 	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
 
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
-
-	if ct==_TYPE_CUSTOM:
-		return json_response(data={})
 
 	lang=request.app["lang"]
 
@@ -305,8 +300,6 @@ async def route_fgmt_search_assets(
 	)->Union[json_response,Response]:
 
 	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
 
 	in_assets_page=assert_referer(ct,request,_ROUTE_PAGE)
 	in_orders_page=assert_referer(ct,request,"/page/orders")
@@ -363,7 +356,7 @@ async def route_api_new_asset(
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
-	lang=get_lang(ct,request.app["lang"])
+	lang=get_lang(ct,request)
 
 	request_data=await get_request_body_dict(ct,request)
 	if not request_data:
@@ -503,10 +496,8 @@ async def route_api_asset_metadata_change(
 	)->Union[json_response,Response]:
 
 	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
 
-	lang=get_lang(ct,request.app["lang"])
+	lang=get_lang(ct,request)
 
 	request_data=await get_request_body_dict(ct,request)
 	if not isinstance(request_data,Mapping):
@@ -605,16 +596,11 @@ async def route_api_asset_metadata_change(
 		content_type=_MIMETYPE_HTML
 	)
 
-
-
 async def route_api_select_asset(
 		request:Request
 	)->Union[json_response,Response]:
 
 	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
-
 	if not ct==_TYPE_CUSTOM:
 		return Response(status=406)
 
@@ -667,12 +653,6 @@ async def route_fgmt_asset_editor(
 	)->Union[json_response,Response]:
 
 	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
-
-	if ct==_TYPE_CUSTOM:
-		return json_response(data={})
-
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
@@ -748,8 +728,6 @@ async def route_api_search_assets(
 	)->Union[json_response,Response]:
 
 	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
 
 	# NOTE: What a f***ing mess
 	in_assets_page=assert_referer(ct,request,_ROUTE_PAGE)
@@ -757,7 +735,7 @@ async def route_api_search_assets(
 	if not (in_assets_page or in_orders_page):
 		return Response(status=406)
 
-	lang=get_lang(ct,request.app["lang"])
+	lang=get_lang(ct,request)
 
 	request_data=await get_request_body_dict(ct,request)
 	if not request_data:
@@ -898,13 +876,10 @@ async def route_api_drop_asset(
 	)->Union[json_response,Response]:
 
 	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
-
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
-	lang=get_lang(ct,request.app["lang"])
+	lang=get_lang(ct,request)
 
 	request_data=await get_request_body_dict(ct,request)
 	print("DELETE",request_data)
@@ -981,13 +956,10 @@ async def route_api_add_modev(
 	)->Union[json_response,Response]:
 
 	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
-
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
-	lang=get_lang(ct,request.app["lang"])
+	lang=get_lang(ct,request)
 
 	request_data=await get_request_body_dict(ct,request)
 	if not request_data:
@@ -1113,9 +1085,6 @@ async def route_main(
 	)->Union[json_response,Response]:
 
 	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
-
 	if ct==_TYPE_CUSTOM:
 		return json_response(data={})
 
@@ -1137,7 +1106,7 @@ async def route_main(
 			page_title,
 			(
 				f"<h1>{page_title}</h1>\n"
-				f"<p>{tl}</p>"
+				f"<p>{tl}</p>\n"
 				f"""<p>{write_link_homepage(lang)}</p>""" "\n"
 				"""<section id="navigation">""" "\n"
 					f"{write_ul([write_button_nav_search_assets(lang),write_button_nav_new_asset(lang)])}\n"
