@@ -249,7 +249,7 @@ async def route_main(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"""<p>{write_link_homepage(lang)}</p>""" "\n"
+		f"{write_link_homepage(lang)}\n"
 		"""<section id="main">"""
 			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
 				f"{write_form_update_config(lang)}\n"

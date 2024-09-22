@@ -14,8 +14,10 @@ import yarl
 from frontend_Any import _LANG_EN
 from frontend_Any import _LANG_ES
 from frontend_Any import _CSS_CLASS_COMMON
+from frontend_Any import _CSS_CLASS_TITLE_UNIQUE
 from frontend_Any import write_popupmsg
 from frontend_Any import write_fullpage
+from frontend_Any import write_button_anchor
 
 from internals import util_valid_str
 
@@ -308,35 +310,25 @@ async def route_main(
 		_LANG_EN:"Welcome",
 		_LANG_ES:"Bienvenid@"
 	}[lang]
-
-	html_text=f"<h1>{tl}</h1>"
+	html_text=f"""<h1 class="{_CSS_CLASS_TITLE_UNIQUE}">{tl}</h1>"""
 
 	tl={
 		_LANG_EN:"Basic asset manager",
 		_LANG_ES:"Gestor básico de activos"
 	}[lang]
-	html_text=(
-		f"{html_text}\n"
-		f"""<p><a class="{_CSS_CLASS_COMMON}" href="/page/assets">- {tl} -</a></p>"""
-	)
+	html_text=f"{html_text}\n"+write_button_anchor(tl,"/page/assets")
 
 	tl={
 		_LANG_EN:"Order book",
 		_LANG_ES:"Libro de órdenes"
 	}[lang]
-	html_text=(
-		f"{html_text}\n"
-		f"""<p><a class="{_CSS_CLASS_COMMON}" href="/page/orders">- {tl} -</a></p>"""
-	)
+	html_text=f"{html_text}\n"+write_button_anchor(tl,"/page/orders")
 
 	tl={
 		_LANG_EN:"System administration",
 		_LANG_ES:"Administración del sistema"
 	}[lang]
-	html_text=(
-		f"{html_text}\n"
-		f"""<p><a class="{_CSS_CLASS_COMMON}" href="/page/admin">- {tl} -</a></p>"""
-	)
+	html_text=f"{html_text}\n"+write_button_anchor(tl,"/page/admin")
 
 	return Response(
 		body=write_fullpage(

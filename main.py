@@ -35,7 +35,8 @@ from control_assets import route_api_asset_metadata_change as route_Assets_api_C
 from control_assets import route_fgmt_search_assets as route_Assets_fgmt_SearchAssets
 from control_assets import route_api_search_assets as route_Assets_api_SearchAssets
 from control_assets import route_api_drop_asset as route_Assets_api_DropAsset
-from control_assets import route_api_add_modev as route_Assets_api_AddModEv
+from control_assets import route_api_add_record as route_Assets_api_AddRecord
+from control_assets import route_api_get_record as route_Assets_api_GetRecord
 from control_assets import util_update_known_assets as init_assets_cache
 
 from control_orders import _ROUTE_PAGE as _ROUTE_PAGE_ORDERS
@@ -144,8 +145,13 @@ async def mware_factory(app,handler):
 		if not isinstance(ct,str):
 			return Response(status=406)
 
-		if request.path.startswith("/fgmt/"):
-			if ct==_TYPE_CUSTOM:
+		if ct==_TYPE_CUSTOM:
+
+			if (
+				request.path=="/" or
+				request.path.startswith("/page/") or
+				request.path.startswith("/fgmt/")
+			):
 				return json_response(data={})
 
 		return (
@@ -254,8 +260,13 @@ def build_app(
 
 			web_POST(
 				"/api/assets/history/{asset_id}/add",
-				route_Assets_api_AddModEv
+				route_Assets_api_AddRecord
 			),
+				web_GET(
+					"/api/assets/history/{asset_id}/records/{record_uid}",
+					route_Assets_api_GetRecord
+				),
+
 
 		# ORDERS
 
@@ -341,11 +352,11 @@ def build_app(
 
 		# web_GET(
 		# 	"/api/assets/select/{asset_id}/modev-view/{modev_date}/{modev_uid}",
-		# 	route_Assets_api_GetModEv
+		# 	route_Assets_api_GetRecord
 		# ),
 		# web_DELETE(
 		# 	"/api/assets/select/{asset_id}/modev-drop",
-		# 	route_Assets_api_DropModEv
+		# 	route_Assets_api_DropRecord
 		# )
 
 	])

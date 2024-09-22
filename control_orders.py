@@ -41,6 +41,7 @@ from frontend_Any import _LANG_ES
 from frontend_Any import _CSS_CLASS_COMMON
 # from frontend_Any import _CSS_CLASS_DANGER
 from frontend_Any import _CSS_CLASS_HORIZONTAL
+from frontend_Any import _CSS_CLASS_TITLE
 from frontend_Any import write_fullpage
 from frontend_Any import write_popupmsg
 from frontend_Any import write_link_homepage
@@ -764,14 +765,16 @@ async def route_main(
 		body=write_fullpage(
 			lang,page_title,
 			(
-				f"<h1>{page_title}</h1>\n"
+				f"""<h1 class="{_CSS_CLASS_TITLE}">{page_title}</h1>""" "\n"
 				f"<p>{tl}</p>\n"
-				f"""<p>{write_link_homepage(lang)}</p>""" "\n"
+				f"{write_link_homepage(lang)}\n"
+				# f"""<p>{write_link_homepage(lang)}</p>""" "\n"
 				"""<section id="navigation">""" "\n"
-					"<ul>\n"
-						f"<li>\n{write_button_nav_new_order(lang)}\n</li>\n"
-						f"<li>\n{write_button_nav_list_orders(lang)}\n</li>\n"
-					"</ul>\n"
+					f"{write_ul([write_button_nav_new_order(lang),write_button_nav_list_orders(lang)])}\n"
+					# "<ul>\n"
+					# 	f"<li>\n{write_button_nav_new_order(lang)}\n</li>\n"
+					# 	f"<li>\n{write_button_nav_list_orders(lang)}\n</li>\n"
+					# "</ul>\n"
 				"</section>\n"
 				"""<section id="main-1">""" "\n"
 					"<!-- EMPTY -->\n"
