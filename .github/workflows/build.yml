@@ -55,9 +55,19 @@ jobs:
     name: Build and upload executable binary
     strategy:
       matrix:
+        include:
+          - os: "ubuntu-20.04"
+            pyver: "3.9.6"
+          - os: "ubuntu-22.04"
+            pyver: "3.9.20"
+          - os: "ubuntu-24.04"
+            pyver: "3.9.20"
+          - os: "windows-latest"
+            pyver: "3.9.13"
+
         # os: [ ubuntu-20.04 , windows-2019 ]
-        os: [ubuntu-20.04,ubuntu-22.04,ubuntu-24.04,windows-latest]
-        pyver: ["3.9.6","3.9.20","3.9.20","3.9.13"]
+        # os: [ubuntu-20.04,ubuntu-22.04,ubuntu-24.04,windows-latest]
+        # pyver: ["3.9.6","3.9.20","3.9.20","3.9.13"]
 
     runs-on: ${{ matrix.os }}
     steps:
