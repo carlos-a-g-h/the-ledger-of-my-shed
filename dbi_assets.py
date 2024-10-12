@@ -100,7 +100,7 @@ async def dbi_assets_CreateAsset(
 	new_asset.update({"id":asset_id})
 	return new_asset
 
-async def dbi_assets_UpdateAssetMetadata(
+async def dbi_assets_ChangeAssetMetadata(
 		rdbc:AsyncIOMotorClient,name_db:str,
 		asset_id:str,
 		asset_name:Optional[str],
@@ -136,7 +136,7 @@ async def dbi_assets_UpdateAssetMetadata(
 		if not comment_ok:
 			changes_unset.append("comment")
 
-	if len(changes_set)==0 and changes_unset==0:
+	if len(changes_set)==0 and len(changes_unset)==0:
 		return {"err":"Nothing to change"}
 
 	aggr_pipeline=[{"$match":{"_id":asset_id}}]

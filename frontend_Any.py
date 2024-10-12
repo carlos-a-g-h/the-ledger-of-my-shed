@@ -3,19 +3,42 @@
 _LANG_EN="en"
 _LANG_ES="es"
 
+_CSS_CLASS_TITLE_UNIQUE="title-uniq"
+_CSS_CLASS_TITLE="title"
+
 _CSS_CLASS_COMMON="common"
 _CSS_CLASS_HORIZONTAL="horizontal"
 
-# _CSS_CLASS_BUTTON="button"
 _CSS_CLASS_DANGER="danger"
-# _CSS_CLASS_INPUT_TEXT="input-text"
 
-def write_link_homepage(lang:str):
-	text={
-		_LANG_EN:"Back to homepage",
-		_LANG_ES:"Volver a la página principal"
-	}[lang]
-	return f"""<a class="{_CSS_CLASS_COMMON}" href="/">- {text} -</a>"""
+def write_button_anchor(label:str,link:str)->str:
+
+	return (
+		"<div>\n"
+			f"""<button class="{_CSS_CLASS_COMMON}" """
+				f"""onclick="location.href='{link}'" """
+				">"
+				f"{label}"
+			"</button>" "\n"
+
+			# f"""<form action="{link}">""" "\n"
+			# 	f"""<button class="{_CSS_CLASS_COMMON}">"""
+			# 		f"{label}"
+			# 	"</button>" "\n"
+			# "</form>\n"
+
+		"</div>"
+	)
+
+def write_link_homepage(lang:str)->str:
+
+	return write_button_anchor(
+		{
+			_LANG_EN:"Back to homepage",
+			_LANG_ES:"Volver a la página principal"
+		}[lang],
+		"/"
+	)
 
 def write_popupmsg(html_content:str)->str:
 	return (
@@ -109,6 +132,6 @@ def write_div_display_error(lang:str)->str:
 
 	return (
 			f"{html_text}\n"
-		"<div>"
+		"</div>"
 	)
 

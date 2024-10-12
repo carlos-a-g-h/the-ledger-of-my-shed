@@ -14,8 +14,10 @@ import yarl
 from frontend_Any import _LANG_EN
 from frontend_Any import _LANG_ES
 from frontend_Any import _CSS_CLASS_COMMON
+from frontend_Any import _CSS_CLASS_TITLE_UNIQUE
 from frontend_Any import write_popupmsg
 from frontend_Any import write_fullpage
+from frontend_Any import write_button_anchor
 
 from internals import util_valid_str
 
@@ -101,14 +103,20 @@ _ERR_DETAIL_DBI_FAIL={
 	_LANG_ES:"La operación falló o devolvió un resultado negativo"
 }
 
-def get_lang(ct:str,lang:str)->str:
+# def get_lang(ct:str,lang:str)->str:
+# 	if ct==_TYPE_CUSTOM:
+# 		return _LANG_EN
+# 	return lang
+
+def get_lang(ct:str,request:Request)->str:
 	if ct==_TYPE_CUSTOM:
 		return _LANG_EN
-	return lang
+
+	return request.app["lang"]
 
 def get_client_type(request:Request)->Optional[str]:
 
-	print("HEADERS:",request.headers)
+	# print("HEADERS:",request.headers)
 
 	accept:Optional[str]=request.headers.get("Accept")
 	if not isinstance(accept,str):
@@ -236,13 +244,6 @@ def response_errormsg(
 
 async def route_src(request)->Response:
 
-	#r=await guard_ip(request)
-	#if r is not None:
-	#	return r
-
-	# /src/{srctype}/filename
-	# srctype = "local" or "baked"
-
 	srctype=request.match_info["srctype"]
 	if srctype not in ("local","baked"):
 		return Response(status=406)
@@ -300,9 +301,6 @@ async def route_main(
 	)->Union[json_response,Response]:
 
 	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
-
 	if ct==_TYPE_CUSTOM:
 		return json_response(data={})
 
@@ -312,35 +310,25 @@ async def route_main(
 		_LANG_EN:"Welcome",
 		_LANG_ES:"Bienvenid@"
 	}[lang]
-
-	html_text=f"<h1>{tl}</h1>"
+	html_text=f"""<h1 class="{_CSS_CLASS_TITLE_UNIQUE}">{tl}</h1>"""
 
 	tl={
 		_LANG_EN:"Basic asset manager",
 		_LANG_ES:"Gestor básico de activos"
 	}[lang]
-	html_text=(
-		f"{html_text}\n"
-		f"""<p><a class="{_CSS_CLASS_COMMON}" href="/page/assets">- {tl} -</a></p>"""
-	)
+	html_text=f"{html_text}\n"+write_button_anchor(tl,"/page/assets")
 
 	tl={
 		_LANG_EN:"Order book",
 		_LANG_ES:"Libro de órdenes"
 	}[lang]
-	html_text=(
-		f"{html_text}\n"
-		f"""<p><a class="{_CSS_CLASS_COMMON}" href="/page/orders">- {tl} -</a></p>"""
-	)
+	html_text=f"{html_text}\n"+write_button_anchor(tl,"/page/orders")
 
 	tl={
 		_LANG_EN:"System administration",
 		_LANG_ES:"Administración del sistema"
 	}[lang]
-	html_text=(
-		f"{html_text}\n"
-		f"""<p><a class="{_CSS_CLASS_COMMON}" href="/page/admin">- {tl} -</a></p>"""
-	)
+	html_text=f"{html_text}\n"+write_button_anchor(tl,"/page/admin")
 
 	return Response(
 		body=write_fullpage(

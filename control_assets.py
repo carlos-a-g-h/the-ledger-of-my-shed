@@ -29,11 +29,12 @@ from control_Any import response_errormsg
 
 # from control_assets_cache import _CACHE_ASSETS
 
-from dbi_assets import dbi_assets_UpdateAssetMetadata
+from dbi_assets import dbi_assets_ChangeAssetMetadata
 from dbi_assets import dbi_assets_CreateAsset
 from dbi_assets import dbi_assets_AssetQuery
 from dbi_assets import dbi_assets_DropAsset
-from dbi_assets import dbi_assets_ModEv_Add
+from dbi_assets import dbi_assets_History_AddRecord
+from dbi_assets import dbi_assets_History_GetSingleRecord
 
 from frontend_Any import _LANG_EN
 from frontend_Any import _LANG_ES
@@ -48,8 +49,8 @@ from frontend_assets import write_button_nav_new_asset
 from frontend_assets import write_button_nav_search_assets
 from frontend_assets import write_form_new_asset
 from frontend_assets import write_form_search_assets
-from frontend_assets import write_form_add_modev
-from frontend_assets import write_html_modev
+from frontend_assets import write_form_add_record
+from frontend_assets import write_html_record
 from frontend_assets import write_html_asset
 from frontend_assets import write_html_asset_info
 from frontend_assets import write_html_list_of_assets
@@ -68,7 +69,7 @@ _ROUTE_PAGE="/page/assets"
 
 _CACHE_ASSETS="cache_assets"
 
-_ERR_TITLE_MODEV_MOD={
+_ERR_TITLE_record_MOD={
 	_LANG_EN:"History modification error",
 	_LANG_ES:"Error al modificar el historial"
 }
@@ -255,6 +256,8 @@ async def util_update_known_assets(app:Application)->bool:
 
 	size=len(dbi_result)
 
+	print(dbi_result)
+
 	if size==0:
 		return False
 
@@ -276,14 +279,9 @@ async def route_fgmt_new_asset(
 	)->Union[json_response,Response]:
 
 	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
 
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
-
-	if ct==_TYPE_CUSTOM:
-		return json_response(data={})
 
 	lang=request.app["lang"]
 
@@ -305,8 +303,6 @@ async def route_fgmt_search_assets(
 	)->Union[json_response,Response]:
 
 	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
 
 	in_assets_page=assert_referer(ct,request,_ROUTE_PAGE)
 	in_orders_page=assert_referer(ct,request,"/page/orders")
@@ -363,7 +359,7 @@ async def route_api_new_asset(
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
-	lang=get_lang(ct,request.app["lang"])
+	lang=get_lang(ct,request)
 
 	request_data=await get_request_body_dict(ct,request)
 	if not request_data:
@@ -503,10 +499,8 @@ async def route_api_asset_metadata_change(
 	)->Union[json_response,Response]:
 
 	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
 
-	lang=get_lang(ct,request.app["lang"])
+	lang=get_lang(ct,request)
 
 	request_data=await get_request_body_dict(ct,request)
 	if not isinstance(request_data,Mapping):
@@ -548,7 +542,7 @@ async def route_api_asset_metadata_change(
 		request_data.get("ignore-comment"),
 		dval=False
 	)
-	result=await dbi_assets_UpdateAssetMetadata(
+	result=await dbi_assets_ChangeAssetMetadata(
 		request.app["rdbc"],request.app["rdbn"],
 		asset_id,asset_name,asset_tag,asset_comment,
 		ignore_name,ignore_tag,ignore_comment
@@ -605,16 +599,11 @@ async def route_api_asset_metadata_change(
 		content_type=_MIMETYPE_HTML
 	)
 
-
-
 async def route_api_select_asset(
 		request:Request
 	)->Union[json_response,Response]:
 
 	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
-
 	if not ct==_TYPE_CUSTOM:
 		return Response(status=406)
 
@@ -667,12 +656,6 @@ async def route_fgmt_asset_editor(
 	)->Union[json_response,Response]:
 
 	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
-
-	if ct==_TYPE_CUSTOM:
-		return json_response(data={})
-
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
@@ -748,8 +731,6 @@ async def route_api_search_assets(
 	)->Union[json_response,Response]:
 
 	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
 
 	# NOTE: What a f***ing mess
 	in_assets_page=assert_referer(ct,request,_ROUTE_PAGE)
@@ -757,7 +738,7 @@ async def route_api_search_assets(
 	if not (in_assets_page or in_orders_page):
 		return Response(status=406)
 
-	lang=get_lang(ct,request.app["lang"])
+	lang=get_lang(ct,request)
 
 	request_data=await get_request_body_dict(ct,request)
 	if not request_data:
@@ -898,13 +879,10 @@ async def route_api_drop_asset(
 	)->Union[json_response,Response]:
 
 	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
-
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
-	lang=get_lang(ct,request.app["lang"])
+	lang=get_lang(ct,request)
 
 	request_data=await get_request_body_dict(ct,request)
 	print("DELETE",request_data)
@@ -976,18 +954,15 @@ async def route_api_drop_asset(
 		content_type=_MIMETYPE_HTML
 	)
 
-async def route_api_add_modev(
+async def route_api_add_record(
 		request:Request
 	)->Union[json_response,Response]:
 
 	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
-
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
-	lang=get_lang(ct,request.app["lang"])
+	lang=get_lang(ct,request)
 
 	request_data=await get_request_body_dict(ct,request)
 	if not request_data:
@@ -1002,7 +977,7 @@ async def route_api_add_modev(
 	)
 	if not isinstance(asset_id,str):
 		return response_errormsg(
-			_ERR_TITLE_MODEV_MOD[lang],
+			_ERR_TITLE_record_MOD[lang],
 			{
 				_LANG_EN:"Asset Id not valid",
 				_LANG_ES:"Id de activo no válido"
@@ -1015,7 +990,7 @@ async def route_api_add_modev(
 	)
 	if not isinstance(the_sign,str):
 		return response_errormsg(
-			_ERR_TITLE_MODEV_MOD[lang],
+			_ERR_TITLE_record_MOD[lang],
 			{
 				_LANG_EN:"Check the 'sign' field",
 				_LANG_ES:"Revisa el campo 'sign' (firma)"
@@ -1029,7 +1004,7 @@ async def route_api_add_modev(
 	)
 	if the_mod==0:
 		return response_errormsg(
-			_ERR_TITLE_MODEV_MOD[lang],
+			_ERR_TITLE_record_MOD[lang],
 			{
 				_LANG_EN:(
 					"Check the 'mod' field (increase/decrease)" "<br>"
@@ -1057,15 +1032,17 @@ async def route_api_add_modev(
 			fallback=2,minimum=0,maximum=2
 		)
 
-	dbi_result=await dbi_assets_ModEv_Add(
+	dbi_result=await dbi_assets_History_AddRecord(
 		request.app["rdbc"],
 		request.app["rdbn"],
 		asset_id,
 		the_sign,the_mod,
-		modev_tag=the_tag,
-		modev_comment=the_comment,
+		record_tag=the_tag,
+		record_comment=the_comment,
 		outverb=outverb
 	)
+
+	# print("DBI_RESULT:",dbi_result)
 
 	error_msg:Optional[str]=dbi_result.get("error")
 	if error_msg is not None:
@@ -1086,8 +1063,9 @@ async def route_api_add_modev(
 		_LANG_ES:"Se realizó la modificación"
 	}[lang]+"</h2>\n"
 
-	html_modev=write_html_modev(
-		lang,dbi_result
+	html_record=write_html_record(
+		lang,asset_id,dbi_result,
+		record_uid=dbi_result["uid"]
 	)
 
 	return Response(
@@ -1098,13 +1076,52 @@ async def route_api_add_modev(
 			f"""<code hx-swap-oob="innerHTML:#asset-{asset_id}-total">???</code>""" "\n"
 
 			f"""<div hx-swap-oob="innerHTML:#asset-{asset_id}-history-ctl">""" "\n"
-				f"{write_form_add_modev(lang,asset_id)}\n"
+				f"{write_form_add_record(lang,asset_id)}\n"
 			"</div>"
 
 			f"""<div hx-swap-oob="afterbegin:#asset-{asset_id}-history">""" "\n"
-				f"{html_modev}\n"
+				f"{html_record}\n"
 			"</div>"
 		),
+		content_type=_MIMETYPE_HTML
+	)
+
+async def route_api_get_record(
+		request:Request
+	)->Union[json_response,Response]:
+
+	ct=get_client_type(request)
+	if not assert_referer(ct,request,_ROUTE_PAGE):
+		return Response(status=406)
+
+	lang=get_lang(ct,request)
+
+	asset_id=request.match_info["asset_id"]
+	record_uid=request.match_info["record_uid"]
+
+	dbi_result=await dbi_assets_History_GetSingleRecord(
+		request.app["rdbc"],request.app["rdbn"],
+		asset_id,record_uid
+	)
+
+	error_msg:Optional[str]=dbi_result.get("error")
+	if error_msg is not None:
+		return response_errormsg(
+			_ERR_TITLE_GET_ASSET[lang],
+			f"{_ERR_DETAIL_DBI_FAIL[lang]}"
+			f": {error_msg}",
+			ct,status_code=400
+		)
+
+	html_text=write_popupmsg(
+		write_html_record(
+			lang,asset_id,
+			dbi_result,detailed=True
+		)
+	)
+
+	return Response(
+		body=html_text,
 		content_type=_MIMETYPE_HTML
 	)
 
@@ -1113,9 +1130,6 @@ async def route_main(
 	)->Union[json_response,Response]:
 
 	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
-
 	if ct==_TYPE_CUSTOM:
 		return json_response(data={})
 
@@ -1137,8 +1151,9 @@ async def route_main(
 			page_title,
 			(
 				f"<h1>{page_title}</h1>\n"
-				f"<p>{tl}</p>"
-				f"""<p>{write_link_homepage(lang)}</p>""" "\n"
+				f"<p>{tl}</p>\n"
+				f"{write_link_homepage(lang)}\n"
+				# f"""<p>{write_link_homepage(lang)}</p>""" "\n"
 				"""<section id="navigation">""" "\n"
 					f"{write_ul([write_button_nav_search_assets(lang),write_button_nav_new_asset(lang)])}\n"
 				"</section>\n"

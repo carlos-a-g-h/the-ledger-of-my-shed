@@ -152,54 +152,108 @@ def write_form_edit_asset_metadata(
 	)->str:
 
 	tl={
+		_LANG_EN:"Edit",
+		_LANG_ES:"Editar"
+	}[lang]
+	html_text=(
+		f"<summary>{tl}</summary>\n"
+		"<div>\n"
+		f"""<form hx-post="/api/assets/change-metadata" """ "\n"
+			"""hx-swap="innerHTML" """ "\n"
+			"""hx-target="#messages" """ "\n"
+			">\n"
+			f"""<input name="id" type=hidden value="{asset_id}">"""
+			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
+	)
+
+	tl={
+		_LANG_EN:"New name",
+		_LANG_ES:"Nuevo nombre"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+
+		f"""<label class="{_CSS_CLASS_COMMON}" for="name">{tl}</label>"""
+	)
+
+	tl={
+		_LANG_EN:"Ignore name",
+		_LANG_ES:"Ignorar nombre"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+
+		"<div>\n"
+			f"""<input name="ignore-name" type=checkbox checked>""" "\n"
+			f"""<label for=ignore-name>{tl}</label>""" "\n"
+		"</div>\n"
+		f"""<input class="{_CSS_CLASS_COMMON}" name="name" type=text max-length=32>"""
+	)
+
+	tl={
+		_LANG_EN:"New tag",
+		_LANG_ES:"Nueva etiqueta"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+
+		f"""<label class="{_CSS_CLASS_COMMON}" for="tag">{tl}</label>"""
+	)
+
+	tl={
+		_LANG_EN:"Ignore tag",
+		_LANG_ES:"Ignorar etiqueta"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+
+		"<div>\n"
+			f"""<input name="ignore-tag" type=checkbox checked>""" "\n"
+			f"""<label for=ignore-tag>{tl}</label>""" "\n"
+		"</div>\n"
+		f"""<input class="{_CSS_CLASS_COMMON}" name="tag" type=text max-length=32>"""
+	)
+
+	tl={
+		_LANG_EN:"New comment",
+		_LANG_ES:"Nuevo comentario"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+
+		f"""<label class="{_CSS_CLASS_COMMON}" for="comment">{tl}</label>"""
+	)
+
+
+	tl={
+		_LANG_EN:"Ignore comment",
+		_LANG_ES:"Ignorar comentario"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+
+		"<div>"
+			f"""<input name="ignore-comment" type=checkbox checked>"""
+			f"""<label for=ignore-comment>{tl}</label>"""
+		"</div>"
+		f"""<textarea class="{_CSS_CLASS_COMMON}" """
+			"""name="comment" """
+			"max-length=256 "
+			">"
+		"</textarea>"
+	)
+
+
+	tl={
 		_LANG_EN:"Apply changes",
 		_LANG_ES:"Aplicar cambios"
 	}[lang]
 	html_text=(
-		f"<summary>Edit info</summary>\n"
-		"<div>\n"
-			f"""<form hx-post="/api/assets/change-metadata" """
-				"""hx-swap="innerHTML" """
-				"""hx-target="#messages" """
-				">\n"
+		f"{html_text}\n"
 
-				f"""<div class="{_CSS_CLASS_COMMON}">"""
-
-					"<!-- EDITOR FORM STARTS HERE -->\n"
-
-					f"""<input name="id" type=hidden value="{asset_id}">"""
-
-					f"""<label class="{_CSS_CLASS_COMMON}" for="name">New Name</label>"""
-					"<div>"
-						f"""<input name="ignore-name" type=checkbox>"""
-						f"""<label for=ignore-name>Ignore Name</label>"""
-					"</div>"
-					f"""<input class="{_CSS_CLASS_COMMON}" name="name" type=text max-length=32>"""
-	
-					f"""<label class="{_CSS_CLASS_COMMON}" for="tag">New Tag</label>"""
-					"<div>"
-						f"""<input name="ignore-tag" type=checkbox>"""
-						f"""<label for=ignore-tag>Ignore Tag</label>"""
-					"</div>"
-					f"""<input class="{_CSS_CLASS_COMMON}" name="tag" type=text  max-length=32>"""
-
-					f"""<label class="{_CSS_CLASS_COMMON}" for="comment">Comment</label>""" "\n"
-					"<div>"
-						f"""<input name="ignore-comment" type=checkbox>"""
-						f"""<label for=ignore-comment>Ignore Comment</label>"""
-					"</div>"
-					f"""<textarea class="{_CSS_CLASS_COMMON}" """
-						"""name="comment" """
-						"max-length=256 "
-						">"
-					"</textarea>"
-
-					"<!-- EDITOR FORM ENDS HERE -->\n"
-
-				"</div>"
 				f"""<button class="common" type="submit">{tl}</button>""" "\n"
-			"</form>\n"
-		"</div>"
+			"</div>\n"
+		"</form>"
 	)
 
 	if full:
@@ -208,18 +262,6 @@ def write_form_edit_asset_metadata(
 				f"{html_text}\n"
 			"</details>"
 		)
-		# tl={
-		# 	_LANG_EN:"Edit info",
-		# 	_LANG_ES:"Editar info"
-		# }[lang]
-		# html_text=(
-		# 	f"""<details id="asset-{asset_id}-editor">""" "\n"
-		# 		f"<summary>{tl}</summary>\n"
-		# 		f"""<div class={_CSS_CLASS_COMMON} id="asset-{asset_id}-editor-form">"""
-		# 			f"{html_text}\n"
-		# 		"</div>"
-		# 	"</details>"
-		# )
 
 	return html_text
 
@@ -612,33 +654,6 @@ def write_html_modev_history(
 			f"{write_html_modev(lang,history[modev_id])}"
 		)
 
-	# 	lang:str,history:list,
-	# )->str:
-
-	# html_text=""
-
-	# zero=True
-	# size=len(history)
-	# if size>0:
-	# 	zero=False
-	# 	while True:
-	# 		size=size-1
-	# 		if size<0:
-	# 			break
-	# 		html_text=(
-	# 			f"{html_text}\n"
-			# )+write_html_modev(
-			# 	lang,history[size]
-			# )
-
-	# if zero:
-	# 	html_text=(
-	# 		f"{html_text}\n"
-	# 	)+"<p>"+{
-	# 		_LANG_EN:"History is empty/unknown",
-	# 		_LANG_ES:"Historial vacío/desconocido"
-	# 	}[lang]+"</p>"
-
 	return html_text
 
 def write_html_asset_info(
@@ -698,7 +713,7 @@ def write_html_asset_info(
 
 	if full:
 		html_text=(
-			f"""<div id="asset-{asset_id}-info">"""
+			f"""<div id="asset-{asset_id}-info">""" "\n"
 				f"{html_text}\n"
 			"</div>"
 		)
@@ -725,7 +740,7 @@ def write_html_asset(
 	asset_total=util_valid_int(data.get("total"))
 	if isinstance(asset_total,int):
 		tl={
-			_LANG_EN:"Current ammount",
+			_LANG_EN:"Current amount",
 			_LANG_ES:"Cantidad actual"
 		}[lang]
 		html_text=(
@@ -736,7 +751,7 @@ def write_html_asset(
 	if fullview:
 		html_text=(
 			f"{html_text}\n"
-			f"{write_form_edit_asset_metadata(lang,asset_id)}\n"
+			f"{write_form_edit_asset_metadata(lang,asset_id)}"
 		)
 
 	# actions
@@ -769,9 +784,6 @@ def write_html_asset(
 			_LANG_ES:"Historial"
 		}[lang]
 		html_modev_history=write_html_modev_history(
-			# lang,util_valid_list(
-			# 	data.get("history"),True
-			# )
 			lang,data.get("history")
 		)
 		html_text=(
@@ -779,7 +791,7 @@ def write_html_asset(
 			f"<h3>{tl}</h3>\n"
 			f"""<div id="asset-{asset_id}-history-ctl" class="{_CSS_CLASS_COMMON}">""" "\n"
 				f"{write_form_add_modev(lang,asset_id)}\n"
-			"</div>"
+			"</div>\n"
 			f"""<div id="asset-{asset_id}-history">""" "\n"
 				f"{html_modev_history}\n"
 			"</div>"
@@ -792,7 +804,7 @@ def write_html_list_of_assets(
 		order_id:Optional[str]=None
 	)->str:
 
-	html_text="""<div id="list-of-assets">""" "\n"
+	html_text="""<div id="list-of-assets">"""
 
 	empty=(len(assetlist)==0)
 
@@ -803,9 +815,7 @@ def write_html_list_of_assets(
 		}[lang]
 		html_text=(
 			f"{html_text}\n"
-			"<div>\n"
-				f"{tl}\n"
-			"</div>"
+			f"<div>{tl}</div>"
 		)
 
 	if not empty:

@@ -45,7 +45,6 @@ def write_button_nav_list_orders(lang:str)->str:
 		"</button>"
 	)
 
-# Display in search results
 def write_button_add_asset_to_order(
 		lang:str,order_id:str,asset_id:str
 	)->str:
@@ -60,9 +59,8 @@ def write_button_add_asset_to_order(
 			"""hx-swap="innerHTML" """
 			">\n"
 
-			# f"""<input type="hidden" name="id" value="{order_id}">"""
-			f"""<input type="hidden" name="asset" value="{asset_id}">"""
-			"""<input type="hidden" name="justbool" value="true">"""
+			f"""<input type="hidden" name="asset" value="{asset_id}">""" "\n"
+			"""<input type="hidden" name="justbool" value="true">""" "\n"
 
 			f"""<button class="{_CSS_CLASS_COMMON}" type="submit">""" "\n"
 				f"{tl}\n"
@@ -86,7 +84,7 @@ def write_button_run_order(
 			"""hx-target="#messages" """
 			"""hx-swap="innerHTML" """
 			f"""hx-confirm="{tl}" """
-			">"
+			">\n"
 	)
 
 	tl={
@@ -117,7 +115,7 @@ def write_form_remove_asset_from_order(
 			"""hx-swap="innerHTML">"""
 			"\n"
 
-			f"""<input type="hidden" name="asset" value="{asset_id}">"""
+			f"""<input type="hidden" name="asset" value="{asset_id}">""" "\n"
 
 			"""<button type="submit" """
 				f"""class="{_CSS_CLASS_COMMON} {_CSS_CLASS_DANGER}">"""
@@ -135,22 +133,17 @@ def write_form_update_asset_in_order(
 	)->str:
 
 	tl={
-		_LANG_EN:"Update",
-		_LANG_ES:"Actualizar"
+		_LANG_EN:"Algebraic sum",
+		_LANG_ES:"Suma algebraica"
 	}[lang]
+
 	html_text=(
 		f"""<form hx-post="/api/orders/current/{order_id}/update" """
 			"""hx-target="#messages" """
 			"""hx-swap="innerHTML" """
 			">\n"
 
-			"<div>\n"
-
-				f"""<div class="{_CSS_CLASS_HORIZONTAL}">"""
-					# f"""<input type="hidden" name="id" value="{order_id}">"""
-					f"""<input type="hidden" name="asset" value="{asset_id}">"""
-					f"""<input type="number" name="imod" value=0 class="{_CSS_CLASS_COMMON}">"""
-				"</div>\n"
+			"<div>\n\n"
 
 				f"""<div class="{_CSS_CLASS_HORIZONTAL}">"""
 					f"""<div class="{_CSS_CLASS_COMMON}">"""
@@ -158,23 +151,46 @@ def write_form_update_asset_in_order(
 					"</div>\n"
 				"</div>\n"
 
-				f"""<div class="{_CSS_CLASS_HORIZONTAL}">"""
 				"\n"
-					f"""<button type="submit" class="{_CSS_CLASS_COMMON}">"""
-					"\n"
+
+				f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
+					f"""<input type="hidden" name="asset" value="{asset_id}">""" "\n"
+					f"""<input type="number" name="imod" value=0 class="{_CSS_CLASS_COMMON}">""" "\n"
+				"</div>\n"
+
+				"\n"
+
+				f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
+					"""<input type=checkbox name="algsum">""" "\n"
+					f"""<label for="algsum">{tl}</label>"""
+				"</div>"
+
+				"\n"
+	)
+
+
+	tl={
+		_LANG_EN:"Update",
+		_LANG_ES:"Actualizar"
+	}[lang]
+
+	html_text=(
+		f"{html_text}\n"
+
+				f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
+					f"""<button type="submit" class="{_CSS_CLASS_COMMON}">""" "\n"
 						f"{tl}\n"
 					"</button>\n"
 				"</div>\n"
 
 			"</div>\n"
 
-		"</form>\n"
+		"</form>"
 	)
 
 	if not inner:
 		html_text=(
-			f"""<div id="asset-{asset_id}-in-{order_id}-updater">"""
-			"\n"
+			f"""<div id="asset-{asset_id}-in-{order_id}-updater">""" "\n"
 				f"{html_text}\n"
 			"</div>"
 		)
@@ -228,7 +244,6 @@ def write_button_delete_order(
 	}[lang]
 	html_text=(
 		"<button "
-			# """style="float:right;" """
 			f"""class="{_CSS_CLASS_COMMON} {_CSS_CLASS_DANGER}" """
 			f"""hx-delete="{route}" """
 			"""hx-target="#messages" """
@@ -260,7 +275,7 @@ def write_form_new_order(lang:str)->str:
 				"""hx-swap="innerHTML" """
 				">\n"
 
-				"<div>\n"
+				"<div>"
 	)
 
 	tl={
@@ -317,16 +332,16 @@ def write_form_new_order(lang:str)->str:
 		_LANG_ES:"Crear orden"
 	}[lang]
 	return (
-				f"{html_text}"
+				f"{html_text}\n"
 
 				"""<button """
 					f"""class="{_CSS_CLASS_COMMON}" """
 					"""type="submit" """
 					">"
 					f"{tl}"
-				"</button>"
+				"</button>\n"
 
-			"</form>"
+			"</form>\n"
 		"</div>"
 	)
 
@@ -342,10 +357,8 @@ def write_html_order_assets(
 	for asset_id in assets:
 		html_text=(
 			f"{html_text}\n"
-			f"""<div id="asset-{asset_id}-in-{order_id}">"""
-			"\n"
-				f"""<div class="{_CSS_CLASS_COMMON}">"""
-				"\n"
+			f"""<div id="asset-{asset_id}-in-{order_id}">""" "\n"
+				f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
 					f"<div>{asset_id} - {assets_names[asset_id]}</div>\n"
 					f"{write_form_update_asset_in_order(lang,order_id,asset_id,assets[asset_id])}\n"
 					f"{write_form_remove_asset_from_order(lang,order_id,asset_id)}\n"
@@ -386,14 +399,13 @@ def write_html_order(
 
 	html_text=(
 
-		f"""<div id="order-{order_id}">"""
+		f"""<div id="order-{order_id}">""" "\n"
 
-			f"""<div class="{_CSS_CLASS_COMMON}">"""
+			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
 
-				"\n<div>\n"
+				"<div>\n"
 
-					"""<!-- ID, SIGN, AND TAG, (NO COMMENT, AND NO ASSETS) -->"""
-					"\n"
+					"""<!-- ID, SIGN, AND TAG, (NO COMMENT, AND NO ASSETS) -->""" "\n"
 
 					f"<div><strong>ID: {order_id}</strong></div>"
 	)
@@ -404,7 +416,6 @@ def write_html_order(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		# f"""<div class="{_CSS_CLASS_HORIZONTAL}">{tl}: {order_sign}</div>"""
 		f"""<div>{tl}: {order_sign}</div>"""
 	)
 
@@ -414,7 +425,6 @@ def write_html_order(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		# f"""<div class="{_CSS_CLASS_HORIZONTAL}">{tl}: {order_date}</div>"""
 		f"""<div>{tl}: {order_date}</div>"""
 	)
 
@@ -424,7 +434,6 @@ def write_html_order(
 	}[lang]
 	html_text=(
 			f"{html_text}\n"
-			# f"""<div class="{_CSS_CLASS_HORIZONTAL}">{tl}: {order_tag}</div>""" "\n"
 			f"""<div>{tl}: {order_tag}</div>""" "\n"
 		"</div>"
 	)
@@ -454,6 +463,6 @@ def write_html_order(
 
 	return (
 				f"{html_text}\n"
-			"</div>"
+			"</div>\n"
 		"</div>"
 	)

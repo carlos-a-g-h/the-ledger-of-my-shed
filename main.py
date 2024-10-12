@@ -8,13 +8,14 @@ from aiohttp.web import Application
 from aiohttp.web import run_app
 from aiohttp.web import get as web_GET
 from aiohttp.web import post as web_POST
-# from aiohttp.web import put as web_PUT
 from aiohttp.web import delete as web_DELETE
 
-# from aiohttp.web import Request,Response,json_response
+from aiohttp.web import Request,Response,json_response
 
 from motor.motor_asyncio import AsyncIOMotorClient
 
+from control_Any import _TYPE_CUSTOM
+from control_Any import get_client_type
 from control_Any import route_src
 from control_Any import route_main as route_Home
 
@@ -34,7 +35,8 @@ from control_assets import route_api_asset_metadata_change as route_Assets_api_C
 from control_assets import route_fgmt_search_assets as route_Assets_fgmt_SearchAssets
 from control_assets import route_api_search_assets as route_Assets_api_SearchAssets
 from control_assets import route_api_drop_asset as route_Assets_api_DropAsset
-from control_assets import route_api_add_modev as route_Assets_api_AddModEv
+from control_assets import route_api_add_record as route_Assets_api_AddRecord
+from control_assets import route_api_get_record as route_Assets_api_GetRecord
 from control_assets import util_update_known_assets as init_assets_cache
 
 from control_orders import _ROUTE_PAGE as _ROUTE_PAGE_ORDERS
@@ -47,7 +49,6 @@ from control_orders import route_api_delete_order as route_Orders_api_DeleteOrde
 from control_orders import route_api_update_asset_in_order as route_Orders_api_UpdateAsset
 from control_orders import route_api_remove_asset_from_order as route_Orders_api_RemoveAsset
 from control_orders import route_api_run_order as route_Orders_api_RunOrder
-
 
 from internals import read_yaml_file
 from internals import util_valid_int
@@ -92,9 +93,10 @@ def read_config(path_config:Path)->dict:
 
 	if cfg_lang not in ("en","es"):
 		print(
+			"Language unsupported or not found in config file, defaulting to English" "\n"
 			"Available languages are: 'en' (English) and 'es' (Spanish)"
 		)
-		return {}
+		cfg_lang="en"
 
 	# db-name
 
@@ -128,6 +130,36 @@ def read_config(path_config:Path)->dict:
 		"lang":cfg_lang
 	}
 
+async def mware_factory(app,handler):
+
+	async def mware_handler(request:Request):
+
+		# Local source files
+
+		if request.path.startswith("/src/"):
+			return (
+				await handler(request)
+			)
+
+		ct=get_client_type(request)
+		if not isinstance(ct,str):
+			return Response(status=406)
+
+		if ct==_TYPE_CUSTOM:
+
+			if (
+				request.path=="/" or
+				request.path.startswith("/page/") or
+				request.path.startswith("/fgmt/")
+			):
+				return json_response(data={})
+
+		return (
+			await handler(request)
+		)
+
+	return mware_handler
+
 def build_app(
 		path_programdir:Path,
 		lang:str,
@@ -135,7 +167,9 @@ def build_app(
 		rdb_url:Optional[str],
 	)->Application:
 
-	app=Application()
+	app=Application(
+		middlewares=[mware_factory]
+	)
 
 	app["path_programdir"]=path_programdir
 	app[_CACHE_ASSETS]={}
@@ -153,7 +187,7 @@ def build_app(
 			rdb_url
 		)
 		app["rdbc"]=AsyncIOMotorClient(rdb_url)
-	
+
 	app.add_routes([
 
 		web_GET(
@@ -226,8 +260,13 @@ def build_app(
 
 			web_POST(
 				"/api/assets/history/{asset_id}/add",
-				route_Assets_api_AddModEv
+				route_Assets_api_AddRecord
 			),
+				web_GET(
+					"/api/assets/history/{asset_id}/records/{record_uid}",
+					route_Assets_api_GetRecord
+				),
+
 
 		# ORDERS
 
@@ -313,11 +352,11 @@ def build_app(
 
 		# web_GET(
 		# 	"/api/assets/select/{asset_id}/modev-view/{modev_date}/{modev_uid}",
-		# 	route_Assets_api_GetModEv
+		# 	route_Assets_api_GetRecord
 		# ),
 		# web_DELETE(
 		# 	"/api/assets/select/{asset_id}/modev-drop",
-		# 	route_Assets_api_DropModEv
+		# 	route_Assets_api_DropRecord
 		# )
 
 	])

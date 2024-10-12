@@ -41,6 +41,7 @@ from frontend_Any import _LANG_ES
 from frontend_Any import _CSS_CLASS_COMMON
 # from frontend_Any import _CSS_CLASS_DANGER
 from frontend_Any import _CSS_CLASS_HORIZONTAL
+from frontend_Any import _CSS_CLASS_TITLE
 from frontend_Any import write_fullpage
 from frontend_Any import write_popupmsg
 from frontend_Any import write_link_homepage
@@ -97,9 +98,6 @@ async def route_fgmt_new_order(
 	# GET: /fgmt/orders/new
 
 	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
-
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
@@ -144,9 +142,6 @@ async def route_api_new_order(
 	# POST: /api/orders/new
 
 	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
-
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
@@ -154,7 +149,7 @@ async def route_api_new_order(
 	if req_data is None:
 		return Response(status=406)
 
-	lang=get_lang(ct,request.app["lang"])
+	lang=get_lang(ct,request)
 
 	order_sign=util_valid_str(
 		req_data.get("sign")
@@ -187,25 +182,30 @@ async def route_api_new_order(
 	)
 	order_id=token_hex(16)
 
-	ok=(
-		await dbi_orders_NewOrder(
-			request.app["rdbc"],
-			request.app["rdbn"],
-			order_id,order_sign,order_tag,
-			order_comment=order_comment,
+	outverb=1
+	if ct==_TYPE_CUSTOM:
+		outverb=util_valid_int(
+			req_data.get("v")
 		)
+
+	dbi_result=await dbi_orders_NewOrder(
+		request.app["rdbc"],
+		request.app["rdbn"],
+		order_id,order_sign,order_tag,
+		order_comment=order_comment,
+		outverb=outverb
 	)
-	if not ok:
-		return response_errormsg(
+	error_msg=dbi_result.get("err")
+	if error_msg is not None:
+		response_errormsg(
 			_ERR_TITLE_NEW_ORDER[lang],
-			_ERR_DETAIL_DBI_FAIL[lang],
+			f"{_ERR_DETAIL_DBI_FAIL[lang]}"
+			f": {error_msg}",
 			ct,status=406
 		)
 
 	if ct==_TYPE_CUSTOM:
-		return json_response(
-			data={"id":order_id}
-		)
+		return json_response(data=dbi_result)
 
 	tl={
 		_LANG_EN:"Most recent order",
@@ -253,9 +253,6 @@ async def route_fgmt_list_orders(
 	# GET: /fgmt/orders/current
 
 	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
-
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
@@ -319,9 +316,6 @@ async def route_fgmt_order_editor(
 	# hx-target: #messages
 
 	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
-
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
@@ -411,13 +405,10 @@ async def route_api_update_asset_in_order(
 	# POST:/api/orders/current/{order_id}/update
 
 	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
-
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
-	lang=get_lang(ct,request.app["lang"])
+	lang=get_lang(ct,request)
 
 	order_id=request.match_info["order_id"]
 
@@ -455,12 +446,17 @@ async def route_api_update_asset_in_order(
 		reqdata.get("justbool"),dval=False
 	)
 
+	algsum=util_valid_bool(
+		reqdata.get("algsum"),dval=False
+	)
+
 	result=await dbi_orders_Editor_AssetPatch(
 		request.app["rdbc"],
 		request.app["rdbn"],
 		order_id,asset_id,
 		imod=imod,
-		justbool=justbool
+		justbool=justbool,
+		algsum=algsum
 	)
 	if not result:
 		return response_errormsg(
@@ -517,13 +513,10 @@ async def route_api_remove_asset_from_order(
 	# DELETE:/api/orders/current/{order_id}/update
 
 	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
-
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
-	lang=get_lang(ct,request.app["lang"])
+	lang=get_lang(ct,request)
 
 	order_id=request.match_info["order_id"]
 
@@ -581,9 +574,6 @@ async def route_api_list_orders(
 	)->Union[Response,json_response]:
 
 	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
-
 	if not ct==_TYPE_CUSTOM:
 		return Response(status=406)
 
@@ -621,15 +611,12 @@ async def route_api_delete_order(
 	# DELETE: /api/orders/current/{order_id}/drop-fol
 
 	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
-
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
 	order_id=request.match_info["order_id"]
 
-	lang=get_lang(ct,request.app["lang"])
+	lang=get_lang(ct,request)
 
 	result=await dbi_orders_DropOrder(
 		request.app["rdbc"],
@@ -701,13 +688,10 @@ async def route_api_run_order(
 	# POST: /api/orders/current/{order_id}/run
 
 	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
-
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
-	lang=get_lang(ct,request.app["lang"])
+	lang=get_lang(ct,request)
 
 	order_id=request.match_info["order_id"]
 
@@ -762,9 +746,6 @@ async def route_main(
 	)->Union[Response,json_response]:
 
 	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
-
 	if ct==_TYPE_CUSTOM:
 		return json_response(data={})
 
@@ -784,14 +765,16 @@ async def route_main(
 		body=write_fullpage(
 			lang,page_title,
 			(
-				f"<h1>{page_title}</h1>\n"
-				f"<p>{tl}</p>"
-				f"""<p>{write_link_homepage(lang)}</p>""" "\n"
+				f"""<h1 class="{_CSS_CLASS_TITLE}">{page_title}</h1>""" "\n"
+				f"<p>{tl}</p>\n"
+				f"{write_link_homepage(lang)}\n"
+				# f"""<p>{write_link_homepage(lang)}</p>""" "\n"
 				"""<section id="navigation">""" "\n"
-					"<ul>\n"
-						f"<li>\n{write_button_nav_new_order(lang)}\n</li>\n"
-						f"<li>\n{write_button_nav_list_orders(lang)}\n</li>\n"
-					"</ul>\n"
+					f"{write_ul([write_button_nav_new_order(lang),write_button_nav_list_orders(lang)])}\n"
+					# "<ul>\n"
+					# 	f"<li>\n{write_button_nav_new_order(lang)}\n</li>\n"
+					# 	f"<li>\n{write_button_nav_list_orders(lang)}\n</li>\n"
+					# "</ul>\n"
 				"</section>\n"
 				"""<section id="main-1">""" "\n"
 					"<!-- EMPTY -->\n"

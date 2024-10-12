@@ -51,13 +51,10 @@ async def route_api_update_known_asset_names(
 	)->Union[json_response,Response]:
 
 	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
-
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
-	lang=get_lang(ct,request.app["lang"])
+	lang=get_lang(ct,request)
 
 	ok=await util_update_known_assets(request.app)
 
@@ -97,13 +94,10 @@ async def route_api_update_config(
 	)->Union[json_response,Response]:
 
 	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
-
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
-	lang=get_lang(ct,request.app["lang"])
+	lang=get_lang(ct,request)
 
 	request_data=await get_request_body_dict(ct,request)
 	if not request_data:
@@ -230,9 +224,6 @@ async def route_main(
 	)->Union[json_response,Response]:
 
 	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
-
 	if ct==_TYPE_CUSTOM:
 		return json_response(data={})
 
@@ -258,7 +249,7 @@ async def route_main(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"""<p>{write_link_homepage(lang)}</p>""" "\n"
+		f"{write_link_homepage(lang)}\n"
 		"""<section id="main">"""
 			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
 				f"{write_form_update_config(lang)}\n"
