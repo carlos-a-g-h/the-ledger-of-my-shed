@@ -124,7 +124,7 @@ jobs:
         working-directory: repo
         run: |
           echo "[ LINKING ]"
-          ldd "the-output/main.dist/${{ env.THE_NAME }}.bin"
+          ldd "the-output/${{ env.THE_NAME }}.bin"
           echo "[ CONTENTS ]"
           find the-output
 
