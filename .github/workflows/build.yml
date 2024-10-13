@@ -22,7 +22,7 @@ on:
         default: false
 
       MARK_AS_PRE_RELEASE:
-        descrption: "Mark as a pre-release"
+        description: "Mark as a pre-release"
         type: boolean
         required: true
         default: false
