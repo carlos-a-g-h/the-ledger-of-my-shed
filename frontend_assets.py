@@ -302,7 +302,7 @@ def write_form_delete_asset(
 		_LANG_ES:"¿Está seguro de que quiere eliminar este activo?"
 	}[lang]
 	html_text=(
-		"<form"
+		"<form "
 			"""hx-trigger="submit" """
 			"""hx-delete="/api/assets/drop" """
 			"""hx-target="#messages" """
@@ -444,7 +444,7 @@ def write_form_search_assets(
 		"</form>"
 	)
 
-def write_form_add_modev(lang:str,asset_id:str)->str:
+def write_form_add_record(lang:str,asset_id:str)->str:
 
 	tl={
 		_LANG_EN:"Add or remove",
@@ -458,7 +458,7 @@ def write_form_add_modev(lang:str,asset_id:str)->str:
 			">\n"
 
 			# WARN: HIDDEN INPUT
-			"""<input id="modev-asset" """
+			"""<input id="record-asset" """
 				"""name="asset-id" """
 				"""type="hidden" """
 				f"""value="{asset_id}" """
@@ -539,91 +539,210 @@ def write_form_add_modev(lang:str,asset_id:str)->str:
 		"</form>\n"
 	)
 
-def write_html_modev(lang:str,data:Mapping)->str:
 
-	print("MODEV:",data)
+def write_button_record_details(
+		lang:str,
+		asset_id:str,
+		record_uid:str
+	)->str:
 
-	modev_uid=util_valid_str(data.get("uid"))
-
-	modev_sign=util_valid_str(data.get("sign"))
-	if not isinstance(modev_sign,str):
-		return write_div_display_error(lang)
-
-	modev_date=util_valid_date(
-		util_valid_str(data.get("date"))
-	)
-
-	if not isinstance(modev_date,str):
-		return write_div_display_error(lang)
-
-	modev_mod=util_valid_int(data.get("mod"))
-	if not isinstance(modev_mod,int):
-		return write_div_display_error(lang)
-
-	tl_sign={
-		_LANG_EN:"Sign",
-		_LANG_ES:"Firma"
+	tl={
+		_LANG_EN:"Details",
+		_LANG_ES:"Detalles"
 	}[lang]
-
-	tl_date={
-		_LANG_EN:"Date",
-		_LANG_ES:"Fecha"
-	}[lang]
-
-	tl_mod={
-		_LANG_EN:"Adjustment",
-		_LANG_ES:"Ajuste"
-	}[lang]
-
-	html_text=f"""<div class="{_CSS_CLASS_COMMON}">"""
-
-	if isinstance(modev_uid,str):
-		html_text=(
-			f"{html_text}\n"
-			f"<div>UID: <code>{modev_uid}</code></div>"
-		)
-
-	html_text=(
-		f"{html_text}\n"
-		f"<div>{tl_mod}: <code>{modev_mod}</code></div>\n"
-		f"<div>{tl_sign}: <code>{modev_sign}</code></div>\n"
-		f"<div>{tl_date}: <code>{modev_date}</code></div>"
-	)
-
-	modev_tag=util_valid_str(
-		data.get("tag")
-	)
-	modev_comment=util_valid_str(
-		data.get("comment")
-	)
-
-	if isinstance(modev_tag,str):
-		tl={
-			_LANG_EN:"Tag",
-			_LANG_ES:"Etiqueta"
-		}[lang]
-		html_text=(
-			f"{html_text}\n"
-			f"<div>{tl}: <code>{modev_tag}</code></div>\n"
-		)
-
-	if isinstance(modev_comment,str):
-		tl={
-			_LANG_EN:"Comment",
-			_LANG_ES:"Comentario"
-		}[lang]
-		html_text=(
-			f"{html_text}\n"
-			f"<div>{tl}: <code>{modev_comment}</code></div>\n"
-		)
 
 	return (
-			f"{html_text}\n"
-		"</div>\n"
+		f"""<button class="{_CSS_CLASS_COMMON}" """
+			f"""hx-get="/api/assets/history/{asset_id}/records/{record_uid}" """
+			"""hx-target="#messages" """
+			"""hx-swap="innerHTML" """
+			">"
+			f"{tl}"
+		"</button>"
 	)
 
-def write_html_modev_history(
+def write_html_record(
 		lang:str,
+		asset_id:str,
+		data:Mapping,
+		record_uid:Optional[str]=None,
+		detailed:bool=False
+	)->str:
+
+	record_uid_ok:Optional[str]=record_uid
+	if not isinstance(record_uid,str):
+
+		record_uid_ok=util_valid_str(data.get("uid"),True)
+		if not isinstance(record_uid_ok,str):
+			return write_div_display_error(lang)
+
+	record_date=util_valid_date(
+		util_valid_str(data.get("date"))
+	)
+	if not isinstance(record_date,str):
+		return write_div_display_error(lang)
+
+	record_mod=util_valid_int(data.get("mod"))
+	if not isinstance(record_mod,int):
+		return write_div_display_error(lang)
+
+	record_sign=util_valid_str(data.get("sign"),True)
+	if not isinstance(record_sign,str):
+		return write_div_display_error(lang)
+
+	record_tag=util_valid_str(data.get("tag"),True)
+
+	html_text=""
+
+	if not detailed:
+
+		tl={
+			_LANG_EN:"Adjustment",
+			_LANG_ES:"Ajuste",
+		}[lang]
+		html_text=(
+			f"{html_text}\n"
+			f"<div>{record_date}</div>\n"
+			"<div>\n"
+				f"""<div class="{_CSS_CLASS_HORIZONTAL}">"""
+					f"{tl}: {record_mod}"
+				"</div>\n"
+		)
+
+		tl={
+			_LANG_EN:"Signed by",
+			_LANG_ES:"Firmado por"
+		}[lang]
+		html_text=(
+			f"{html_text}\n"
+				f"""<div class="{_CSS_CLASS_HORIZONTAL}">"""
+					f"{tl}: {record_sign}"
+				"</div>\n"
+			"</div>"
+		)
+
+		if isinstance(record_tag,str):
+			tl={
+				_LANG_EN:"Tag",
+				_LANG_ES:"Etiqueta"
+			}[lang]
+			html_text=(
+				f"{html_text}\n"
+				f"<div>{tl}: {record_tag}</div>"
+			)
+
+		html_text=(
+			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
+				f"{html_text}\n"
+				f"{write_button_record_details(lang,asset_id,record_uid_ok)}\n"
+			"</div>"
+		)
+
+	if detailed:
+
+		tl={
+			_LANG_EN:"Record details",
+			_LANG_ES:"Detalles del registro"
+		}[lang]
+		html_text=(
+			f"{html_text}\n"
+			"""<div style="padding-bottom:8px;">""" "\n"
+				f"<strong>{tl}</strong>\n"
+			"</div>\n"
+			"""<table style="width:100%;text-align:left;">""" "\n"
+				"<tbody>\n"
+					"<tr>\n"
+						"<td>UID</td>\n"
+						f"<td>{record_uid_ok}</td>\n"
+					"</tr>\n"
+		)
+
+		tl={
+			_LANG_EN:"Date",
+			_LANG_ES:"Fecha"
+		}[lang]
+		html_text=(
+			f"{html_text}\n"
+			"<tr>\n"
+				f"<td>{tl}</td>\n"
+				f"<td>{record_date}</td>\n"
+			"</tr>\n"
+		)
+
+		tl={
+			_LANG_EN:"From asset",
+			_LANG_ES:"Del activo"
+		}[lang]
+		html_text=(
+			f"{html_text}\n"
+			"<tr>\n"
+				f"<td>{tl}</td>\n"
+				f"<td>{asset_id}</td>\n"
+			"</tr>\n"
+		)
+
+		tl={
+			_LANG_EN:"Adjustment",
+			_LANG_ES:"Ajuste",
+		}[lang]
+		html_text=(
+			f"{html_text}\n"
+			"<tr>\n"
+				f"<td>{tl}</td>\n"
+				f"<td>{record_mod}</td>\n"
+			"</tr>\n"
+		)
+
+		tl={
+			_LANG_EN:"Signed by",
+			_LANG_ES:"Firmado por"
+		}[lang]
+		html_text=(
+			f"{html_text}\n"
+			"<tr>\n"
+				f"<td>{tl}</td>\n"
+				f"<td>{record_sign}</td>\n"
+			"</tr>\n"
+		)
+
+		if record_tag is not None:
+
+			tl={
+				_LANG_EN:"Tag",
+				_LANG_ES:"Etiqueta"
+			}[lang]
+			html_text=(
+				f"{html_text}\n"
+				"<tr>\n"
+					f"<td>{tl}</td>\n"
+					f"<td>{record_tag}</td>\n"
+				"</tr>\n"
+			)
+
+		record_comment=util_valid_str(data.get("comment"),True)
+		if record_comment is not None:
+
+			html_text=(
+				f"{html_text}\n"
+				"""<tr>""" "\n"
+					"<td colspan=2>\n"
+						"""<div style="padding-top:8px;">""" "\n"
+							f"{record_comment}"
+						"</div>"
+					"</td>\n"
+				"</tr>\n"
+			)
+
+		html_text=(
+					f"{html_text}\n"
+				"</tbody>\n"
+			"</table>"
+		)
+
+	return html_text
+
+def write_html_record_history(
+		lang:str,asset_id:str,
 		history:Optional[Mapping]
 	):
 
@@ -648,10 +767,10 @@ def write_html_modev_history(
 	history_keys=list(history.keys())
 	history_keys.reverse()
 
-	for modev_id in history_keys:
+	for record_uid in history_keys:
 		html_text=(
 			f"{html_text}\n"
-			f"{write_html_modev(lang,history[modev_id])}"
+			f"{write_html_record(lang,asset_id,history[record_uid],record_uid=record_uid)}"
 		)
 
 	return html_text
@@ -783,17 +902,18 @@ def write_html_asset(
 			_LANG_EN:"History",
 			_LANG_ES:"Historial"
 		}[lang]
-		html_modev_history=write_html_modev_history(
-			lang,data.get("history")
+		html_record_history=write_html_record_history(
+			lang,asset_id,
+			data.get("history")
 		)
 		html_text=(
 			f"{html_text}\n"
 			f"<h3>{tl}</h3>\n"
 			f"""<div id="asset-{asset_id}-history-ctl" class="{_CSS_CLASS_COMMON}">""" "\n"
-				f"{write_form_add_modev(lang,asset_id)}\n"
+				f"{write_form_add_record(lang,asset_id)}\n"
 			"</div>\n"
 			f"""<div id="asset-{asset_id}-history">""" "\n"
-				f"{html_modev_history}\n"
+				f"{html_record_history}\n"
 			"</div>"
 		)
 

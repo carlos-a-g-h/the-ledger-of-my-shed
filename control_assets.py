@@ -69,7 +69,7 @@ _ROUTE_PAGE="/page/assets"
 
 _CACHE_ASSETS="cache_assets"
 
-_ERR_TITLE_record_MOD={
+_ERR_TITLE_RECORD_MOD={
 	_LANG_EN:"History modification error",
 	_LANG_ES:"Error al modificar el historial"
 }
@@ -977,7 +977,7 @@ async def route_api_add_record(
 	)
 	if not isinstance(asset_id,str):
 		return response_errormsg(
-			_ERR_TITLE_record_MOD[lang],
+			_ERR_TITLE_RECORD_MOD[lang],
 			{
 				_LANG_EN:"Asset Id not valid",
 				_LANG_ES:"Id de activo no válido"
@@ -990,7 +990,7 @@ async def route_api_add_record(
 	)
 	if not isinstance(the_sign,str):
 		return response_errormsg(
-			_ERR_TITLE_record_MOD[lang],
+			_ERR_TITLE_RECORD_MOD[lang],
 			{
 				_LANG_EN:"Check the 'sign' field",
 				_LANG_ES:"Revisa el campo 'sign' (firma)"
@@ -1004,7 +1004,7 @@ async def route_api_add_record(
 	)
 	if the_mod==0:
 		return response_errormsg(
-			_ERR_TITLE_record_MOD[lang],
+			_ERR_TITLE_RECORD_MOD[lang],
 			{
 				_LANG_EN:(
 					"Check the 'mod' field (increase/decrease)" "<br>"

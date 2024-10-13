@@ -268,13 +268,13 @@ async def dbi_assets_DropAsset(
 
 	return result
 
-async def dbi_assets_ModEv_Add(
+async def dbi_assets_History_AddRecord(
 		rdbc:AsyncIOMotorClient,name_db:str,
 		asset_id:str,
-		modev_sign:str,
-		modev_mod:int,
-		modev_tag:Optional[str]=None,
-		modev_comment:Optional[str]=None,
+		record_sign:str,
+		record_mod:int,
+		record_tag:Optional[str]=None,
+		record_comment:Optional[str]=None,
 		outverb:int=2
 	)->Mapping:
 
@@ -282,20 +282,20 @@ async def dbi_assets_ModEv_Add(
 	if outverb not in range(0,3):
 		v=2
 
-	modev_date=util_rnow()
-	modev_uid=secrets.token_hex(8)
+	record_date=util_rnow()
+	record_uid=secrets.token_hex(8)
 
-	modev_object={
-		"date":modev_date,
-		"mod":modev_mod,
-		"sign":modev_sign,
+	record_object={
+		"date":record_date,
+		"mod":record_mod,
+		"sign":record_sign,
 	}
 
-	if isinstance(modev_tag,str):
-		modev_object.update({"tag":modev_tag})
+	if isinstance(record_tag,str):
+		record_object.update({"tag":record_tag})
 
-	if isinstance(modev_comment,str):
-		modev_object.update({"comment":modev_comment})
+	if isinstance(record_comment,str):
+		record_object.update({"comment":record_comment})
 
 	res:Optional[UpdateResult]=None
 
@@ -305,7 +305,7 @@ async def dbi_assets_ModEv_Add(
 			{"_id":asset_id},
 			{
 				"$set":{
-					f"history.{modev_uid}":modev_object
+					f"history.{record_uid}":record_object
 				}
 			}
 		)
@@ -321,121 +321,64 @@ async def dbi_assets_ModEv_Add(
 
 	if v==1:
 		return {
-			"uid":modev_uid,
-			"date":modev_date
+			"uid":record_uid,
+			"date":record_date
 		}
 
-	modev_object.update({"uid":modev_uid})
+	record_object.update({"uid":record_uid})
 
-	return modev_object
+	return record_object
 
-# NOTE: Use in the future
-# def util_modev_filter(
-# 		modev_uid:str,
-# 		data:Mapping,
-# 		filter_uid:Optional[str]=None,
-# 		filter_date:Optional[str]=None,
-# 		filter_sign:Optional[str]=None,
-# 		filter_tag:Optional[str]=None
-# 	)->list:
+async def dbi_assets_History_GetSingleRecord(
+		rdbc:AsyncIOMotorClient,name_db:str,
+		asset_id:str,record_uid:str,
+	)->Mapping:
 
-# 	modev_date:Optional[str]=data.get("date")
-# 	modev_sign:Optional[str]=data.get("sign")
-# 	modev_mod:Optional[int]=data.get("mod")
+	aggr_pipeline=[
+		{
+			"$match":{
+				"_id":asset_id
+			}
+		},
+		{
+			"$project":{
+				f"history.{record_uid}":1
+			}
+		},
+		{
+			"$set":{
+				"id":"$_id",
+				"_id":"$$REMOVE"
+			}
+		}
+	]
 
-# 	if not isinstance(modev_date,str):
-# 		return []
+	result={}
 
-# 	if not isinstance(modev_sign,str):
-# 		return []
+	try:
+		col:AsyncIOMotorCollection=rdbc[name_db][_COL_ASSETS]
+		cursor:AsyncIOMotorCursor=col.aggregate(aggr_pipeline)
+		async for doc in cursor:
+			result.update(doc)
+			break
 
-# 	if not isinstance(modev_mod,int):
-# 		return []
+	except Exception as exc:
+		return {"err":f"{exc}"}
 
-# 	if isinstance(filter_uid,str):
-# 		if not filter_uid==modev_uid:
-# 			return []
+	if len(result)==0:
+		return {"err":"Nothing was found"}
 
-# 	if isinstance(filter_date,str):
-# 		if not modev_date.startswith(filter_date):
-# 			return []
+	if not isinstance(result.get("history"),Mapping):
+		return {"err":"No history/records found in the asset"}
 
-# 	if isinstance(filter_sign,str):
-# 		if not modev_sign==filter_sign:
-# 			return []
+	if not isinstance(result["history"].get(record_uid),Mapping):
+		return {"err":"The specified record was not found in the history"}
 
-# 	modev_tag:Optional[str]=data.get("tag")
-# 	if isinstance(filter_tag,str):
-# 		if not modev_tag==filter_tag:
-# 			return []
+	the_record=result["history"][record_uid]
 
-# 	data_ok={
-# 		"uid":modev_uid,
-# 		"date":modev_date,
-# 		"sign":modev_sign,
-# 		"mod":modev_mod
-# 	}
+	the_record.update({"uid":record_uid})
 
-# 	if isinstance(modev_tag,str):
-# 		data_ok.update(
-# 			{"tag":modev_tag}
-# 		)
-
-# 	modev_comment:Optional[str]=data.get("comment")
-# 	if isinstance(modev_comment,str):
-# 		data_ok.update(
-# 			{"comment":modev_comment}
-# 		)
-
-# 	return [data_ok]
-
-# NOTE: Use in the future
-# async def dbi_assets_ModEv_Filter(
-# 		rdbc:AsyncIOMotorClient,name_db:str,
-# 		asset_id:str,
-# 		modev_sign:Optional[str]=None,
-# 		modev_uid:Optional[str]=None,
-# 		modev_tag:Optional[str]=None,
-# 		modev_date:Optional[str]=None,
-# 	)->list:
-
-# 	results=None
-
-# 	# TODO: Learn how to optimize with MQL
-
-# 	try:
-# 		tgtcol:AsyncIOMotorCollection=rdbc[name_db][_COL_ASSETS]
-# 		results=await tgtcol.find_one(
-# 			{"_id":asset_id},
-# 			{"history":1,"_id":0}
-# 		)
-
-# 	except Exception as exc:
-# 		print(exc)
-# 		return []
-
-# 	if "history" not in results.keys():
-# 		return []
-
-# 	if not isinstance(results["history"],list):
-# 		return []
-
-# 	results_ok=[]
-
-# 	for key in results["history"]:
-
-# 		results_ok.extend(
-# 			util_modev_filter(
-# 				key,
-# 				results["history"][key],
-# 				filter_uid=modev_uid,
-# 				filter_sign=modev_sign,
-# 				filter_date=modev_date,
-# 				filter_tag=modev_tag
-# 			)
-# 		)
-
-# 	return results_ok
+	return the_record
 
 if __name__=="__main__":
 
@@ -502,15 +445,15 @@ if __name__=="__main__":
 
 			col_idx=col_idx+1
 
-			modev_mod=util_valid_int(
+			record_mod=util_valid_int(
 				asset["history"][uid].get("mod")
 			)
 
-			modev_comment=util_valid_str(
+			record_comment=util_valid_str(
 				asset["history"][uid].get("comment")
 			)
 
-			modev_date=util_valid_date(
+			record_date=util_valid_date(
 				asset["history"][uid].get("date")
 			)
 
@@ -519,26 +462,26 @@ if __name__=="__main__":
 				f"{uid}"
 			)
 
-			if modev_date is not None:
+			if record_date is not None:
 				cell_comment=(
 					f"{cell_comment}\n"
 					f"DATE:\n"
-					f"{modev_date}"
+					f"{record_date}"
 				)
 
-			if modev_comment is not None:
+			if record_comment is not None:
 				cell_comment=(
 					f"{cell_comment}" "\n\n"
-					f"{modev_comment}"
+					f"{record_comment}"
 				)
 
-			if modev_mod is None:
+			if record_mod is None:
 				cell_comment=(
 					f"{cell_comment}\n\n(WARNING)"
 				)
 
 			tgt_cell:Cell=ws[f"{util_excel_dectocol(col_start+col_idx)}{row}"]
-			tgt_cell.value=modev_mod
+			tgt_cell.value=record_mod
 			tgt_cell.comment=Comment(
 				cell_comment,
 				"?",
