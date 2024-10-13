@@ -141,7 +141,6 @@ jobs:
         working-directory: repo
         run: |
           dir the-output
-          dir the-output/main.dist
 
       - uses: actions/upload-artifact@v3
         if: ${{ inputs.DO_NOT_MOVE_ARTIFACTS == false }}
