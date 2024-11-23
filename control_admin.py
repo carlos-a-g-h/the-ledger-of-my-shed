@@ -6,25 +6,30 @@ from aiohttp.web import Request
 from aiohttp.web import Response
 from aiohttp.web import json_response
 
-from frontend_Any import _LANG_EN
-from frontend_Any import _LANG_ES
+from symbols_Any import _APP_LANG,_LANG_EN,_LANG_ES
+from symbols_Any import _APP_PROGRAMDIR
+from symbols_Any import _MIMETYPE_HTML
+from symbols_Any import _TYPE_CUSTOM
+
+from symbols_Any import _REQ_LANGUAGE,_REQ_USERNAME
+from symbols_Any import _ROOT_USER
+
+from frontend_Any import _STYLE_CUSTOM,_STYLE_POPUP
+from frontend_Any import _SCRIPT_HTMX
 from frontend_Any import _CSS_CLASS_COMMON
 from frontend_Any import write_fullpage
 from frontend_Any import write_popupmsg
 from frontend_Any import write_link_homepage
+
+from frontend_account import write_html_user_section
 
 from frontend_admin import write_form_update_config
 from frontend_admin import write_button_update_known_asset_names
 
 from control_Any import _ERR_DETAIL_DBI_FAIL
 from control_Any import _ERR_DETAIL_DATA_NOT_VALID
-from control_Any import _MIMETYPE_HTML
-from control_Any import _SCRIPT_HTMX
-from control_Any import _STYLE_CUSTOM
-from control_Any import _STYLE_POPUP
-from control_Any import _TYPE_CUSTOM
+
 from control_Any import assert_referer
-from control_Any import get_lang
 from control_Any import get_client_type
 from control_Any import get_request_body_dict
 from control_Any import response_errormsg
@@ -37,7 +42,6 @@ from internals import util_valid_int
 from internals import util_valid_int_inrange
 from internals import read_yaml_file_async
 from internals import write_yaml_file_async
-
 
 _ROUTE_PAGE="/page/admin"
 
@@ -54,7 +58,7 @@ async def route_api_update_known_asset_names(
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
-	lang=get_lang(ct,request)
+	lang=request[_REQ_LANGUAGE]
 
 	ok=await util_update_known_assets(request.app)
 
@@ -97,7 +101,7 @@ async def route_api_update_config(
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
-	lang=get_lang(ct,request)
+	lang=request[_REQ_LANGUAGE]
 
 	request_data=await get_request_body_dict(ct,request)
 	if not request_data:
@@ -107,7 +111,7 @@ async def route_api_update_config(
 			ct,status_code=406
 		)
 
-	path_config=request.app["path_programdir"].joinpath("config.yaml")
+	path_config=request.app[_APP_PROGRAMDIR].joinpath("config.yaml")
 	curr_config=await read_yaml_file_async(path_config)
 	if len(curr_config)==0:
 		return response_errormsg(
@@ -123,14 +127,14 @@ async def route_api_update_config(
 
 	new_lang:Optional[str]=util_valid_str_inrange(
 		util_valid_str(
-			request_data.get("lang")
+			request_data.get(_APP_LANG)
 		),
 		values=[_LANG_EN,_LANG_ES]
 	)
 	if new_lang==lang:
 		new_lang=None
 	if isinstance(new_lang,str):
-		new_config.update({"lang":new_lang})
+		new_config.update({_APP_LANG:new_lang})
 
 	new_port:Optional[int]=util_valid_int_inrange(
 		util_valid_int(
@@ -177,7 +181,7 @@ async def route_api_update_config(
 		return json_response({})
 
 	if isinstance(new_lang,str):
-		request.app["lang"]=new_lang
+		request.app[_APP_LANG]=new_lang
 		lang=new_lang
 
 	tl={
@@ -223,40 +227,69 @@ async def route_main(
 		request:Request
 	)->Union[json_response,Response]:
 
-	ct=get_client_type(request)
-	if ct==_TYPE_CUSTOM:
-		return json_response(data={})
+	username:Optional[str]=request[_REQ_USERNAME]
+	has_session=isinstance(username,str)
+	is_admin=(username==_ROOT_USER)
 
-	lang=request.app["lang"]
+	lang=request[_REQ_LANGUAGE]
 
-	tl_title={
-		_LANG_EN:"SysAdmin page",
+	tl={
+		_LANG_EN:"System administration",
 		_LANG_ES:"Administración del sistema"
 	}[lang]
 
-	tl={
-		_LANG_EN:"Admin(s) only",
-		_LANG_ES:"Solo para administradores"
+	tl_title={
+		_LANG_EN:"This page is for admin(s) only",
+		_LANG_ES:"Esta página es solo para administradores"
 	}[lang]
 	html_text=(
 		f"<h1>{tl_title}</h1>\n"
-		f"<p>{tl}</p>"
+		f"<h3>{tl}</h3>"
+		f"{write_link_homepage(lang)}\n"
+		f"{write_html_user_section(lang,username=username)}"
+		"""<section id="main">"""
 	)
 
-	tl={
-		_LANG_EN:"Back to main page",
-		_LANG_ES:"Voler a la página principal"
-	}[lang]
-	html_text=(
-		f"{html_text}\n"
-		f"{write_link_homepage(lang)}\n"
-		"""<section id="main">"""
+	if not is_admin:
+
+		tl={
+			_LANG_EN:"Nothing to see here",
+			_LANG_ES:"Nada que ver aquí"
+		}[lang]
+		html_text=(
+			f"{html_text}\n"
+			f"<h2>{tl}</h2>"
+		)
+
+		tl={
+			True:{
+				_LANG_EN:"You are not authorized to be here",
+				_LANG_ES:"Usted no está autorizado para estar aquí"
+			}[lang],
+			False:{
+				_LANG_EN:"You are not supposed to be here",
+				_LANG_ES:"Usted no debería estar aquí"
+			}[lang],
+		}[has_session]
+
+		html_text=(
+			f"{html_text}\n"
+			f"<p>{tl}</p>"
+		)
+
+	if is_admin:
+		html_text=(
+			f"{html_text}\n"
 			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
 				f"{write_form_update_config(lang)}\n"
 			"</div>"
 			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
 				f"{write_button_update_known_asset_names(lang)}\n"
 			"</div>"
+		)
+
+	html_text=(
+		f"{html_text}\n"
 		"</section>\n"
 		"""<section id="messages">""" "\n"
 			"<!-- MESSAGES GO HERE -->\n"

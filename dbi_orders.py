@@ -107,7 +107,7 @@ async def dbi_orders_GetOrders(
 
 	except Exception as exc:
 		if only_one:
-			return {"err":f"{exc}"}
+			return {"error":f"{exc}"}
 
 		return []
 

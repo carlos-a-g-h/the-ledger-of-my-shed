@@ -88,7 +88,7 @@ async def dbi_assets_CreateAsset(
 		tgtcol:AsyncIOMotorCollection=rdbc[name_db][_COL_ASSETS]
 		await tgtcol.insert_one(new_asset)
 	except Exception as exc:
-		return {"err":f"{exc}"}
+		return {"error":f"{exc}"}
 
 	if v==0:
 		return {}
@@ -137,7 +137,7 @@ async def dbi_assets_ChangeAssetMetadata(
 			changes_unset.append("comment")
 
 	if len(changes_set)==0 and len(changes_unset)==0:
-		return {"err":"Nothing to change"}
+		return {"error":"Nothing to change"}
 
 	aggr_pipeline=[{"$match":{"_id":asset_id}}]
 
@@ -171,7 +171,7 @@ async def dbi_assets_ChangeAssetMetadata(
 			pass
 
 	except Exception as exc:
-		return {"err":f"{exc}"}
+		return {"error":f"{exc}"}
 
 	# print(cursor)
 
@@ -227,7 +227,7 @@ async def dbi_assets_AssetQuery(
 
 	except Exception as exc:
 		if only_one:
-			return {"err":f"{exc}"}
+			return {"error":f"{exc}"}
 
 		# NOTE: Never remove this
 		print(exc)
@@ -258,7 +258,7 @@ async def dbi_assets_DropAsset(
 			{"_id":asset_id}
 		)
 	except Exception as exc:
-		return {"err":f"{exc}"}
+		return {"error":f"{exc}"}
 
 	if v==0:
 		return {}
@@ -302,19 +302,17 @@ async def dbi_assets_History_AddRecord(
 	try:
 		col:AsyncIOMotorCollection=rdbc[name_db][_COL_ASSETS]
 		res=await col.update_one(
-			{"_id":asset_id},
+			{ "_id" : asset_id } ,
 			{
-				"$set":{
-					f"history.{record_uid}":record_object
-				}
+				"$set":{ f"history.{record_uid}": record_object }
 			}
 		)
 
 	except Exception as exc:
-		return {"err":f"{exc}"}
+		return {"error":f"{exc}"}
 
 	if res.modified_count==0:
-		return {"err":"???"}
+		return {"error":"???"}
 
 	if v==0:
 		return {}
@@ -363,16 +361,16 @@ async def dbi_assets_History_GetSingleRecord(
 			break
 
 	except Exception as exc:
-		return {"err":f"{exc}"}
+		return {"error":f"{exc}"}
 
 	if len(result)==0:
-		return {"err":"Nothing was found"}
+		return {"error":"Nothing was found"}
 
 	if not isinstance(result.get("history"),Mapping):
-		return {"err":"No history/records found in the asset"}
+		return {"error":"No history/records found in the asset"}
 
 	if not isinstance(result["history"].get(record_uid),Mapping):
-		return {"err":"The specified record was not found in the history"}
+		return {"error":"The specified record was not found in the history"}
 
 	the_record=result["history"][record_uid]
 

@@ -12,22 +12,31 @@ from aiohttp.web import Request
 from aiohttp.web import Response
 from aiohttp.web import json_response
 
-# from motor.motor_asyncio import AsyncIOMotorClient
+from symbols_Any import _ROOT_USER
+from symbols_Any import _LANG_EN,_LANG_ES
+from symbols_Any import _APP_CACHE_ASSETS
+from symbols_Any import _TYPE_BROWSER
+from symbols_Any import _TYPE_CUSTOM
+from symbols_Any import _MIMETYPE_HTML
+
+from symbols_Any import _APP_RDBC
+from symbols_Any import _APP_RDBN
+
+from symbols_Any import _REQ_CLIENT_TYPE,_REQ_LANGUAGE,_REQ_USERNAME,_REQ_HAS_SESSION
 
 from control_Any import _ERR_DETAIL_DATA_NOT_VALID
 from control_Any import _ERR_DETAIL_DBI_FAIL
-from control_Any import _MIMETYPE_HTML
-from control_Any import _SCRIPT_HTMX
-from control_Any import _STYLE_CUSTOM
-from control_Any import _STYLE_POPUP
-from control_Any import _TYPE_CUSTOM
 from control_Any import assert_referer
 from control_Any import get_lang
 from control_Any import get_client_type
 from control_Any import get_request_body_dict
 from control_Any import response_errormsg
 
-# from control_assets_cache import _CACHE_ASSETS
+# from control_Any import response_unauthorized
+# from control_account import _ERR_DETAIL_SESSION_REQUIRED
+# from control_account import _COOKIE_USER,_COOKIE_AKEY
+# from control_account import process_session_checkin
+# from control_account import util_extract_from_cookies
 
 from dbi_assets import dbi_assets_ChangeAssetMetadata
 from dbi_assets import dbi_assets_CreateAsset
@@ -36,14 +45,14 @@ from dbi_assets import dbi_assets_DropAsset
 from dbi_assets import dbi_assets_History_AddRecord
 from dbi_assets import dbi_assets_History_GetSingleRecord
 
-from frontend_Any import _LANG_EN
-from frontend_Any import _LANG_ES
+from frontend_Any import _SCRIPT_HTMX,_STYLE_CUSTOM,_STYLE_POPUP
 from frontend_Any import _CSS_CLASS_COMMON
-# from frontend_Any import _CSS_CLASS_HORIZONTAL
 from frontend_Any import write_fullpage
 from frontend_Any import write_popupmsg
 from frontend_Any import write_link_homepage
 from frontend_Any import write_ul
+
+from frontend_account import write_html_user_section
 
 from frontend_assets import write_button_nav_new_asset
 from frontend_assets import write_button_nav_search_assets
@@ -63,11 +72,7 @@ from internals import util_valid_int
 from internals import util_valid_str
 # from internals import util_rnow
 
-# _ROUTE_SEARCH="/api/assets/search"
-
 _ROUTE_PAGE="/page/assets"
-
-_CACHE_ASSETS="cache_assets"
 
 _ERR_TITLE_RECORD_MOD={
 	_LANG_EN:"History modification error",
@@ -134,8 +139,8 @@ def util_asset_fuzzy_finder(
 		False:[]
 	}[find_exact_only]
 
-	for asset_id in app[_CACHE_ASSETS]:
-		asset_name=app[_CACHE_ASSETS][asset_id]
+	for asset_id in app[_APP_CACHE_ASSETS]:
+		asset_name=app[_APP_CACHE_ASSETS][asset_id]
 		row=asset_name.lower().strip()
 		if row.find(text)<0:
 			continue
@@ -176,7 +181,7 @@ async def util_search_assets(
 	buffer=[]
 
 	# NOTE
-	# the exact match by name (if found) is appended at the end of the results list
+	# The exact match by name (if found) is appended at the end of the results list
 	# the default frontend will REVERSE the list
 
 	if isinstance(by_name,str):
@@ -218,8 +223,8 @@ async def util_search_assets(
 	if get_all or isinstance(by_sign,str) or isinstance(by_tag,str):
 		buffer.extend(
 			await dbi_assets_AssetQuery(
-				app["rdbc"],
-				app["rdbn"],
+				app[_APP_RDBC],
+				app[_APP_RDBN],
 				asset_tag=by_tag,
 				asset_sign=by_sign,
 				get_total=True,
@@ -251,7 +256,7 @@ async def util_search_assets(
 async def util_update_known_assets(app:Application)->bool:
 
 	dbi_result=await dbi_assets_AssetQuery(
-		app["rdbc"],app["rdbn"]
+		app[_APP_RDBC],app[_APP_RDBN]
 	)
 
 	size=len(dbi_result)
@@ -266,7 +271,7 @@ async def util_update_known_assets(app:Application)->bool:
 		if size<0:
 			break
 
-		app[_CACHE_ASSETS].update(
+		app[_APP_CACHE_ASSETS].update(
 			util_convert_asset_to_kv(
 				dbi_result.pop()
 			)
@@ -278,16 +283,18 @@ async def route_fgmt_new_asset(
 		request:Request
 	)->Union[json_response,Response]:
 
-	ct=get_client_type(request)
-
-	if not assert_referer(ct,request,_ROUTE_PAGE):
+	if not assert_referer(
+		_TYPE_BROWSER,request,
+		_ROUTE_PAGE
+	):
 		return Response(status=406)
 
-	lang=request.app["lang"]
+	lang=request[_REQ_LANGUAGE]
+	username=request[_REQ_USERNAME]
 
 	return Response(
 		body=(
-			f"{write_form_new_asset(lang)}"
+			f"{write_form_new_asset(lang,username)}"
 
 			"""<section hx-swap-oob="innerHTML:#navigation">"""
 
@@ -309,10 +316,10 @@ async def route_fgmt_search_assets(
 	if not (in_assets_page or in_orders_page):
 		return Response(status=406)
 
-	if ct==_TYPE_CUSTOM:
-		return json_response(data={})
+	# if ct==_TYPE_CUSTOM:
+	# 	return json_response(data={})
 
-	lang=request.app["lang"]
+	lang=request[_REQ_LANGUAGE]
 
 	html_text:str=""
 	if in_assets_page:
@@ -352,14 +359,19 @@ async def route_api_new_asset(
 		request:Request
 	)->Union[json_response,Response]:
 
-	ct=get_client_type(request)
-	if not isinstance(ct,str):
-		return Response(status=406)
+	# POST /api/assets/new
 
+	ct=request[_REQ_CLIENT_TYPE]
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
-	lang=get_lang(ct,request)
+	lang=request[_REQ_LANGUAGE]
+	username=request[_REQ_USERNAME]
+	is_root=(username==_ROOT_USER)
+
+	# if ct==_TYPE_BROWSER:
+	# 	if not (await process_session_checkin(request)):
+	# 		return response_unauthorized(lang,_TYPE_BROWSER)
 
 	request_data=await get_request_body_dict(ct,request)
 	if not request_data:
@@ -395,7 +407,7 @@ async def route_api_new_asset(
 		}[lang]
 		return response_errormsg(
 			_ERR_TITLE_NEW_ASSET[lang],
-			f"{tl}: id={ematch_id}",
+			f"{tl};ID = {ematch_id}",
 			ct,status_code=406
 		)
 
@@ -403,14 +415,29 @@ async def route_api_new_asset(
 		request_data.get("sign")
 	)
 	if not isinstance(asset_sign,str):
-		return response_errormsg(
-			_ERR_TITLE_NEW_ASSET[lang],
-			{
-				_LANG_EN:"Check the 'sign' field",
-				_LANG_ES:"Revise el campo 'sign' (la firma)"
-			}[lang],
-			ct,status_code=406
-		)
+		if is_root:
+			asset_sign=username
+
+		if not is_root:
+			return response_errormsg(
+				_ERR_TITLE_NEW_ASSET[lang],
+				{
+					_LANG_EN:"Check the 'sign' field",
+					_LANG_ES:"Revise el campo 'sign' (la firma)"
+				}[lang],
+				ct,status_code=406
+			)
+
+	if not is_root:
+		if not asset_sign==username:
+			return response_errormsg(
+				_ERR_TITLE_NEW_ASSET[lang],
+				{
+					_LANG_EN:"You are not authorized to sign with a different username",
+					_LANG_ES:"Usted no está autorizado a firmar bajo un nombre de usuario distinto"
+				}[lang],
+				ct,status_code=406
+			)
 
 	asset_comment=util_valid_str(
 		request_data.get("comment")
@@ -437,15 +464,15 @@ async def route_api_new_asset(
 		)
 
 	result=await dbi_assets_CreateAsset(
-		request.app["rdbc"],
-		request.app["rdbn"],
+		request.app[_APP_RDBC],
+		request.app[_APP_RDBN],
 		asset_id,asset_name,
 		asset_sign,asset_tag=asset_tag,
 		asset_comment=asset_comment,
 		outverb=outverb
 	)
 
-	error_msg:Optional[str]=result.get("err")
+	error_msg:Optional[str]=result.get("error")
 	if error_msg is not None:
 		return response_errormsg(
 			_ERR_TITLE_NEW_ASSET[lang],
@@ -454,7 +481,7 @@ async def route_api_new_asset(
 			ct,400
 		)
 
-	request.app[_CACHE_ASSETS].update({
+	request.app[_APP_CACHE_ASSETS].update({
 		asset_id:asset_name
 	})
 
@@ -485,9 +512,9 @@ async def route_api_new_asset(
 
 			"""<section hx-swap-oob="innerHTML:#main">"""
 
-				f"{write_form_new_asset(lang)}\n"
+				f"{write_form_new_asset(lang,username)}\n"
 				f"<p>{tl}:</p>\n"
-				f"{write_html_asset(lang,result)}"
+				f"{write_html_asset(lang,result,username=username)}"
 
 			"</section>"
 		),
@@ -498,9 +525,18 @@ async def route_api_asset_metadata_change(
 		request:Request
 	)->Union[json_response,Response]:
 
-	ct=get_client_type(request)
+	# POST /api/assets/change-metadata
 
-	lang=get_lang(ct,request)
+	ct=request[_REQ_CLIENT_TYPE]
+
+	if not assert_referer(ct,request,_ROUTE_PAGE):
+		return Response(status=406)
+
+	lang=request[_REQ_LANGUAGE]
+
+	# if ct==_TYPE_BROWSER:
+	# 	if not (await process_session_checkin(request)):
+	# 		return response_unauthorized(lang,_TYPE_BROWSER)
 
 	request_data=await get_request_body_dict(ct,request)
 	if not isinstance(request_data,Mapping):
@@ -543,12 +579,12 @@ async def route_api_asset_metadata_change(
 		dval=False
 	)
 	result=await dbi_assets_ChangeAssetMetadata(
-		request.app["rdbc"],request.app["rdbn"],
+		request.app[_APP_RDBC],request.app[_APP_RDBN],
 		asset_id,asset_name,asset_tag,asset_comment,
 		ignore_name,ignore_tag,ignore_comment
 	)
 
-	error_msg:Optional[str]=result.get("err")
+	error_msg:Optional[str]=result.get("error")
 	if error_msg is not None:
 		return response_errormsg(
 			_ERR_TITLE_METADATA_CHANGE[lang],
@@ -558,7 +594,7 @@ async def route_api_asset_metadata_change(
 		)
 
 	if not ignore_name:
-		request.app[_CACHE_ASSETS].update({
+		request.app[_APP_CACHE_ASSETS].update({
 			asset_id:asset_name
 		})
 
@@ -566,8 +602,8 @@ async def route_api_asset_metadata_change(
 		return json_response(data=result)
 
 	new_version=await dbi_assets_AssetQuery(
-		request.app["rdbc"],
-		request.app["rdbn"],
+		request.app[_APP_RDBC],
+		request.app[_APP_RDBN],
 		asset_id,
 		get_comment=True,
 		get_sign=True,
@@ -603,7 +639,11 @@ async def route_api_select_asset(
 		request:Request
 	)->Union[json_response,Response]:
 
-	ct=get_client_type(request)
+	# NOTE: For custom clients only....?
+
+	# POST /api/assets/select/{asset_id}
+
+	ct=request[_REQ_CLIENT_TYPE]
 	if not ct==_TYPE_CUSTOM:
 		return Response(status=406)
 
@@ -633,14 +673,14 @@ async def route_api_select_asset(
 	)
 
 	result=await dbi_assets_AssetQuery(
-		request.app["rdbc"],request.app["rdbn"],
+		request.app[_APP_RDBC],request.app[_APP_RDBN],
 		asset_id=asset_id,
 		get_comment=inc_comment,
 		get_total=inc_total,
 		get_history=inc_history
 	)
 
-	error_msg:Optional[str]=result.get("err")
+	error_msg:Optional[str]=result.get("error")
 	if error_msg is not None:
 		return response_errormsg(
 			_ERR_TITLE_GET_ASSET[_LANG_EN],
@@ -651,15 +691,24 @@ async def route_api_select_asset(
 
 	return json_response(data=result)
 
-async def route_fgmt_asset_editor(
+async def route_fgmt_asset_panel(
 		request:Request
 	)->Union[json_response,Response]:
 
-	ct=get_client_type(request)
+	# GET /fgmt/assets/panel/{asset_id}
+
+	ct=request[_REQ_CLIENT_TYPE]
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
-	lang=request.app["lang"]
+	lang=request[_REQ_LANGUAGE]
+
+	username=request[_REQ_USERNAME]
+	has_session=request[_REQ_HAS_SESSION]
+	if not has_session:
+		username=None
+
+	# has_session=await process_session_checkin(request)
 
 	asset_id=util_valid_str(
 		request.match_info["asset_id"]
@@ -681,8 +730,8 @@ async def route_fgmt_asset_editor(
 	inc_total=True
 
 	result=await dbi_assets_AssetQuery(
-		request.app["rdbc"],
-		request.app["rdbn"],
+		request.app[_APP_RDBC],
+		request.app[_APP_RDBN],
 		asset_id=asset_id,
 		get_sign=inc_sign,
 		get_tag=inc_tag,
@@ -691,7 +740,7 @@ async def route_fgmt_asset_editor(
 		get_history=inc_history
 	)
 
-	error_msg:Optional[str]=result.get("err")
+	error_msg:Optional[str]=result.get("error")
 	if error_msg is not None:
 		return response_errormsg(
 			_ERR_TITLE_GET_ASSET[lang],
@@ -719,7 +768,7 @@ async def route_fgmt_asset_editor(
 
 			"""<section hx-swap-oob="innerHTML:#main">"""
 				f"<h3>{tl}</h3>\n"
-				f"{write_html_asset(lang,result,True)}"
+				f"{write_html_asset(lang,result,fullview=True,username=username)}"
 			"</section>"
 		),
 		content_type=_MIMETYPE_HTML
@@ -807,7 +856,7 @@ async def route_api_search_assets(
 				f"<p>Tag: <code>{search_tag}</code></p>"
 			)
 
-	lang=request.app["lang"]
+	lang=request[_REQ_LANGUAGE]
 
 	tl={
 		_LANG_EN:"Asset(s) found",
@@ -878,11 +927,13 @@ async def route_api_drop_asset(
 		request:Request
 	)->Union[json_response,Response]:
 
-	ct=get_client_type(request)
+	# DELETE /api/assets/drop
+
+	ct=request[_REQ_CLIENT_TYPE]
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
-	lang=get_lang(ct,request)
+	lang=request[_REQ_LANGUAGE]
 
 	request_data=await get_request_body_dict(ct,request)
 	print("DELETE",request_data)
@@ -916,11 +967,11 @@ async def route_api_drop_asset(
 		)
 
 	dbi_result=await dbi_assets_DropAsset(
-		request.app["rdbc"],
-		request.app["rdbn"],
+		request.app[_APP_RDBC],
+		request.app[_APP_RDBN],
 		asset_id,outverb=outverb
 	)
-	error_msg:Optional[str]=dbi_result.get("err")
+	error_msg:Optional[str]=dbi_result.get("error")
 	if error_msg is not None:
 		return response_errormsg(
 			_ERR_TITLE_GET_ASSET[lang],
@@ -928,6 +979,9 @@ async def route_api_drop_asset(
 			f": {error_msg}",
 			ct,status_code=400
 		)
+
+	# Remove the asset from the cache
+	request.app[_APP_CACHE_ASSETS].pop(asset_id)
 
 	if ct==_TYPE_CUSTOM:
 		return json_response(data=dbi_result)
@@ -958,11 +1012,15 @@ async def route_api_add_record(
 		request:Request
 	)->Union[json_response,Response]:
 
-	ct=get_client_type(request)
+	# POST /api/assets/history/{asset_id}/add
+
+	ct=request[_REQ_CLIENT_TYPE]
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
-	lang=get_lang(ct,request)
+	lang=request[_REQ_LANGUAGE]
+	username=request[_REQ_USERNAME]
+	is_root=(username==_ROOT_USER)
 
 	request_data=await get_request_body_dict(ct,request)
 	if not request_data:
@@ -989,14 +1047,29 @@ async def route_api_add_record(
 		request_data.get("sign")
 	)
 	if not isinstance(the_sign,str):
-		return response_errormsg(
-			_ERR_TITLE_RECORD_MOD[lang],
-			{
-				_LANG_EN:"Check the 'sign' field",
-				_LANG_ES:"Revisa el campo 'sign' (firma)"
-			}[lang],
-			ct,status_code=406
-		)
+		if is_root:
+			the_sign==username
+
+		if not is_root:
+			return response_errormsg(
+				_ERR_TITLE_RECORD_MOD[lang],
+				{
+					_LANG_EN:"Check the 'sign' field",
+					_LANG_ES:"Revisa el campo 'sign' (firma)"
+				}[lang],
+				ct,status_code=406
+			)
+
+	if not is_root:
+		if not the_sign==username:
+			return response_errormsg(
+				_ERR_TITLE_RECORD_MOD[lang],
+				{
+					_LANG_EN:"You are not authorized to sign with a different username",
+					_LANG_ES:"Usted no está autorizado a firmar bajo un nombre de usuario distinto"
+				}[lang],
+				ct,status_code=406
+			)
 
 	the_mod=util_valid_int(
 		request_data.get("mod"),
@@ -1033,16 +1106,14 @@ async def route_api_add_record(
 		)
 
 	dbi_result=await dbi_assets_History_AddRecord(
-		request.app["rdbc"],
-		request.app["rdbn"],
+		request.app[_APP_RDBC],
+		request.app[_APP_RDBN],
 		asset_id,
 		the_sign,the_mod,
 		record_tag=the_tag,
 		record_comment=the_comment,
 		outverb=outverb
 	)
-
-	# print("DBI_RESULT:",dbi_result)
 
 	error_msg:Optional[str]=dbi_result.get("error")
 	if error_msg is not None:
@@ -1076,7 +1147,7 @@ async def route_api_add_record(
 			f"""<code hx-swap-oob="innerHTML:#asset-{asset_id}-total">???</code>""" "\n"
 
 			f"""<div hx-swap-oob="innerHTML:#asset-{asset_id}-history-ctl">""" "\n"
-				f"{write_form_add_record(lang,asset_id)}\n"
+				f"{write_form_add_record(lang,asset_id,username)}\n"
 			"</div>"
 
 			f"""<div hx-swap-oob="afterbegin:#asset-{asset_id}-history">""" "\n"
@@ -1090,17 +1161,19 @@ async def route_api_get_record(
 		request:Request
 	)->Union[json_response,Response]:
 
-	ct=get_client_type(request)
+	# GET /api/assets/history/{asset_id}/records/{record_uid}
+
+	ct=request[_REQ_CLIENT_TYPE]
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
-	lang=get_lang(ct,request)
+	lang=request[_REQ_LANGUAGE]
 
 	asset_id=request.match_info["asset_id"]
 	record_uid=request.match_info["record_uid"]
 
 	dbi_result=await dbi_assets_History_GetSingleRecord(
-		request.app["rdbc"],request.app["rdbn"],
+		request.app[_APP_RDBC],request.app[_APP_RDBN],
 		asset_id,record_uid
 	)
 
@@ -1116,7 +1189,8 @@ async def route_api_get_record(
 	html_text=write_popupmsg(
 		write_html_record(
 			lang,asset_id,
-			dbi_result,detailed=True
+			dbi_result,detailed=True,
+			authorized=True
 		)
 	)
 
@@ -1129,11 +1203,8 @@ async def route_main(
 		request:Request
 	)->Union[json_response,Response]:
 
-	ct=get_client_type(request)
-	if ct==_TYPE_CUSTOM:
-		return json_response(data={})
-
-	lang=request.app["lang"]
+	username:Optional[str]=request[_REQ_USERNAME]
+	lang=request[_REQ_LANGUAGE]
 
 	page_title={
 		_LANG_EN:"Basic asset manager",
@@ -1141,8 +1212,8 @@ async def route_main(
 	}[lang]
 
 	tl={
-		_LANG_EN:"Simple creation and management of assets",
-		_LANG_ES:"Creación y gestión simple e individual de activos"
+		_LANG_EN:"Create and manage each asset",
+		_LANG_ES:"Crea y gestiona sus activos"
 	}[lang]
 
 	return Response(
@@ -1151,9 +1222,9 @@ async def route_main(
 			page_title,
 			(
 				f"<h1>{page_title}</h1>\n"
-				f"<p>{tl}</p>\n"
+				f"<h3>{tl}</h3>\n"
 				f"{write_link_homepage(lang)}\n"
-				# f"""<p>{write_link_homepage(lang)}</p>""" "\n"
+				f"{write_html_user_section(lang,username=username)}"
 				"""<section id="navigation">""" "\n"
 					f"{write_ul([write_button_nav_search_assets(lang),write_button_nav_new_asset(lang)])}\n"
 				"</section>\n"

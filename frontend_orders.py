@@ -2,7 +2,7 @@
 
 from typing import Mapping,Union
 
-from frontend_Any import _LANG_EN,_LANG_ES
+from symbols_Any import _LANG_EN,_LANG_ES
 from frontend_Any import _CSS_CLASS_COMMON
 from frontend_Any import _CSS_CLASS_HORIZONTAL
 from frontend_Any import _CSS_CLASS_DANGER
@@ -264,7 +264,7 @@ def write_button_delete_order(
 
 	return html_text
 
-def write_form_new_order(lang:str)->str:
+def write_form_new_order(lang:str,username:str="")->str:
 
 	html_text=(
 		f"""<div class="{_CSS_CLASS_COMMON}">"""
@@ -290,6 +290,7 @@ def write_form_new_order(lang:str)->str:
 					""" name="sign" """
 					"""type="text" """
 					"""max-length=32 """
+					f"""value="{username}" """
 					"required>\n"
 		"</div>"
 	)

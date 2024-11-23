@@ -3,7 +3,7 @@
 from typing import Mapping
 from typing import Optional
 
-from frontend_Any import _LANG_EN,_LANG_ES
+from symbols_Any import _LANG_EN,_LANG_ES
 
 # from frontend_Any import _CSS_CLASS_BUTTON
 from frontend_Any import _CSS_CLASS_DANGER
@@ -51,7 +51,7 @@ def write_button_nav_search_assets(lang:str)->str:
 		"</button>"
 	)
 
-def write_form_new_asset(lang:str)->str:
+def write_form_new_asset(lang:str,signed_by:str="")->str:
 
 	tl={
 		_LANG_EN:"Creation of a new asset",
@@ -96,6 +96,7 @@ def write_form_new_asset(lang:str)->str:
 				""" name="sign" """
 				"""type="text" """
 				"""max-length=32 """
+				f"""value="{signed_by}" """
 				"required>\n"
 		"</div>"
 	)
@@ -156,6 +157,7 @@ def write_form_edit_asset_metadata(
 		_LANG_ES:"Editar"
 	}[lang]
 	html_text=(
+		"<!-- ASSET METADATA EDITOR -->\n"
 		f"<summary>{tl}</summary>\n"
 		"<div>\n"
 		f"""<form hx-post="/api/assets/change-metadata" """ "\n"
@@ -251,9 +253,10 @@ def write_form_edit_asset_metadata(
 	html_text=(
 		f"{html_text}\n"
 
-				f"""<button class="common" type="submit">{tl}</button>""" "\n"
-			"</div>\n"
-		"</form>"
+					f"""<button class="common" type="submit">{tl}</button>""" "\n"
+				"</div>\n"
+			"</form>\n"
+		"</div>"
 	)
 
 	if full:
@@ -277,14 +280,14 @@ def write_button_asset_fullview_or_update(
 			_LANG_ES:"Actualizar ahora"
 		}[lang],
 		False:{
-			_LANG_EN:"Manage",
-			_LANG_ES:"Administrar"
+			_LANG_EN:"View/Manage",
+			_LANG_ES:"Ver/Administrar"
 		}[lang]
 	}[in_fullview]
 
 	return (
 		f"""<button class="{_CSS_CLASS_COMMON}" """
-			f"""hx-get="/fgmt/assets/editor/{asset_id}" """
+			f"""hx-get="/fgmt/assets/panel/{asset_id}" """
 			"""hx-target="#messages" """
 			"""hx-swap="innerHTML" """
 			">"
@@ -444,13 +447,14 @@ def write_form_search_assets(
 		"</form>"
 	)
 
-def write_form_add_record(lang:str,asset_id:str)->str:
+def write_form_add_record(lang:str,asset_id:str,username:str="")->str:
 
 	tl={
 		_LANG_EN:"Add or remove",
 		_LANG_ES:"Agregar o sustraer"
 	}[lang]
 	html_text=(
+		"<!-- ADD RECORD FORM -->\n"
 		"<form "
 			f"""hx-post="/api/assets/history/{asset_id}/add" """
 			"""hx-target="#messages" """
@@ -488,6 +492,7 @@ def write_form_add_record(lang:str,asset_id:str)->str:
 				""" name="sign" """
 				""" type="text" """
 				"""max-length=32 """
+				f"""value="{username}" """
 				"required>\n"
 		"</div>"
 	)
@@ -566,33 +571,45 @@ def write_html_record(
 		asset_id:str,
 		data:Mapping,
 		record_uid:Optional[str]=None,
-		detailed:bool=False
+		detailed:bool=False,
+		authorized:bool=False,
 	)->str:
 
 	record_uid_ok:Optional[str]=record_uid
-	if not isinstance(record_uid,str):
 
-		record_uid_ok=util_valid_str(data.get("uid"),True)
-		if not isinstance(record_uid_ok,str):
-			return write_div_display_error(lang)
+	print(type(record_uid_ok),record_uid_ok)
 
-	record_date=util_valid_date(
-		util_valid_str(data.get("date"))
-	)
+	if record_uid_ok is None:
+
+		print("???",record_uid_ok)
+
+		record_uid_ok=util_valid_str(
+			data.get("uid"),
+			True
+		)
+
+	if record_uid_ok is None:
+		print(1)
+		return write_div_display_error(lang)
+
+	record_date=util_valid_date(data.get("date"))
 	if not isinstance(record_date,str):
+		print(2)
 		return write_div_display_error(lang)
 
 	record_mod=util_valid_int(data.get("mod"))
 	if not isinstance(record_mod,int):
+		print(3)
 		return write_div_display_error(lang)
 
 	record_sign=util_valid_str(data.get("sign"),True)
 	if not isinstance(record_sign,str):
+		print(4)
 		return write_div_display_error(lang)
 
 	record_tag=util_valid_str(data.get("tag"),True)
 
-	html_text=""
+	html_text=f"<!-- HISTORY RECORD {record_uid_ok} -->"
 
 	if not detailed:
 
@@ -602,7 +619,7 @@ def write_html_record(
 		}[lang]
 		html_text=(
 			f"{html_text}\n"
-			f"<div>{record_date}</div>\n"
+			f"<div><strong>{record_date}</strong></div>\n"
 			"<div>\n"
 				f"""<div class="{_CSS_CLASS_HORIZONTAL}">"""
 					f"{tl}: {record_mod}"
@@ -631,14 +648,20 @@ def write_html_record(
 				f"<div>{tl}: {record_tag}</div>"
 			)
 
+		if authorized:
+
+			html_text=f"{html_text}\n"+write_button_record_details(
+				lang,asset_id,
+				record_uid_ok
+			)
+
 		html_text=(
 			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
 				f"{html_text}\n"
-				f"{write_button_record_details(lang,asset_id,record_uid_ok)}\n"
 			"</div>"
 		)
 
-	if detailed:
+	if detailed and authorized:
 
 		tl={
 			_LANG_EN:"Record details",
@@ -739,41 +762,50 @@ def write_html_record(
 			"</table>"
 		)
 
-	return html_text
-
-def write_html_record_history(
-		lang:str,asset_id:str,
-		history:Optional[Mapping]
-	):
-
-	if not isinstance(history,Mapping):
-		return (
-			"<div>"+{
-				_LANG_EN:"History is empty/unknown",
-				_LANG_ES:"Historial vacío/desconocido"
-			}[lang]+"</div>"
-		)
-
-	if len(history)==0:
-		return (
-			"<p>"+{
-				_LANG_EN:"History is empty/unknown",
-				_LANG_ES:"Historial vacío/desconocido"
-			}[lang]+"</p>"
-		)
-
-	html_text=""
-
-	history_keys=list(history.keys())
-	history_keys.reverse()
-
-	for record_uid in history_keys:
-		html_text=(
-			f"{html_text}\n"
-			f"{write_html_record(lang,asset_id,history[record_uid],record_uid=record_uid)}"
-		)
+	# if borders:
+	# 	html_text=(
+	# 		f"""<div id="history-record-{record_uid_ok}" """
+	# 			f"""class="{_CSS_CLASS_COMMON}" """
+	# 			">\n"
+	# 			f"{html_text}\n"
+	# 		"</div>"
+	# 	)
 
 	return html_text
+
+# def write_html_record_history(
+# 		lang:str,asset_id:str,
+# 		history:Optional[Mapping]
+# 	):
+
+# 	print(f"HISTORY FOR {asset_id}:",history)
+
+# 	empty=(not isinstance(history,Mapping))
+# 	if not empty:
+# 		empty=(len(history)==0)
+
+# 	if empty:
+# 		return (
+# 			"<div>"+{
+# 				_LANG_EN:"History is empty/unknown",
+# 				_LANG_ES:"Historial vacío/desconocido"
+# 			}[lang]+"</div>"
+# 		)
+
+# 	html_text=""
+
+# 	history_keys=list(history.keys())
+# 	history_keys.reverse()
+
+# 	for record_uid in history_keys:
+
+# 		html_text=f"{html_text}\n"+write_html_record(
+# 			lang,asset_id,
+# 			history[record_uid],
+# 			record_uid=record_uid
+# 		)
+
+# 	return html_text
 
 def write_html_asset_info(
 		lang:str,data:Mapping,
@@ -843,7 +875,12 @@ def write_html_asset(
 		lang:str,
 		data:Mapping,
 		fullview:bool=False,
+		username:Optional[str]=None,
 	)->str:
+
+	print("ASSET PRINTED BY",username)
+
+	has_username=isinstance(username,str)
 
 	asset_id=util_valid_str(data.get("id"))
 	if not isinstance(asset_id,str):
@@ -852,6 +889,7 @@ def write_html_asset(
 	# info
 
 	html_text=(
+		f"<!-- ASSET {asset_id} -->\n"
 		f"""<div class={_CSS_CLASS_COMMON} id="asset-{asset_id}">""" "\n"
 			f"{write_html_asset_info(lang,data,fullview)}"
 	)
@@ -867,13 +905,13 @@ def write_html_asset(
 			f"""<div>{tl}: <code id="asset-{asset_id}-total">{asset_total}</code></div>"""
 		)
 
-	if fullview:
+	if fullview and has_username:
 		html_text=(
 			f"{html_text}\n"
 			f"{write_form_edit_asset_metadata(lang,asset_id)}"
 		)
 
-	# actions
+	# Actions
 
 	html_text=(
 		f"{html_text}\n"
@@ -881,7 +919,7 @@ def write_html_asset(
 			f"{write_button_asset_fullview_or_update(lang,asset_id,fullview)}\n"
 	)
 
-	if fullview:
+	if fullview and has_username:
 
 		html_text=(
 			f"{html_text}\n"
@@ -902,18 +940,79 @@ def write_html_asset(
 			_LANG_EN:"History",
 			_LANG_ES:"Historial"
 		}[lang]
-		html_record_history=write_html_record_history(
-			lang,asset_id,
-			data.get("history")
-		)
+		# html_record_history=write_html_record_history(
+		# 	lang,asset_id,
+		# 	data.get("history")
+		# )
 		html_text=(
 			f"{html_text}\n"
-			f"<h3>{tl}</h3>\n"
-			f"""<div id="asset-{asset_id}-history-ctl" class="{_CSS_CLASS_COMMON}">""" "\n"
-				f"{write_form_add_record(lang,asset_id)}\n"
-			"</div>\n"
-			f"""<div id="asset-{asset_id}-history">""" "\n"
-				f"{html_record_history}\n"
+			f"<!-- HISTORY FOR {asset_id} -->\n"
+			f"<h3>{tl}</h3>"
+		)
+
+		if has_username:
+			html_text=(
+				f"{html_text}\n"
+				f"""<div id="asset-{asset_id}-history-ctl" class="{_CSS_CLASS_COMMON}">""" "\n"
+					f"{write_form_add_record(lang,asset_id,username)}\n"
+				"</div>"
+			)
+
+		# History starts here
+
+		html_text=(
+			f"{html_text}\n"
+			f"""<div id="asset-{asset_id}-history">"""
+		)
+
+		history_empty=(not isinstance(data.get("history"),Mapping))
+		if not history_empty:
+			history_empty=(len(data["history"])==0)
+
+		# print("HISTORY",data["history"])
+
+		if history_empty:
+
+			tl={
+				_LANG_EN:"History is empty/unknown",
+				_LANG_ES:"Historial vacío/desconocido"
+			}[lang]
+			html_text=(
+				f"{html_text}\n"
+				f"<div>{tl}</div>"
+			)
+
+		if not history_empty:
+
+			# The most recent ones will be first
+
+			html_text_history=""
+
+			for record_uid in data["history"]:
+				if not isinstance(
+					data["history"].get(record_uid),
+					Mapping
+				):
+					continue
+
+				if len(data["history"][record_uid])==0:
+					continue
+
+				html_text_history=write_html_record(
+					lang,asset_id,
+					data["history"][record_uid],
+					record_uid=record_uid,
+					authorized=has_username,
+				)+f"\n{html_text_history}"
+
+
+			if len(html_text_history)>0:
+				html_text=f"{html_text}\n{html_text_history}"
+
+		# History ends here
+
+		html_text=(
+				f"{html_text}\n"
 			"</div>"
 		)
 

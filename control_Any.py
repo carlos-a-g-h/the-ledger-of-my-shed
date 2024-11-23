@@ -1,5 +1,7 @@
 #!/usr/bin/python3.9
 
+from asyncio import to_thread as async_run
+
 from pathlib import Path
 from typing import Optional,Union,Mapping
 
@@ -11,78 +13,43 @@ from aiohttp.web import Response
 
 import yarl
 
-from frontend_Any import _LANG_EN
-from frontend_Any import _LANG_ES
-from frontend_Any import _CSS_CLASS_COMMON
+# from frontend_Any import _LANG_EN
+# from frontend_Any import _LANG_ES
+# from frontend_Any import _CSS_CLASS_COMMON
+from frontend_Any import _STYLE_CUSTOM,_STYLE_POPUP_CONTENTS
+# from frontend_Any import _SCRIPT_HTMX,_SCRIPT_HYPERSCRIPT
 from frontend_Any import _CSS_CLASS_TITLE_UNIQUE
 from frontend_Any import write_popupmsg
 from frontend_Any import write_fullpage
 from frontend_Any import write_button_anchor
 
-from internals import util_valid_str
+from frontend_account import write_link_account
 
-_TYPE_BROWSER="CLIENT_IS_A_BROWSER"
-_TYPE_CUSTOM="CLIENT_IS_CUSTOMIZED"
+from internals import util_valid_str,util_valid_date
+from internals import util_extract_from_cookies
+from internals import util_get_pid_from_request
+from internals import util_date_calc_expiration
+
+from symbols_Any import _ROOT_USER
+from symbols_Any import _APP_PROGRAMDIR
+from symbols_Any import _APP_LANG,_LANG_EN,_LANG_ES
+from symbols_Any import _MIMETYPE_HTML,_MIMETYPE_CSS,_MIMETYPE_JS,_MIMETYPE_JSON,_MIMETYPE_FORM
+from symbols_Any import _TYPE_BROWSER,_TYPE_CUSTOM
+from symbols_Any import _HEADER_ACCEPT,_HEADER_CONTENT_TYPE,_HEADER_REFERER,_HEADER_USER_AGENT
+from symbols_Any import _COOKIE_AKEY,_COOKIE_USER
+from symbols_Any import _REQ_USERNAME,_REQ_ACCESS_KEY,_REQ_CLIENT_TYPE,_REQ_HAS_SESSION,_REQ_LANGUAGE
+
+# from symbols_Any import _APP_RDBC
+# from symbols_Any import _APP_RDBN
+from dbi_account import _MS_DT
+from dbi_account import _MS_AKEY
+from dbi_account import read_session
+from dbi_account import drop_session
+from dbi_account import renovate_active_session
+
+# from dbi_account import 
 
 _ONE_MB=1048576
-
-_MIMETYPE_CSS="text/css"
-_MIMETYPE_HTML="text/html"
-_MIMETYPE_JS="application/javascript"
-_MIMETYPE_JSON="application/json"
-_MIMETYPE_FORM="application/x-www-form-urlencoded"
-
-_SCRIPT_HTMX="""<script src="/src/local/htmx.min.js"></script>"""
-_SCRIPT_HYPERSCRIPT="""<script src="/src/local/hyperscript.js"></script>"""
-
-_STYLE_CUSTOM="""<link rel="stylesheet" href="/src/local/custom.css">"""
-_STYLE_POPUP="""<link rel="stylesheet" href="/src/baked/popup.css">"""
-
-_STYLE_POPUP_CONTENTS="""
-div.popup-background {
-
-	/*
-		PLEASE DON'T TOUCH ANY OF THIS
-		UNLESS YOU KNOW WHAT YOU'RE DOING
-	*/
-
-	z-index:999;
-	position:fixed;
-	top:0;
-	left:0;
-	width:100vw;
-	height:100vh;
-
-	display:grid;
-	grid-template-columns:1fr 0.75fr 1fr;
-	grid-template-rows:1fr 1fr 1fr;
-
-	background-color:rgba(0, 0, 0, 0.5);
-}
-
-div.popup-area {
-
-	/*
-		PLEASE DON'T TOUCH ANY OF THIS
-		UNLESS YOU KNOW WHAT YOU'RE DOING
-	*/
-
-	grid-column:2/3;
-	grid-row:2/3;
-}
-
-/* EVERYTHING BELOW THIS LINE IS SAFE TO OVERRIDE ON THE 'CUSTOM.CSS' FILE */
-
-div.popup-body {
-
-	color:black;
-	border:1px solid black;
-	background-color:white;
-}
-
-div.popup-button-area {text-align: center;}
-.popup-centered {text-align: center;}
-"""
 
 _src_files={
 	"popup.css":{
@@ -103,22 +70,15 @@ _ERR_DETAIL_DBI_FAIL={
 	_LANG_ES:"La operación falló o devolvió un resultado negativo"
 }
 
-# def get_lang(ct:str,lang:str)->str:
-# 	if ct==_TYPE_CUSTOM:
-# 		return _LANG_EN
-# 	return lang
-
 def get_lang(ct:str,request:Request)->str:
 	if ct==_TYPE_CUSTOM:
 		return _LANG_EN
 
-	return request.app["lang"]
+	return request.app[_APP_LANG]
 
 def get_client_type(request:Request)->Optional[str]:
 
-	# print("HEADERS:",request.headers)
-
-	accept:Optional[str]=request.headers.get("Accept")
+	accept:Optional[str]=request.headers.get(_HEADER_ACCEPT)
 	if not isinstance(accept,str):
 		return None
 
@@ -126,15 +86,15 @@ def get_client_type(request:Request)->Optional[str]:
 	if len(accept)==0:
 		return None
 
-	accepts_json=(accept.find("application/json")>-1)
-	accepts_html=(accept.find("text/html")>-1)
+	accepts_json=(accept.find(_MIMETYPE_JSON)>-1)
+	accepts_html=(accept.find(_MIMETYPE_HTML)>-1)
 	accepts_any=(accept.find("*/*")>-1)
 
 	if accepts_json and (not accepts_html):
 		return _TYPE_CUSTOM
 
 	if (not accepts_json) and (accepts_html or accepts_any):
-		ua=request.headers.get("User-Agent")
+		ua=request.headers.get(_HEADER_USER_AGENT)
 		if isinstance(ua,str):
 			return _TYPE_BROWSER
 
@@ -149,19 +109,12 @@ def assert_referer(
 		return True
 
 	referer=util_valid_str(
-		request.headers.get("Referer")
+		request.headers.get(_HEADER_REFERER)
 	)
 	if not isinstance(referer,str):
 		return False
 
 	referer_path=yarl.URL(referer).path
-
-	# print(
-	# 	"- Comparing:" "\n"
-	# 	"\t" f"Host: {request.host}" "\n"
-	# 	"\t" f"{referer_path}" "\n"
-	# 	"\t" f"{url_path}" "\n"
-	# )
 
 	return (
 		Path(referer_path)==Path(url_path)
@@ -172,9 +125,7 @@ async def get_request_body_dict(
 		request:Request
 	)->Optional[Union[MultiDictProxy,Mapping]]:
 
-	print("CLIENT TYPE:",client_type)
-
-	content_type=request.headers.get("Content-Type")
+	content_type=request.headers.get(_HEADER_CONTENT_TYPE)
 	if not isinstance(content_type,str):
 		return None
 
@@ -242,6 +193,55 @@ def response_errormsg(
 		content_type=_MIMETYPE_HTML
 	)
 
+def response_popupmsg(html_inner:str)->Response:
+
+	return Response(
+		body=write_popupmsg(html_inner),
+		content_type=_MIMETYPE_HTML
+	)
+
+def response_fullpage(
+		lang:str,
+		html_title:str,html_h1:str,
+		html_inner:str
+	)->Response:
+
+	return Response(
+		body=write_fullpage(
+			lang,html_title,
+			f"<h1>{html_h1}</h1>" "\n"
+			f"{html_inner}"
+		),
+		content_type=_MIMETYPE_HTML
+	)
+
+def response_unauthorized(
+		lang:str,client_type:str,root_access:bool=False
+	)->Union[Response,json_response]:
+
+	lang_ok=lang
+	if client_type==_TYPE_CUSTOM:
+		lang_ok=_LANG_EN
+
+	tl={
+		False:{
+			_LANG_EN:"You need to be logged in",
+			_LANG_ES:"Necesitas iniciar sesión primero"
+		}[lang_ok],
+		True:{
+			_LANG_EN:"Admin only",
+			_LANG_ES:"Solo para administradores"
+		}[lang_ok]
+	}[root_access]
+
+	if client_type==_TYPE_CUSTOM:
+		return json_response(
+			data={"error":tl},
+			status=403
+		)
+
+	return response_popupmsg(f"<h3>{tl}<h3>")
+
 async def route_src(request)->Response:
 
 	srctype=request.match_info["srctype"]
@@ -279,7 +279,7 @@ async def route_src(request)->Response:
 	# Local type
 
 	filepath=Path(
-		request.app["path_programdir"].joinpath(
+		request.app[_APP_PROGRAMDIR].joinpath(
 			f"sources/{filename}"
 		)
 	)
@@ -293,18 +293,226 @@ async def route_src(request)->Response:
 	return Response(
 		body=filepath.read_text(),
 		content_type=mimetype,
-		status=200
 	)
+
+# Session check-in process
+
+async def process_session_checkin(request:Request,test_only:bool=False)->Optional[str]:
+
+	# NOTE: Returning None = OK
+
+	from_cookie=util_extract_from_cookies(request)
+	if from_cookie is None:
+		return "The request has either no credentials or the they are not valid"
+
+	username,access_key=from_cookie
+
+	ip_address,user_agent=util_get_pid_from_request(request)
+
+	session_data=await async_run(
+		read_session,
+		request.app[_APP_PROGRAMDIR],
+		username,ip_address,user_agent,False
+	)
+	msg_error=session_data.get("error")
+	if msg_error is not None:
+		return f"Failed to read active session: {msg_error}"
+
+	if not (access_key==session_data.get(_MS_AKEY)):
+		return "The stored access key does not match"
+
+	stored_date=util_valid_date(
+		session_data.get(_MS_DT),
+		True
+	)
+	if util_date_calc_expiration(
+		stored_date,5,in_min=True,
+		get_age=False,get_exp_date=False
+	).get("expired"):
+		if test_only:
+			return "The active sesion expired"
+
+		await async_run(
+			drop_session,
+			request.app[_APP_PROGRAMDIR],
+			username,ip_address,user_agent,True
+		)
+		return "The active session expired. It has been destroyed?"
+
+	if test_only:
+		return None
+
+	msg_error=await async_run(
+		renovate_active_session,
+		request.app[_APP_PROGRAMDIR],
+		username,ip_address,user_agent
+	)
+	if isinstance(msg_error,str):
+		# await async_run(
+		# 	drop_session,
+		# 	request.app[_APP_PATH_PROGRAM_DIR],
+		# 	username,ip_address,user_agent,True
+		# )
+		return f"Failed to renovate the active session: {msg_error}"
+
+	return None
+
+# Middleware factory
+
+async def the_middleware_factory(app,handler):
+
+	# THE middleware
+
+	async def the_middleware(request:Request):
+
+		# Local source files
+
+		if request.path.startswith("/src/"):
+			return (
+				await handler(request)
+			)
+
+		# Gather client type and language
+
+		client_type=get_client_type(request)
+		if client_type is None:
+			return Response(status=406)
+
+		lang=get_lang(client_type,request)
+
+		request[_REQ_CLIENT_TYPE]=client_type
+		request[_REQ_LANGUAGE]=lang
+
+		# Print request information
+
+		print(
+			"\n" f"- Req.: {request.method}:{request.url}" "\n"
+			"\t" f"IP: {request.remote}" "\n"
+			"\t" f"UA: {request.headers.get(_HEADER_USER_AGENT)}" "\n"
+			"\t" f"Cookies: {request.cookies}"
+		)
+
+		username:Optional[str]=None
+		access_key:Optional[str]=None
+		has_session=False
+
+		client_is_browser=(not client_type==_TYPE_CUSTOM)
+		url_is_page=request.path.startswith("/page/")
+		url_is_admin=request.path.startswith("/api/admin/")
+		url_is_account=(
+			request.path.startswith("/api/account/") or
+			request.path.startswith("/fgmt/account/")
+		)
+
+		# The following routes will require user authentication
+		needs_session_checkin=(
+			url_is_page or
+			url_is_admin or
+			url_is_account or
+			request.path=="/fgmt/assets/new" or
+			request.path=="/api/assets/new" or
+			# request.path=="/fgmt/assets/search-assets" or
+			# request.path=="/api/assets/search-assets" or
+			request.path=="/api/assets/change-metadata" or
+			request.path=="/api/assets/drop" or
+			request.path.startswith("/fgmt/assets/panel/") or
+			request.path.startswith("/fgmt/assets/history/") or
+			request.path.startswith("/api/assets/history/") or
+			request.path.startswith("/fgmt/orders/") or
+			request.path.startswith("/api/orders/")
+		)
+
+		# Custom client
+
+		if not client_is_browser:
+
+			# NOTE: The following if block is temporary
+			if request.remote not in ("127.0.0.1","::1"):
+				return json_response(
+					data={
+						"error":(
+							"Custom clients can only access "
+							"from localhost at the moment"
+						)
+						
+					},
+					status=501
+				)
+				# 501 == Not implemented
+
+			if (
+				request.path=="/" or
+				url_is_page or
+				request.path.startswith("/fgmt/")
+			):
+				return json_response(data={})
+
+		# Get username and access key
+
+		if needs_session_checkin:
+			test_session=request.path=="/api/account/debug"
+			if client_is_browser:
+				msg_error=(await process_session_checkin(request,test_session))
+				has_session=(msg_error is None)
+				if not has_session:
+					print("SESSION CHECK-IN FAILED:",msg_error)
+
+				if has_session:
+					username,access_key=util_extract_from_cookies(request)
+
+			# The following routes despite asking for a session will return
+			# "partial" content to unauthenticated users instead of denying it
+			lax_treatment=(
+				request.path.startswith("/fgmt/assets/panel/") or
+				request.path.startswith("/fgmt/assets/history/")
+			)
+
+			if not lax_treatment:
+
+				if not url_is_account:
+					if (not url_is_page) and (not has_session):
+						return response_unauthorized(lang,client_type)
+
+				if (not url_is_page) and url_is_admin:
+					if not username==_ROOT_USER:
+						return response_unauthorized(lang,client_type,True)
+
+		# print("\tHas session?",has_session)
+		# print("\tCredentials?",util_extract_from_cookies(request))
+
+		request[_REQ_USERNAME]=username
+		request[_REQ_ACCESS_KEY]=access_key
+		request[_REQ_HAS_SESSION]=has_session
+
+		# The actual request is handled here
+
+		the_response:Union[Response,json_response]=await handler(request)
+
+		if needs_session_checkin and client_is_browser and url_is_page:
+
+			if (
+				(not has_session) and
+				(util_extract_from_cookies(request) is not None)
+			):
+				print("COOKIES HAVE BEEN WIPED OUT")
+				the_response.del_cookie(_COOKIE_AKEY)
+				the_response.del_cookie(_COOKIE_USER)
+
+		return the_response
+
+	return the_middleware
+
+# Main page
 
 async def route_main(
 		request:Request
 	)->Union[json_response,Response]:
 
-	ct=get_client_type(request)
-	if ct==_TYPE_CUSTOM:
-		return json_response(data={})
+	# ct=get_client_type(request)
+	# if ct==_TYPE_CUSTOM:
+	# 	return json_response(data={})
 
-	lang=request.app["lang"]
+	lang=request[_REQ_LANGUAGE]
 
 	tl={
 		_LANG_EN:"Welcome",
@@ -323,6 +531,12 @@ async def route_main(
 		_LANG_ES:"Libro de órdenes"
 	}[lang]
 	html_text=f"{html_text}\n"+write_button_anchor(tl,"/page/orders")
+
+	tl={
+		_LANG_EN:"User account",
+		_LANG_ES:"Cuenta de usuario",
+	}[lang]
+	html_text=f"{html_text}{write_link_account(lang)}"
 
 	tl={
 		_LANG_EN:"System administration",

@@ -1,6 +1,5 @@
 #!/usr/bin/python3.9
 
-# from asyncio import run as aiorun
 from pathlib import Path
 from typing import Optional
 
@@ -10,25 +9,35 @@ from aiohttp.web import get as web_GET
 from aiohttp.web import post as web_POST
 from aiohttp.web import delete as web_DELETE
 
-from aiohttp.web import Request,Response,json_response
+# from aiohttp.web import Request,Response,json_response
 
 from motor.motor_asyncio import AsyncIOMotorClient
 
-from control_Any import _TYPE_CUSTOM
-from control_Any import get_client_type
+from symbols_Any import _APP_LANG,_LANG_EN,_LANG_ES
+# from symbols_Any import _TYPE_CUSTOM
+from symbols_Any import _APP_CACHE_ASSETS,_APP_PROGRAMDIR,_APP_RDBC,_APP_RDBN
+from symbols_Any import _CFG_PORT,_CFG_LANG,_CFG_DB_NAME,_CFG_DB_URL
+
+# from control_Any import get_client_type
+from control_Any import the_middleware_factory
 from control_Any import route_src
 from control_Any import route_main as route_Home
+
+from control_account import _ROUTE_PAGE as _ROUTE_PAGE_ACCOUNT
+from control_account import route_main as route_Account
+from control_account import route_api_login as route_Account_api_Login
+from control_account import route_api_login_otp as route_Account_api_LoginOTP
+from control_account import route_api_logout as route_Account_api_Logout
 
 from control_admin import _ROUTE_PAGE as _ROUTE_PAGE_ADMIN
 from control_admin import route_main as route_Admin
 from control_admin import route_api_update_config as route_Admin_api_UpdateConfig
 from control_admin import route_api_update_known_asset_names as route_Admin_api_UpdateKnownAssetNames
 
-from control_assets import _CACHE_ASSETS
 from control_assets import _ROUTE_PAGE as _ROUTE_PAGE_ASSETS
 from control_assets import route_main as route_Assets
 from control_assets import route_api_select_asset as route_Assets_api_GetAsset
-from control_assets import route_fgmt_asset_editor as route_Assets_fgmt_EditAsset
+from control_assets import route_fgmt_asset_panel as route_Assets_fgmt_AssetPanel
 from control_assets import route_fgmt_new_asset as route_Assets_fgmt_NewAsset
 from control_assets import route_api_new_asset as route_Assets_api_NewAsset
 from control_assets import route_api_asset_metadata_change as route_Assets_api_ChangeMetadata
@@ -50,6 +59,8 @@ from control_orders import route_api_update_asset_in_order as route_Orders_api_U
 from control_orders import route_api_remove_asset_from_order as route_Orders_api_RemoveAsset
 from control_orders import route_api_run_order as route_Orders_api_RunOrder
 
+from dbi_account import init_sessions_database
+
 from internals import read_yaml_file
 from internals import util_valid_int
 from internals import util_valid_int_inrange
@@ -58,8 +69,8 @@ from internals import util_valid_str
 def read_config(path_config:Path)->dict:
 
 	print(
-		"CFG File:\n"
-		f"\t{path_config.absolute()}\n"
+		"Config File:\n"
+		f"\t{path_config.absolute()}"
 	)
 
 	rawconfig=read_yaml_file(path_config)
@@ -68,97 +79,76 @@ def read_config(path_config:Path)->dict:
 
 	cfg_port=util_valid_int_inrange(
 		util_valid_int(
-			rawconfig.get("port"),
+			rawconfig.get(_CFG_PORT),
 		),
 		minimum=1024,
 		maximum=65536
 	)
 	if not isinstance(cfg_port,int):
 		print(
-			"'port' key not found in config or not in the range 1024 < x < 65536"
+			f"'{_CFG_PORT}' key not found in config "
+			"or not in the range 1024 < x < 65536"
 		)
 		return {}
 
 	# lang
 
 	cfg_lang=util_valid_str(
-		rawconfig.get("lang"),
+		rawconfig.get(_CFG_LANG),
 		True
 	)
 	if not isinstance(cfg_lang,str):
 		print(
-			"'lang' key not found in config"
+			f"'{_CFG_LANG}' key not found in config"
 		)
 		return {}
 
-	if cfg_lang not in ("en","es"):
+	if cfg_lang not in (_LANG_EN,_LANG_ES):
 		print(
 			"Language unsupported or not found in config file, defaulting to English" "\n"
 			"Available languages are: 'en' (English) and 'es' (Spanish)"
 		)
-		cfg_lang="en"
+		cfg_lang=_LANG_EN
 
 	# db-name
 
 	cfg_db_name=util_valid_str(
-		rawconfig.get("db-name"),
+		rawconfig.get(_CFG_DB_NAME),
 		True
 	)
 	if not isinstance(cfg_db_name,str):
 		print(
-			"'db-name' key not found in config"
+			f"'{_CFG_DB_NAME}' key not found in config"
 		)
 		return {}
 
 	# db-url
 
 	cfg_db_url=util_valid_str(
-		rawconfig.get("db-url"),
+		rawconfig.get(_CFG_DB_URL),
 		True
 	)
 	if not isinstance(cfg_db_url,str):
 		print(
-			"'db-url' key not found in config: A local database will be used instead"
+			f"'{_CFG_DB_URL}' key not found in config: A local database will be used instead"
 		)
 
 	# all ok
 
 	return {
-		"db-name":cfg_db_name,
-		"db-url":cfg_db_url,
-		"port":cfg_port,
-		"lang":cfg_lang
+		_CFG_DB_NAME:cfg_db_name,
+		_CFG_DB_URL:cfg_db_url,
+		_CFG_PORT:cfg_port,
+		_CFG_LANG:cfg_lang
 	}
 
-async def mware_factory(app,handler):
-
-	async def mware_handler(request:Request):
-
-		# Local source files
-
-		if request.path.startswith("/src/"):
-			return (
-				await handler(request)
-			)
-
-		ct=get_client_type(request)
-		if not isinstance(ct,str):
-			return Response(status=406)
-
-		if ct==_TYPE_CUSTOM:
-
-			if (
-				request.path=="/" or
-				request.path.startswith("/page/") or
-				request.path.startswith("/fgmt/")
-			):
-				return json_response(data={})
-
-		return (
-			await handler(request)
-		)
-
-	return mware_handler
+# def print_request_info(request:Request):
+# 	user_agent=request.headers.get("User-Agent")
+# 	print(
+# 		"\n" f"- Recieved: {request.method}:{request.url}" "\n"
+# 		"\t" f"Client: {request.remote} {user_agent}" "\n"
+# 		"\t" f"Cookies: {request.cookies}"
+# 	)
 
 def build_app(
 		path_programdir:Path,
@@ -167,26 +157,31 @@ def build_app(
 		rdb_url:Optional[str],
 	)->Application:
 
+	msg_err:Optional[str]=init_sessions_database(path_programdir)
+	if msg_err is not None:
+		raise Exception(msg_err)
+
 	app=Application(
-		middlewares=[mware_factory]
+		middlewares=[the_middleware_factory]
 	)
 
-	app["path_programdir"]=path_programdir
-	app[_CACHE_ASSETS]={}
-	app["rdbn"]=rdb_name
-	app["lang"]=lang
+	app[_APP_PROGRAMDIR]=path_programdir
+	app[_APP_CACHE_ASSETS]={}
+	app[_APP_LANG]=lang
+
+	app[_APP_RDBN]=rdb_name
 
 	has_connection_url=isinstance(rdb_name,str)
 	if has_connection_url:
 		print("Connecting to a local MongoDB database")
-		app["rdbc"]=AsyncIOMotorClient()
+		app[_APP_RDBC]=AsyncIOMotorClient()
 
 	if not has_connection_url:
 		print(
 			"Connecting to a remote MongoDB database:",
 			rdb_url
 		)
-		app["rdbc"]=AsyncIOMotorClient(rdb_url)
+		app[_APP_RDBC]=AsyncIOMotorClient(rdb_url)
 
 	app.add_routes([
 
@@ -215,6 +210,25 @@ def build_app(
 				route_Admin_api_UpdateKnownAssetNames
 			),
 
+		# ACCOUNT
+
+		web_GET(
+			_ROUTE_PAGE_ACCOUNT,
+			route_Account,
+		),
+			web_POST(
+				"/api/account/login",
+				route_Account_api_Login
+			),
+			web_POST(
+				"/api/account/login-otp",
+				route_Account_api_LoginOTP
+			),
+			web_DELETE(
+				"/api/account/logout",
+				route_Account_api_Logout
+			),
+
 		# ASSETS
 
 		web_GET(
@@ -241,8 +255,9 @@ def build_app(
 				),
 
 			web_GET(
-				"/fgmt/assets/editor/{asset_id}",
-				route_Assets_fgmt_EditAsset
+				"/fgmt/assets/panel/{asset_id}",
+				route_Assets_fgmt_AssetPanel
+		
 			),
 				web_POST(
 					"/api/assets/select/{asset_id}",
@@ -266,7 +281,6 @@ def build_app(
 					"/api/assets/history/{asset_id}/records/{record_uid}",
 					route_Assets_api_GetRecord
 				),
-
 
 		# ORDERS
 
@@ -322,42 +336,6 @@ def build_app(
 				"/api/orders/current/{order_id}/drop-fol",
 				route_Orders_api_DeleteOrder
 			),
-
-		# web_GET(
-		# 	"/page/assets/new",
-		# 	route_Assets_page_NewAsset
-		# ),
-
-		# web_GET(
-		# 	"/page/assets/view/{asset_id}",
-		# 	route_Assets_page_ViewAsset
-		# ),
-
-		# web_POST(
-		# 	"/api/assets/create",
-		# 	route_Assets_api_CreateAsset
-		# ),
-		# web_GET(
-		# 	"/api/assets/select/{asset_id}",
-		# 	route_Assets_api_GetAsset
-		# ),
-		# web_GET(
-		# 	"/api/assets/search",
-		# 	route_Assets_api_SearchAssets
-		# ),
-		# web_DELETE(
-		# 	"/api/assets/delete/{asset_id}",
-		# 	route_Assets_api_DropAsset
-		# ),
-
-		# web_GET(
-		# 	"/api/assets/select/{asset_id}/modev-view/{modev_date}/{modev_uid}",
-		# 	route_Assets_api_GetRecord
-		# ),
-		# web_DELETE(
-		# 	"/api/assets/select/{asset_id}/modev-drop",
-		# 	route_Assets_api_DropRecord
-		# )
 
 	])
 

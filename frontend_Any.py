@@ -11,6 +11,58 @@ _CSS_CLASS_HORIZONTAL="horizontal"
 
 _CSS_CLASS_DANGER="danger"
 
+_SCRIPT_HTMX="""<script src="/src/local/htmx.min.js"></script>"""
+_SCRIPT_HYPERSCRIPT="""<script src="/src/local/hyperscript.js"></script>"""
+
+_STYLE_CUSTOM="""<link rel="stylesheet" href="/src/local/custom.css">"""
+_STYLE_POPUP="""<link rel="stylesheet" href="/src/baked/popup.css">"""
+
+_STYLE_POPUP_CONTENTS="""
+div.popup-background {
+
+	/*
+		PLEASE DON'T TOUCH ANY OF THIS
+		UNLESS YOU KNOW WHAT YOU'RE DOING
+	*/
+
+	z-index:999;
+	position:fixed;
+	top:0;
+	left:0;
+	width:100vw;
+	height:100vh;
+
+	display:grid;
+	grid-template-columns:1fr 0.75fr 1fr;
+	grid-template-rows:1fr 1fr 1fr;
+
+	background-color:rgba(0, 0, 0, 0.5);
+}
+
+div.popup-area {
+
+	/*
+		PLEASE DON'T TOUCH ANY OF THIS
+		UNLESS YOU KNOW WHAT YOU'RE DOING
+	*/
+
+	grid-column:2/3;
+	grid-row:2/3;
+}
+
+/* EVERYTHING BELOW THIS LINE IS SAFE TO OVERRIDE ON THE 'CUSTOM.CSS' FILE */
+
+div.popup-body {
+
+	color:black;
+	border:1px solid black;
+	background-color:white;
+}
+
+div.popup-button-area {text-align: center;}
+.popup-centered {text-align: center;}
+"""
+
 def write_button_anchor(label:str,link:str)->str:
 
 	return (
@@ -59,20 +111,9 @@ def write_popupmsg(html_content:str)->str:
 		"</div>"
 	)
 
-def write_popupmsg_oob(
-		html_content:str,
-		oob_target:str="messages"
-	)->str:
-
-	return (
-		f"""<section hx-swap-oob="innerHTML:{oob_target}">""" "\n"
-			f"{write_popupmsg(html_content)}\n"
-		"</section>"
-	)
-
 def write_fullpage(
 		lang:str,
-		html_title_inner:str,
+		html_title:str,
 		html_body_inner:str,
 		html_header_extra:list=[],
 	)->str:
@@ -90,7 +131,7 @@ def write_fullpage(
 
 	return (
 					f"{html_page}\n"
-				f"<title>{html_title_inner}</title>\n"
+				f"<title>{html_title}</title>\n"
 			"</head>\n"
 			"<body>\n"
 				f"{html_body_inner}\n"

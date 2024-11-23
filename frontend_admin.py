@@ -1,6 +1,6 @@
 #!/usr/bin/python3.9
 
-from frontend_Any import _LANG_EN,_LANG_ES
+from symbols_Any import _LANG_EN,_LANG_ES
 
 from frontend_Any import _CSS_CLASS_COMMON
 from frontend_Any import _CSS_CLASS_HORIZONTAL

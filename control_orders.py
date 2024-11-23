@@ -5,30 +5,26 @@ from secrets import token_hex
 # from typing import Any
 from typing import Mapping
 from typing import Union
-# from typing import Optional
+from typing import Optional
 
 # from aiohttp.web import Application
 from aiohttp.web import Request
 from aiohttp.web import Response
 from aiohttp.web import json_response
 
-from control_Any import _MIMETYPE_HTML
-from control_Any import _SCRIPT_HTMX
-from control_Any import _STYLE_CUSTOM
-from control_Any import _STYLE_POPUP
-from control_Any import _TYPE_CUSTOM
+from symbols_Any import _APP_CACHE_ASSETS
+from symbols_Any import _LANG_EN,_LANG_ES
+from symbols_Any import _TYPE_CUSTOM
+from symbols_Any import _MIMETYPE_HTML
+from symbols_Any import _APP_RDBC,_APP_RDBN
+from symbols_Any import _REQ_LANGUAGE,_REQ_USERNAME,_REQ_CLIENT_TYPE
+
 from control_Any import _ERR_DETAIL_DATA_NOT_VALID
 from control_Any import _ERR_DETAIL_DBI_FAIL
 from control_Any import assert_referer
-from control_Any import get_lang
-from control_Any import get_client_type
 from control_Any import get_request_body_dict
 from control_Any import response_errormsg
 
-from control_assets import _CACHE_ASSETS
-
-# from dbi_assets import dbi_assets_ModEv_Add
-# from dbi_assets import dbi_assets_AssetQuery
 from dbi_orders import dbi_orders_DropOrder
 from dbi_orders import dbi_orders_GetOrders
 from dbi_orders import dbi_orders_NewOrder
@@ -36,10 +32,10 @@ from dbi_orders import dbi_orders_Editor_AssetDrop
 from dbi_orders import dbi_orders_Editor_AssetPatch
 from dbi_orders import dbi_Orders_ApplyOrder
 
-from frontend_Any import _LANG_EN
-from frontend_Any import _LANG_ES
+from frontend_Any import _SCRIPT_HTMX
+from frontend_Any import _STYLE_CUSTOM
+from frontend_Any import _STYLE_POPUP
 from frontend_Any import _CSS_CLASS_COMMON
-# from frontend_Any import _CSS_CLASS_DANGER
 from frontend_Any import _CSS_CLASS_HORIZONTAL
 from frontend_Any import _CSS_CLASS_TITLE
 from frontend_Any import write_fullpage
@@ -47,18 +43,16 @@ from frontend_Any import write_popupmsg
 from frontend_Any import write_link_homepage
 from frontend_Any import write_ul
 
+from frontend_account import write_html_user_section
+
 from internals import util_valid_bool
 from internals import util_valid_int
 from internals import util_valid_str
 
-# from frontend_assets import write_form_search_assets
-
 from frontend_orders import write_button_nav_new_order
 from frontend_orders import write_button_nav_list_orders
 from frontend_orders import write_button_goto_order_editor
-# from frontend_orders import write_button_goto_order_asset_search
 from frontend_orders import write_button_delete_order
-# from frontend_orders import write_button_add_asset_to_order
 from frontend_orders import write_form_update_asset_in_order
 from frontend_orders import write_form_new_order
 from frontend_orders import write_html_order
@@ -97,14 +91,12 @@ async def route_fgmt_new_order(
 
 	# GET: /fgmt/orders/new
 
-	ct=get_client_type(request)
+	ct=request[_REQ_CLIENT_TYPE]
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
-	if ct==_TYPE_CUSTOM:
-		return json_response(data={})
-
-	lang=request.app["lang"]
+	lang=request[_REQ_LANGUAGE]
+	username=request[_REQ_USERNAME]
 
 	return Response(
 		body=(
@@ -122,7 +114,7 @@ async def route_fgmt_new_order(
 			"\n\n"
 
 			"""<section hx-swap-oob="innerHTML:#main-1">""" "\n"
-				f"{write_form_new_order(lang)}\n"
+				f"{write_form_new_order(lang,username)}\n"
 			"</section>"
 
 			"\n\n"
@@ -141,7 +133,7 @@ async def route_api_new_order(
 
 	# POST: /api/orders/new
 
-	ct=get_client_type(request)
+	ct=request[_REQ_CLIENT_TYPE]
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
@@ -149,7 +141,7 @@ async def route_api_new_order(
 	if req_data is None:
 		return Response(status=406)
 
-	lang=get_lang(ct,request)
+	lang=request[_REQ_LANGUAGE]
 
 	order_sign=util_valid_str(
 		req_data.get("sign")
@@ -189,13 +181,13 @@ async def route_api_new_order(
 		)
 
 	dbi_result=await dbi_orders_NewOrder(
-		request.app["rdbc"],
-		request.app["rdbn"],
+		request.app[_APP_RDBC],
+		request.app[_APP_RDBN],
 		order_id,order_sign,order_tag,
 		order_comment=order_comment,
 		outverb=outverb
 	)
-	error_msg=dbi_result.get("err")
+	error_msg=dbi_result.get("error")
 	if error_msg is not None:
 		response_errormsg(
 			_ERR_TITLE_NEW_ORDER[lang],
@@ -223,18 +215,16 @@ async def route_api_new_order(
 		"</div>"
 	)
 
+	username=request[_REQ_USERNAME]
+
 	return Response(
 		body=(
 
-			f"<!-- NEW ORDER CREATED: {order_id}-->"
-
-			"\n\n"
+			f"<!-- NEW ORDER CREATED: {order_id}-->\n"
 
 			"""<section hx-swap-oob="innerHTML:#main-1">""" "\n"
-				f"{write_form_new_order(lang)}\n"
-			"</section>"
-
-			"\n\n"
+				f"{write_form_new_order(lang,username)}\n"
+			"</section>\n"
 
 			"""<section hx-swap-oob="innerHTML:#main-2">""" "\n"
 				f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
@@ -252,18 +242,18 @@ async def route_fgmt_list_orders(
 
 	# GET: /fgmt/orders/current
 
-	ct=get_client_type(request)
+	ct=request[_REQ_CLIENT_TYPE]
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
 	if ct==_TYPE_CUSTOM:
 		return json_response(data={})
 
-	lang=request.app["lang"]
+	lang=request[_REQ_LANGUAGE]
 
 	results_list=await dbi_orders_GetOrders(
-		request.app["rdbc"],
-		request.app["rdbn"],
+		request.app[_APP_RDBC],
+		request.app[_APP_RDBN],
 	)
 	if len(results_list)==0:
 		return Response(
@@ -284,21 +274,15 @@ async def route_fgmt_list_orders(
 	return Response(
 		body=(
 
-			"<!-- LISTING EXISTING ORDERS -->"
-
-			"\n\n"
+			"<!-- LISTING EXISTING ORDERS -->\n"
 
 			"""<section hx-swap-oob="innerHTML:#navigation">""" "\n"
 				f"{write_ul([write_button_nav_new_order(lang)])}\n"
-			"</section>"
-
-			"\n\n"
+			"</section>\n"
 
 			"""<section hx-swap-oob="innerHTML:#main-1">""" "\n"
 				f"{html_text}\n"
-			"</section>"
-
-			"\n\n"
+			"</section>\n"
 
 			"""<section hx-swap-oob="innerHTML:#main-2">""" "\n"
 				"<!-- EMPTY -->" "\n"
@@ -315,20 +299,20 @@ async def route_fgmt_order_editor(
 	# GET: /fgmt/orders/current/{order_id}/editor
 	# hx-target: #messages
 
-	ct=get_client_type(request)
+	ct=request[_REQ_CLIENT_TYPE]
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
 	if ct==_TYPE_CUSTOM:
 		return json_response(data={})
 
-	lang=request.app["lang"]
+	lang=request[_REQ_LANGUAGE]
 
 	order_id=request.match_info["order_id"]
 
 	the_order=await dbi_orders_GetOrders(
-		request.app["rdbc"],
-		request.app["rdbn"],
+		request.app[_APP_RDBC],
+		request.app[_APP_RDBN],
 		order_id=order_id,
 		include_assets=True
 	)
@@ -375,7 +359,7 @@ async def route_fgmt_order_editor(
 		html_text_assets=write_html_order_assets(
 			lang,order_id,
 			the_order["assets"],
-			request.app[_CACHE_ASSETS]
+			request.app[_APP_CACHE_ASSETS]
 		)
 
 		html_text=(
@@ -404,11 +388,11 @@ async def route_api_update_asset_in_order(
 
 	# POST:/api/orders/current/{order_id}/update
 
-	ct=get_client_type(request)
+	ct=request[_REQ_CLIENT_TYPE]
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
-	lang=get_lang(ct,request)
+	lang=request[_REQ_LANGUAGE]
 
 	order_id=request.match_info["order_id"]
 
@@ -451,8 +435,8 @@ async def route_api_update_asset_in_order(
 	)
 
 	result=await dbi_orders_Editor_AssetPatch(
-		request.app["rdbc"],
-		request.app["rdbn"],
+		request.app[_APP_RDBC],
+		request.app[_APP_RDBN],
 		order_id,asset_id,
 		imod=imod,
 		justbool=justbool,
@@ -512,11 +496,11 @@ async def route_api_remove_asset_from_order(
 
 	# DELETE:/api/orders/current/{order_id}/update
 
-	ct=get_client_type(request)
+	ct=request[_REQ_CLIENT_TYPE]
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
-	lang=get_lang(ct,request)
+	lang=request[_REQ_LANGUAGE]
 
 	order_id=request.match_info["order_id"]
 
@@ -542,8 +526,8 @@ async def route_api_remove_asset_from_order(
 		)
 
 	result=await dbi_orders_Editor_AssetDrop(
-		request.app["rdbc"],
-		request.app["rdbn"],
+		request.app[_APP_RDBC],
+		request.app[_APP_RDBN],
 		order_id,asset_id,
 	)
 	if not result:
@@ -573,7 +557,7 @@ async def route_api_list_orders(
 		request:Request
 	)->Union[Response,json_response]:
 
-	ct=get_client_type(request)
+	ct=request[_REQ_CLIENT_TYPE]
 	if not ct==_TYPE_CUSTOM:
 		return Response(status=406)
 
@@ -592,8 +576,8 @@ async def route_api_list_orders(
 	)
 
 	qres=await dbi_orders_GetOrders(
-		request.app["rdbc"],
-		request.app["rdbn"],
+		request.app[_APP_RDBC],
+		request.app[_APP_RDBN],
 		order_id=order_id,
 		order_sign=order_sign,
 		order_tag=order_tag
@@ -610,17 +594,17 @@ async def route_api_delete_order(
 	# DELETE: /api/orders/current/{order_id}/drop
 	# DELETE: /api/orders/current/{order_id}/drop-fol
 
-	ct=get_client_type(request)
+	ct=request[_REQ_CLIENT_TYPE]
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
 	order_id=request.match_info["order_id"]
 
-	lang=get_lang(ct,request)
+	lang=request[_REQ_LANGUAGE]
 
 	result=await dbi_orders_DropOrder(
-		request.app["rdbc"],
-		request.app["rdbn"],
+		request.app[_APP_RDBC],
+		request.app[_APP_RDBN],
 		order_id
 	)
 	if not result:
@@ -679,26 +663,24 @@ async def route_api_delete_order(
 		content_type=_MIMETYPE_HTML
 	)
 
-
-
 async def route_api_run_order(
 		request:Request
 	)->Union[json_response,Response]:
 
 	# POST: /api/orders/current/{order_id}/run
 
-	ct=get_client_type(request)
+	ct=request[_REQ_CLIENT_TYPE]
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
-	lang=get_lang(ct,request)
+	lang=request[_REQ_LANGUAGE]
 
 	order_id=request.match_info["order_id"]
 
 	ok=(
 		await dbi_Orders_ApplyOrder(
-			request.app["rdbc"],
-			request.app["rdbn"],
+			request.app[_APP_RDBC],
+			request.app[_APP_RDBN],
 			order_id
 		)
 	)
@@ -745,11 +727,8 @@ async def route_main(
 		request:Request
 	)->Union[Response,json_response]:
 
-	ct=get_client_type(request)
-	if ct==_TYPE_CUSTOM:
-		return json_response(data={})
-
-	lang=request.app["lang"]
+	lang=request[_REQ_LANGUAGE]
+	username:Optional[str]=request[_REQ_USERNAME]
 
 	page_title={
 		_LANG_EN:"Orders manager",
@@ -766,15 +745,11 @@ async def route_main(
 			lang,page_title,
 			(
 				f"""<h1 class="{_CSS_CLASS_TITLE}">{page_title}</h1>""" "\n"
-				f"<p>{tl}</p>\n"
+				f"<h3>{tl}</h3>\n"
 				f"{write_link_homepage(lang)}\n"
-				# f"""<p>{write_link_homepage(lang)}</p>""" "\n"
+				f"{write_html_user_section(lang,username=username)}"
 				"""<section id="navigation">""" "\n"
 					f"{write_ul([write_button_nav_new_order(lang),write_button_nav_list_orders(lang)])}\n"
-					# "<ul>\n"
-					# 	f"<li>\n{write_button_nav_new_order(lang)}\n</li>\n"
-					# 	f"<li>\n{write_button_nav_list_orders(lang)}\n</li>\n"
-					# "</ul>\n"
 				"</section>\n"
 				"""<section id="main-1">""" "\n"
 					"<!-- EMPTY -->\n"
@@ -794,3 +769,13 @@ async def route_main(
 		),
 		content_type=_MIMETYPE_HTML
 	)
+
+	# if (
+	# 	(not has_session) and
+	# 	(util_extract_from_cookies(request) is not None)
+	# ):
+	# 	the_response.del_cookie(_COOKIE_AKEY)
+	# 	the_response.del_cookie(_COOKIE_USER)
+	# 	print("Cookies destroyed")
+
+	# return the_response
