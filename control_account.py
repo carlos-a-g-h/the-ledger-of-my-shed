@@ -153,6 +153,8 @@ async def route_api_login(request:Request)->Union[json_response,Response]:
 		username,ip_address,user_agent,True
 	)
 
+	print(username,session_candidate)
+
 	already_has_otp=isinstance(
 		session_candidate.get(_MS_OTP),str
 	)
@@ -169,7 +171,7 @@ async def route_api_login(request:Request)->Union[json_response,Response]:
 			stored_date,60,
 			get_age=False,
 			get_exp_date=False
-		).get("expired",False):
+		).get("expired",True):
 
 			html_text_popup=write_popupmsg(
 				"<h2>"+{
@@ -319,6 +321,8 @@ async def route_api_login_otp(request:Request)->Union[json_response,Response]:
 			)
 		)
 
+	print(request_data)
+
 	username=util_valid_str(
 		request_data.get("username"),True
 	)
@@ -361,8 +365,9 @@ async def route_api_login_otp(request:Request)->Union[json_response,Response]:
 		request.app[_APP_PROGRAMDIR],
 		username,ip_address,user_agent,True
 	)
-	error_msg=session_candidate.get("error")
-	if isinstance(error_msg,str):
+	print(session_candidate)
+	error_msg=session_candidate.get("error",None)
+	if error_msg is not None:
 		tl={
 			_LANG_EN:"Details",
 			_LANG_ES:"Detalles"
@@ -379,11 +384,14 @@ async def route_api_login_otp(request:Request)->Union[json_response,Response]:
 	stored_date=util_valid_date(
 		session_candidate.get(_MS_DT),True
 	)
-	if util_date_calc_expiration(
+	print(stored_date)
+	calc=util_date_calc_expiration(
 			stored_date,60,
-			get_age=False,
-			get_exp_date=False
-		).get("expired"):
+			# get_age=False,
+			# get_exp_date=False
+		)
+	print(calc)
+	if calc.get("expired",True):
 		tl={
 			_LANG_EN:"The session is either not valid or the password expired",
 			_LANG_ES:"La sesión o no es váida o la contraseña expiró"

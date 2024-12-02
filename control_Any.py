@@ -242,59 +242,6 @@ def response_unauthorized(
 
 	return response_popupmsg(f"<h3>{tl}<h3>")
 
-async def route_src(request)->Response:
-
-	srctype=request.match_info["srctype"]
-	if srctype not in ("local","baked"):
-		return Response(status=406)
-
-	filename=request.match_info["filename"]
-	if filename not in _src_files.keys():
-		return Response(status=406)
-
-	type_baked=(
-		srctype=="baked" and
-		(_src_files[filename].get("content") is not None)
-	)
-	type_local=(
-		srctype=="local" and
-		(_src_files[filename].get("content") is None)
-	)
-
-	if not (type_baked or type_local):
-		return Response(status=406)
-
-	mimetype=_src_files[filename]["mimetype"]
-
-	# Baked type
-
-	if type_baked:
-
-		return Response(
-			body=_src_files[filename]["content"].strip(),
-			content_type=mimetype,
-			status=200
-		)
-
-	# Local type
-
-	filepath=Path(
-		request.app[_APP_PROGRAMDIR].joinpath(
-			f"sources/{filename}"
-		)
-	)
-
-	if not filepath.is_file():
-		return Response(status=403)
-
-	if not filepath.stat().st_size<_ONE_MB:
-		return Response(status=403)
-
-	return Response(
-		body=filepath.read_text(),
-		content_type=mimetype,
-	)
-
 # Session check-in process
 
 async def process_session_checkin(request:Request,test_only:bool=False)->Optional[str]:
@@ -386,10 +333,12 @@ async def the_middleware_factory(app,handler):
 		# Print request information
 
 		print(
-			"\n" f"- Req.: {request.method}:{request.url}" "\n"
+			"\n" f"- Req.: {request.method}:{request.path}" " {" "\n"
 			"\t" f"IP: {request.remote}" "\n"
 			"\t" f"UA: {request.headers.get(_HEADER_USER_AGENT)}" "\n"
-			"\t" f"Cookies: {request.cookies}"
+			"\t" f"Cookies: {request.cookies}" "\n"
+			"\t" f"All Headers: {request.headers}" "\n"
+			"}"
 		)
 
 		username:Optional[str]=None
@@ -434,7 +383,6 @@ async def the_middleware_factory(app,handler):
 							"Custom clients can only access "
 							"from localhost at the moment"
 						)
-						
 					},
 					status=501
 				)
@@ -502,6 +450,61 @@ async def the_middleware_factory(app,handler):
 
 	return the_middleware
 
+# Static content
+
+async def route_src(request)->Response:
+
+	srctype=request.match_info["srctype"]
+	if srctype not in ("local","baked"):
+		return Response(status=406)
+
+	filename=request.match_info["filename"]
+	if filename not in _src_files.keys():
+		return Response(status=406)
+
+	type_baked=(
+		srctype=="baked" and
+		(_src_files[filename].get("content") is not None)
+	)
+	type_local=(
+		srctype=="local" and
+		(_src_files[filename].get("content") is None)
+	)
+
+	if not (type_baked or type_local):
+		return Response(status=406)
+
+	mimetype=_src_files[filename]["mimetype"]
+
+	# Baked type
+
+	if type_baked:
+
+		return Response(
+			body=_src_files[filename]["content"].strip(),
+			content_type=mimetype,
+			status=200
+		)
+
+	# Local type
+
+	filepath=Path(
+		request.app[_APP_PROGRAMDIR].joinpath(
+			f"sources/{filename}"
+		)
+	)
+
+	if not filepath.is_file():
+		return Response(status=403)
+
+	if not filepath.stat().st_size<_ONE_MB:
+		return Response(status=403)
+
+	return Response(
+		body=filepath.read_text(),
+		content_type=mimetype,
+	)
+
 # Main page
 
 async def route_main(
@@ -521,26 +524,22 @@ async def route_main(
 	html_text=f"""<h1 class="{_CSS_CLASS_TITLE_UNIQUE}">{tl}</h1>"""
 
 	tl={
-		_LANG_EN:"Basic asset manager",
-		_LANG_ES:"Gestor básico de activos"
+		_LANG_EN:"Assets",
+		_LANG_ES:"Activos"
 	}[lang]
 	html_text=f"{html_text}\n"+write_button_anchor(tl,"/page/assets")
 
 	tl={
-		_LANG_EN:"Order book",
-		_LANG_ES:"Libro de órdenes"
+		_LANG_EN:"Orders",
+		_LANG_ES:"Órdenes"
 	}[lang]
 	html_text=f"{html_text}\n"+write_button_anchor(tl,"/page/orders")
 
-	tl={
-		_LANG_EN:"User account",
-		_LANG_ES:"Cuenta de usuario",
-	}[lang]
 	html_text=f"{html_text}{write_link_account(lang)}"
 
 	tl={
-		_LANG_EN:"System administration",
-		_LANG_ES:"Administración del sistema"
+		_LANG_EN:"System config",
+		_LANG_ES:"Conf. del sistema"
 	}[lang]
 	html_text=f"{html_text}\n"+write_button_anchor(tl,"/page/admin")
 

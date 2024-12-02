@@ -239,9 +239,15 @@ async def route_main(
 	}[lang]
 
 	tl_title={
-		_LANG_EN:"This page is for admin(s) only",
-		_LANG_ES:"Esta página es solo para administradores"
-	}[lang]
+		False:{
+			_LANG_EN:"This page is for admin(s) only",
+			_LANG_ES:"Esta página es solo para administradores"
+		}[lang],
+		True:{
+			_LANG_EN:"Be careful and don't shoot yourself in the foot",
+			_LANG_ES:"Cuidado y no te dispares en el pie"
+		}[lang]
+	}[is_admin]
 	html_text=(
 		f"<h1>{tl_title}</h1>\n"
 		f"<h3>{tl}</h3>"

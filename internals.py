@@ -116,7 +116,7 @@ def util_valid_date(
 	return dt_string
 
 def util_rnow()->str:
-	now=datetime.now()
+	now=datetime.now().utcnow()
 	t=f"{now.year}"
 	t=f"{t}-{str(now.month).zfill(2)}"
 	t=f"{t}-{str(now.day).zfill(2)}"
@@ -231,8 +231,6 @@ def util_valid_int_inrange(
 def util_valid_int(
 		data:Optional[Union[str,int]],
 		fallback:Optional[int]=None,
-		minimum:Optional[int]=None,
-		maximum:Optional[int]=None,
 	)->Optional[int]:
 
 	if not isinstance(data,(str,int)):

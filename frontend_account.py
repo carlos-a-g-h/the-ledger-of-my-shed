@@ -14,11 +14,11 @@ def write_link_account(lang:str,return_there:bool=False)->str:
 		{
 			_LANG_EN:{
 				True:"Return to account page",
-				False:"User account"
+				False:"Account"
 			}[return_there],
 			_LANG_ES:{
 				True:"Volver a la página de la cuenta",
-				False:"Cuenta de usuario"
+				False:"Cuenta"
 			}[return_there],
 		}[lang],
 		"/page/account"

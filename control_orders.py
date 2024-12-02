@@ -769,13 +769,3 @@ async def route_main(
 		),
 		content_type=_MIMETYPE_HTML
 	)
-
-	# if (
-	# 	(not has_session) and
-	# 	(util_extract_from_cookies(request) is not None)
-	# ):
-	# 	the_response.del_cookie(_COOKIE_AKEY)
-	# 	the_response.del_cookie(_COOKIE_USER)
-	# 	print("Cookies destroyed")
-
-	# return the_response
