@@ -22,7 +22,6 @@ More will be added but this is what you can do right now:
 - Full CRUD ops for asset history (there is no deletion and no detailed view yet)
 - Exporting/Importing asset definitions, orders, etc...
 - Propper API (route naming, etc... ) for custom frontends
-- User authentication and authorization
 
 ## This is built on what?
 
@@ -30,6 +29,7 @@ More will be added but this is what you can do right now:
 
 - AioHTTP (Python)
 - MongoDB (using the motor driver)
+- SQLite (Python standard library)
 
 ### Frontend
 
@@ -40,7 +40,7 @@ More will be added but this is what you can do right now:
 
 First of all, Make sure you have a MongoDB server instance available to use, wether you have it locally or remotely, it doesn't matter
 
-First of all, open up the "config.yaml" file and adjust it to your needs
+Then open up the "config.yaml" file and adjust it to your needs
 
 After setting it up, you can run the server like this
 
@@ -52,6 +52,8 @@ or like this if you're not running directly from the source code
 ```
 $ python3 main.py
 ```
+
+or you can just double-click it if you're on Windows
 
 ### How to customize
 
