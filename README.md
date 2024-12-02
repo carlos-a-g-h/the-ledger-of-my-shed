@@ -13,13 +13,13 @@ I do not know anything about accounting, or have any background on warehousing o
 More will be added but this is what you can do right now:
 
 - CRUD operations for assets definitions
-- CRUD operations whthin each asset history (quantity modifications)
-- CRUD operations with orders (The order book)
+- Accumulative history for each asset
+- Large scale modifications using orders
+- 2FA based user accounts system
 
 ### Pending
 
-- A better frontend for the order book
-- Full CRUD ops for asset history (there is no deletion and no detailed view yet)
+- A better frontend for the Orders manager
 - Exporting/Importing asset definitions, orders, etc...
 - Propper API (route naming, etc... ) for custom frontends
 
