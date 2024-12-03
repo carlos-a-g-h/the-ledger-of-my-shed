@@ -11,8 +11,11 @@ from symbols_Any import _APP_PROGRAMDIR
 from symbols_Any import _MIMETYPE_HTML
 from symbols_Any import _TYPE_CUSTOM
 
+from symbols_Any import _CFG_LANG,_CFG_PORT
+
 from symbols_Any import _REQ_LANGUAGE,_REQ_USERNAME
 from symbols_Any import _ROOT_USER
+from symbols_Any import _PORT_MIN,_PORT_MAX
 
 from frontend_Any import _STYLE_CUSTOM,_STYLE_POPUP
 from frontend_Any import _SCRIPT_HTMX
@@ -36,6 +39,7 @@ from control_Any import response_errormsg
 
 from control_assets import util_update_known_assets
 
+from internals import util_valid_bool
 from internals import util_valid_str
 from internals import util_valid_str_inrange
 from internals import util_valid_int
@@ -93,9 +97,17 @@ async def route_api_update_known_asset_names(
 		content_type=_MIMETYPE_HTML
 	)
 
-async def route_api_update_config(
+async def route_api_change_config(
 		request:Request
 	)->Union[json_response,Response]:
+
+	# POST: /api/admin/change-config
+	# {
+	# 	change-lang:bool,
+	# 	lang:str,
+	# 	change-port:bool,
+	# 	port:int
+	# }
 
 	ct=get_client_type(request)
 	if not assert_referer(ct,request,_ROUTE_PAGE):
@@ -111,6 +123,8 @@ async def route_api_update_config(
 			ct,status_code=406
 		)
 
+	print("→",request_data)
+
 	path_config=request.app[_APP_PROGRAMDIR].joinpath("config.yaml")
 	curr_config=await read_yaml_file_async(path_config)
 	if len(curr_config)==0:
@@ -125,31 +139,59 @@ async def route_api_update_config(
 
 	new_config={}
 
-	new_lang:Optional[str]=util_valid_str_inrange(
-		util_valid_str(
-			request_data.get(_APP_LANG)
-		),
-		values=[_LANG_EN,_LANG_ES]
-	)
-	if new_lang==lang:
-		new_lang=None
-	if isinstance(new_lang,str):
-		new_config.update({_APP_LANG:new_lang})
+	# Language
 
-	new_port:Optional[int]=util_valid_int_inrange(
-		util_valid_int(
-			request_data.get("port")
-		),
-		minimum=1024,
-		maximum=65536
+	changed_language=False
+	new_lang:Optional[str]=None
+	change_lang=util_valid_bool(
+		request_data.get("change-lang"),False
 	)
-	if isinstance(new_port,int):
-		new_config.update({"port":new_port})
+	if change_lang:
+		new_lang=util_valid_str_inrange(
+			util_valid_str(
+				request_data.get(_CFG_LANG)
+			),
+			values=[_LANG_EN,_LANG_ES]
+		)
+		if new_lang is None:
+			return response_errormsg(
+				_ERR_TITLE_CONFIG_CHANGE[lang],
+				{
+					_LANG_EN:"The selected language is not valid",
+					_LANG_ES:"El idioma seleccionado no es válido",
+				}[lang],
+				ct,status_code=400
+			)
 
-	print(
-		"NEW CONFIG",
-		new_config
+		changed_language=(not lang==new_lang)
+		if changed_language:
+			new_config.update({_CFG_LANG:new_lang})
+
+	# Port
+
+	new_port:Optional[str]=None
+	change_port=util_valid_bool(
+		request_data.get("change-port"),False
 	)
+	if change_port:
+		new_port=util_valid_int_inrange(
+			util_valid_int(
+				request_data.get(_CFG_PORT)
+			),
+			minimum=_PORT_MIN,
+			maximum=_PORT_MAX
+		)
+		if new_port is None:
+			return response_errormsg(
+				_ERR_TITLE_CONFIG_CHANGE[lang],
+				{
+					_LANG_EN:"The port is not valid",
+					_LANG_ES:"El puerto no es válido",
+				}[lang],
+				ct,status_code=400
+			)
+
+		new_config.update({_CFG_PORT:new_port})
 
 	if len(new_config)==0:
 		return response_errormsg(
@@ -180,7 +222,7 @@ async def route_api_update_config(
 	if ct==_TYPE_CUSTOM:
 		return json_response({})
 
-	if isinstance(new_lang,str):
+	if new_lang is not None:
 		request.app[_APP_LANG]=new_lang
 		lang=new_lang
 
@@ -190,38 +232,66 @@ async def route_api_update_config(
 	}[lang]
 	html_text=f"<h2>{tl}</h2>"
 
-	if isinstance(new_lang,str):
-
-		tl={
-			_LANG_EN:"You changed the language to english",
-			_LANG_ES:"Ha cambiado el idioma a español"
-		}[lang]
-		html_text=(
-			f"{html_text}\n"
-			f"<p>{tl}</p>"
-		)
-
-	if isinstance(new_port,int):
+	if changed_language:
 
 		tl={
 			_LANG_EN:(
-				f"New port number: {new_port}" "<br>"
+				"You changed the language to english. "
+				"Reload or change the page to see the result"
+			),
+			_LANG_ES:(
+				"Ha cambiado el idioma a español. "
+				"Recargue o cambie de página para ver el resultado"
+			)
+		}[lang]
+		html_text=(
+			f"{html_text}\n"
+			f"<p>→ {tl}</p>"
+		)
+
+	if new_port is not None:
+
+		tl={
+			_LANG_EN:(
+				f"New port number: {new_port}. "
 				"Restart the service in order to work from the new port"
 			),
 			_LANG_ES:(
-				f"Nuevo puerto: {new_port}" "<br>"
+				f"Nuevo puerto: {new_port}. "
 				"Reinicie el servicio para trabajar con el nuevo puerto"
 			)
 		}[lang]
 		html_text=(
 			f"{html_text}\n"
-			f"<p>{tl}</p>"
+			f"<p>→ {tl}</p>"
 		)
 
 	return Response(
-		body=write_popupmsg(html_text),
+		body=(
+			"""<section hx-swap-oob="innerHTML:#admin-config">""" "\n"
+				f"{write_form_update_config(lang,False)}"
+			"</section>\n"
+			f"{write_popupmsg(html_text)}"
+		),
 		content_type=_MIMETYPE_HTML
 	)
+
+	# #################
+
+
+	# if isinstance(new_lang,str):
+
+	# 	tl={
+	# 		_LANG_EN:"You changed the language to english",
+	# 		_LANG_ES:"Ha cambiado el idioma a español"
+	# 	}[lang]
+	# 	html_text=(
+	# 		f"{html_text}\n"
+	# 		f"<p>{tl}</p>"
+	# 	)
+
+	# if isinstance(new_port,int):
+
 
 async def route_main(
 		request:Request
@@ -233,12 +303,12 @@ async def route_main(
 
 	lang=request[_REQ_LANGUAGE]
 
-	tl={
+	tl_title={
 		_LANG_EN:"System administration",
 		_LANG_ES:"Administración del sistema"
 	}[lang]
 
-	tl_title={
+	tl={
 		False:{
 			_LANG_EN:"This page is for admin(s) only",
 			_LANG_ES:"Esta página es solo para administradores"
@@ -286,12 +356,8 @@ async def route_main(
 	if is_admin:
 		html_text=(
 			f"{html_text}\n"
-			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
-				f"{write_form_update_config(lang)}\n"
-			"</div>"
-			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
-				f"{write_button_update_known_asset_names(lang)}\n"
-			"</div>"
+			f"{write_form_update_config(lang)}\n"
+			f"{write_button_update_known_asset_names(lang)}"
 		)
 
 	html_text=(

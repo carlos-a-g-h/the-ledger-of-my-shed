@@ -106,22 +106,22 @@ async def dbi_assets_ChangeAssetMetadata(
 		asset_name:Optional[str],
 		asset_tag:Optional[str]=None,
 		asset_comment:Optional[str]=None,
-		ignore_name:bool=False,
-		ignore_tag:bool=False,
-		ignore_comment=False,
+		change_name:bool=False,
+		change_tag:bool=False,
+		change_comment=False,
 	)->Mapping:
 
 	changes_set={}
 	changes_unset=[]
 
-	if not ignore_name:
+	if change_name:
 		name_ok=util_valid_str(asset_name)
 		if name_ok:
 			changes_set.update({"name":asset_name})
 		if not name_ok:
 			changes_set.update({"name":asset_id})
 
-	if not ignore_tag:
+	if change_tag:
 		tag_ok=util_valid_str(asset_tag)
 		if tag_ok:
 			changes_set.update({"tag":asset_tag})
@@ -129,7 +129,7 @@ async def dbi_assets_ChangeAssetMetadata(
 			# changes_unset.update({"$unset":{"tag":1}})
 			changes_unset.append("tag")
 
-	if not ignore_comment:
+	if change_comment:
 		comment_ok=util_valid_str(asset_comment)
 		if comment_ok:
 			changes_set.update({"comment":asset_comment})

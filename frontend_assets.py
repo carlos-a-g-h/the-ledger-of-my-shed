@@ -169,74 +169,43 @@ def write_form_edit_asset_metadata(
 	)
 
 	tl={
-		_LANG_EN:"New name",
-		_LANG_ES:"Nuevo nombre"
-	}[lang]
-	html_text=(
-		f"{html_text}\n"
-
-		f"""<label class="{_CSS_CLASS_COMMON}" for="name">{tl}</label>"""
-	)
-
-	tl={
-		_LANG_EN:"Ignore name",
-		_LANG_ES:"Ignorar nombre"
+		_LANG_EN:"Name",
+		_LANG_ES:"Nombre"
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
 
 		"<div>\n"
-			f"""<input name="ignore-name" type=checkbox checked>""" "\n"
-			f"""<label for=ignore-name>{tl}</label>""" "\n"
+			f"""<input name="change-name" type=checkbox>""" "\n"
+			f"""<label for=change-name>{tl}</label>""" "\n"
 		"</div>\n"
 		f"""<input class="{_CSS_CLASS_COMMON}" name="name" type=text max-length=32>"""
 	)
 
 	tl={
-		_LANG_EN:"New tag",
-		_LANG_ES:"Nueva etiqueta"
-	}[lang]
-	html_text=(
-		f"{html_text}\n"
-
-		f"""<label class="{_CSS_CLASS_COMMON}" for="tag">{tl}</label>"""
-	)
-
-	tl={
-		_LANG_EN:"Ignore tag",
-		_LANG_ES:"Ignorar etiqueta"
+		_LANG_EN:"Tag",
+		_LANG_ES:"Etiqueta"
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
 
 		"<div>\n"
-			f"""<input name="ignore-tag" type=checkbox checked>""" "\n"
-			f"""<label for=ignore-tag>{tl}</label>""" "\n"
+			f"""<input name="change-tag" type=checkbox>""" "\n"
+			f"""<label for=change-tag>{tl}</label>""" "\n"
 		"</div>\n"
 		f"""<input class="{_CSS_CLASS_COMMON}" name="tag" type=text max-length=32>"""
 	)
 
 	tl={
-		_LANG_EN:"New comment",
-		_LANG_ES:"Nuevo comentario"
-	}[lang]
-	html_text=(
-		f"{html_text}\n"
-
-		f"""<label class="{_CSS_CLASS_COMMON}" for="comment">{tl}</label>"""
-	)
-
-
-	tl={
-		_LANG_EN:"Ignore comment",
-		_LANG_ES:"Ignorar comentario"
+		_LANG_EN:"Comment",
+		_LANG_ES:"Comentario"
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
 
 		"<div>"
-			f"""<input name="ignore-comment" type=checkbox checked>"""
-			f"""<label for=ignore-comment>{tl}</label>"""
+			f"""<input name="checkbox-comment" type=checkbox>"""
+			f"""<label for=checkbox-comment>{tl}</label>"""
 		"</div>"
 		f"""<textarea class="{_CSS_CLASS_COMMON}" """
 			"""name="comment" """
@@ -244,7 +213,6 @@ def write_form_edit_asset_metadata(
 			">"
 		"</textarea>"
 	)
-
 
 	tl={
 		_LANG_EN:"Apply changes",

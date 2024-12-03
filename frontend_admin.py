@@ -1,20 +1,29 @@
 #!/usr/bin/python3.9
 
 from symbols_Any import _LANG_EN,_LANG_ES
+from symbols_Any import _PORT_MIN,_PORT_MAX
+from symbols_Any import _CFG_LANG,_CFG_PORT
 
 from frontend_Any import _CSS_CLASS_COMMON
 from frontend_Any import _CSS_CLASS_HORIZONTAL
+from frontend_Any import _CSS_CLASS_VERTICAL
 
-def write_form_update_config(lang:str)->str:
+def write_form_update_config(
+		lang:str,
+		full:bool=True
+	)->str:
 
-	tl={
-		_LANG_EN:"Change configuration",
-		_LANG_ES:"Cambiar configuración"
-	}[lang]
+	# POST: /api/admin/change-config
+	# {
+	# 	change-lang:bool,
+	# 	lang:str,
+	# 	change-port:bool,
+	# 	port:int
+	# }
+
 	html_text=(
-		f"<h2>{tl}</h2>"
 		"<form "
-			"""hx-post="/api/admin/update-config" """
+			"""hx-post="/api/admin/change-config" """
 			"""hx-trigger="submit" """
 			"""hx-target="#messages" """
 			"""hx-swap="innerHTML" """
@@ -27,24 +36,28 @@ def write_form_update_config(lang:str)->str:
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"<h3>{tl}</h3>\n"
-		"<div>"
+		"<!-- LANG CONFIG -->\n"
+		f"""<div class={_CSS_CLASS_VERTICAL}>""" "\n"
+			"<div>\n"
+				f"""<input name="change-lang" type=checkbox>""" "\n"
+				f"""<label for=change-lang>{tl}</label>""" "\n"
+			"</div>\n"
+			"<div>"
 	)
 
-	lang_table=[
+	for row in [
 		(_LANG_EN,"English"),
 		(_LANG_ES,"Español")
-	]
-
-	for row in lang_table:
+	]:
 		chk=""
 		if lang==row[0]:
 			chk=" checked"
+
 		html_text=(
 			f"{html_text}\n"
 			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
 				f"""<input id="lang-{row[0]}" """
-					"""name="lang" """
+					f"""name="{_CFG_LANG}" """
 					f"""value="{row[0]}" """
 					f"""type="radio"{chk} """
 					">\n"
@@ -53,25 +66,35 @@ def write_form_update_config(lang:str)->str:
 		)
 
 	html_text=(
-			f"{html_text}\n"
+				f"{html_text}\n"
+			"</div>"
 		"</div>"
 	)
 
-	# NOTE: <input> min and max attrs are not good for this form
 	tl={
 		_LANG_EN:"Port number",
 		_LANG_ES:"Puerto"
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"<h3>{tl}</h3>\n"
-		"<div>\n"
-			f"""<input class="{_CSS_CLASS_COMMON}" """
-				""" name="port" """
-				"""type="number" """
-				"""value=0 """
-				">\n"
-		"</div>"
+
+		"<!-- PORT CONFIG -->\n"
+
+		f"""<div class={_CSS_CLASS_VERTICAL}>""" "\n"
+			"<div>\n"
+				f"""<input name="change-port" type=checkbox>""" "\n"
+				f"""<label for=change-port>{tl}</label>""" "\n"
+			"</div>\n"
+			"<div>\n"
+				f"""<input class="{_CSS_CLASS_COMMON}" """
+					f""" name="{_CFG_PORT}" """
+					"""type="number" """
+					"""value=1024 """
+					f"""min={_PORT_MIN} """
+					f"""max={_PORT_MAX} """
+					">\n"
+			"</div>"
+		"</div>\n"
 	)
 
 	tl={
@@ -79,8 +102,10 @@ def write_form_update_config(lang:str)->str:
 		_LANG_ES:"Aplicar cambios"
 	}[lang]
 
-	return (
+	html_text=(
 			f"{html_text}\n"
+
+			"<!-- APPLY CHANGES -->\n"
 
 			"""<button """
 				"""type="submit" """
@@ -92,13 +117,34 @@ def write_form_update_config(lang:str)->str:
 		"</form>"
 	)
 
+	if full:
+		tl={
+			_LANG_EN:"Server configuration",
+			_LANG_ES:"Configuración del servidor"
+		}[lang]
+		html_text=(
+			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
+				f"<h3>{tl}</h3>\n"
+				f"""<div id="admin-config">""" "\n"
+					f"{html_text}\n"
+				"</div>"
+			"</div>"
+		)
+
+	return html_text
+
 def write_button_update_known_asset_names(lang:str)->str:
 
 	tl={
 		_LANG_EN:"Update known asset names",
 		_LANG_ES:"Actualizar nombres de activos conocidos"
 	}[lang]
-	html_text=f"<h2>{tl}</h2>"
+	html_text=(
+		f"""<div id="admin-asset-names" """
+			f"""class="{_CSS_CLASS_COMMON}" """
+			">\n"
+			f"<h3>{tl}</h3>"
+	)
 
 	tl={
 		_LANG_EN:"Do this only if the asset definitions were modified recently by external means",
@@ -114,13 +160,14 @@ def write_button_update_known_asset_names(lang:str)->str:
 		_LANG_ES:"Actualizar"
 	}[lang]
 	return (
-		f"{html_text}\n"
-		"""<button class="common" """
-			"""hx-post="/api/admin/update-known-assets" """
-			"""hx-swap="innerHTML" """
-			"""hx-target="#messages" """
-			">\n"
-			f"{tl}"
-		"</button>"
+			f"{html_text}\n"
+			"""<button class="common" """
+				"""hx-post="/api/admin/update-known-assets" """
+				"""hx-swap="innerHTML" """
+				"""hx-target="#messages" """
+				">\n"
+				f"{tl}"
+			"</button>\n"
+		"</div>"
 	)
 

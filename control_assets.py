@@ -521,7 +521,7 @@ async def route_api_new_asset(
 		content_type=_MIMETYPE_HTML
 	)
 
-async def route_api_asset_metadata_change(
+async def route_api_asset_change_metadata(
 		request:Request
 	)->Union[json_response,Response]:
 
@@ -566,22 +566,22 @@ async def route_api_asset_metadata_change(
 		request_data.get("comment")
 	)
 
-	ignore_name=util_valid_bool(
-		request_data.get("ignore-name"),
+	change_name=util_valid_bool(
+		request_data.get("change-name"),
 		dval=False
 	)
-	ignore_tag=util_valid_bool(
-		request_data.get("ignore-tag"),
+	change_tag=util_valid_bool(
+		request_data.get("change-tag"),
 		dval=False
 	)
-	ignore_comment=util_valid_bool(
-		request_data.get("ignore-comment"),
+	change_comment=util_valid_bool(
+		request_data.get("change-comment"),
 		dval=False
 	)
 	result=await dbi_assets_ChangeAssetMetadata(
 		request.app[_APP_RDBC],request.app[_APP_RDBN],
 		asset_id,asset_name,asset_tag,asset_comment,
-		ignore_name,ignore_tag,ignore_comment
+		change_name,change_tag,change_comment
 	)
 
 	error_msg:Optional[str]=result.get("error")

@@ -11,6 +11,13 @@ summary.common {
   margin-top:8px;
 }
 
+div.vertical {
+  padding-top:8px;
+  padding-bottom:8px;
+  margin-bottom:12px;
+  margin-top:12px;
+}
+
 a.common,
 button.common,
 button.popup-button,
@@ -85,7 +92,7 @@ textarea.common {display:block;}
 
 div.horizontal {
   display:inline-block;
-  margin-right:32px;
+  margin-right:16px;
 }
 
 div.popup-content {

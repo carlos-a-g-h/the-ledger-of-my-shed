@@ -17,6 +17,7 @@ from symbols_Any import _APP_LANG,_LANG_EN,_LANG_ES
 # from symbols_Any import _TYPE_CUSTOM
 from symbols_Any import _APP_CACHE_ASSETS,_APP_PROGRAMDIR,_APP_RDBC,_APP_RDBN
 from symbols_Any import _CFG_PORT,_CFG_LANG,_CFG_DB_NAME,_CFG_DB_URL
+from symbols_Any import _PORT_MIN,_PORT_MAX
 
 # from control_Any import get_client_type
 from control_Any import the_middleware_factory
@@ -31,7 +32,7 @@ from control_account import route_api_logout as route_Account_api_Logout
 
 from control_admin import _ROUTE_PAGE as _ROUTE_PAGE_ADMIN
 from control_admin import route_main as route_Admin
-from control_admin import route_api_update_config as route_Admin_api_UpdateConfig
+from control_admin import route_api_change_config as route_Admin_api_ChangeConfig
 from control_admin import route_api_update_known_asset_names as route_Admin_api_UpdateKnownAssetNames
 
 from control_assets import _ROUTE_PAGE as _ROUTE_PAGE_ASSETS
@@ -40,7 +41,7 @@ from control_assets import route_api_select_asset as route_Assets_api_GetAsset
 from control_assets import route_fgmt_asset_panel as route_Assets_fgmt_AssetPanel
 from control_assets import route_fgmt_new_asset as route_Assets_fgmt_NewAsset
 from control_assets import route_api_new_asset as route_Assets_api_NewAsset
-from control_assets import route_api_asset_metadata_change as route_Assets_api_ChangeMetadata
+from control_assets import route_api_asset_change_metadata as route_Assets_api_ChangeMetadata
 from control_assets import route_fgmt_search_assets as route_Assets_fgmt_SearchAssets
 from control_assets import route_api_search_assets as route_Assets_api_SearchAssets
 from control_assets import route_api_drop_asset as route_Assets_api_DropAsset
@@ -81,8 +82,8 @@ def read_config(path_config:Path)->dict:
 		util_valid_int(
 			rawconfig.get(_CFG_PORT),
 		),
-		minimum=1024,
-		maximum=65536
+		minimum=_PORT_MIN,
+		maximum=_PORT_MAX
 	)
 	if not isinstance(cfg_port,int):
 		print(
@@ -202,8 +203,8 @@ def build_app(
 			route_Admin
 		),
 			web_POST(
-				"/api/admin/update-config",
-				route_Admin_api_UpdateConfig
+				"/api/admin/change-config",
+				route_Admin_api_ChangeConfig
 			),
 			web_POST(
 				"/api/admin/update-known-assets",

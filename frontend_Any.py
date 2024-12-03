@@ -8,6 +8,7 @@ _CSS_CLASS_TITLE="title"
 
 _CSS_CLASS_COMMON="common"
 _CSS_CLASS_HORIZONTAL="horizontal"
+_CSS_CLASS_VERTICAL="vertical"
 
 _CSS_CLASS_DANGER="danger"
 

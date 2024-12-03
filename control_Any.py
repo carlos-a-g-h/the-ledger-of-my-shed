@@ -30,7 +30,7 @@ from internals import util_extract_from_cookies
 from internals import util_get_pid_from_request
 from internals import util_date_calc_expiration
 
-from symbols_Any import _ROOT_USER
+from symbols_Any import _ROOT_USER,_ONE_MB
 from symbols_Any import _APP_PROGRAMDIR
 from symbols_Any import _APP_LANG,_LANG_EN,_LANG_ES
 from symbols_Any import _MIMETYPE_HTML,_MIMETYPE_CSS,_MIMETYPE_JS,_MIMETYPE_JSON,_MIMETYPE_FORM
@@ -48,8 +48,6 @@ from dbi_account import drop_session
 from dbi_account import renovate_active_session
 
 # from dbi_account import 
-
-_ONE_MB=1048576
 
 _src_files={
 	"popup.css":{
@@ -335,9 +333,9 @@ async def the_middleware_factory(app,handler):
 		print(
 			"\n" f"- Req.: {request.method}:{request.path}" " {" "\n"
 			"\t" f"IP: {request.remote}" "\n"
-			"\t" f"UA: {request.headers.get(_HEADER_USER_AGENT)}" "\n"
+			"\t" f"U.A.: {request.headers.get(_HEADER_USER_AGENT)}" "\n"
 			"\t" f"Cookies: {request.cookies}" "\n"
-			"\t" f"All Headers: {request.headers}" "\n"
+			"\t" f"Headers: {request.headers}" "\n"
 			"}"
 		)
 

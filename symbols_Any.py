@@ -1,5 +1,8 @@
 #!/usr/bin/python3.9
 
+# One Megabyte
+_ONE_MB=1048576
+
 # Languages
 _LANG_EN="en"
 _LANG_ES="es"
@@ -61,3 +64,6 @@ _CFG_PORT="port"
 _CFG_LANG="lang"
 _CFG_DB_NAME="db-name"
 _CFG_DB_URL="db-url"
+
+_PORT_MIN=1024
+_PORT_MAX=65535
