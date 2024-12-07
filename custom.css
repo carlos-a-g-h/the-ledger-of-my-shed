@@ -1,28 +1,33 @@
 a.common,
-div.common,
 button.common,
 button.popup-button,
 input.common,
+summary.common,
 textarea.common,
-summary.common {
+div.common {
   padding-top:6px;
+  margin-top:8px;
   padding-bottom:6px;
   margin-bottom:8px;
-  margin-top:8px;
 }
 
-div.vertical {
+details.ver-up,
+div.ver-up {
   padding-top:8px;
+  margin-top:12px;
+}
+
+details.ver-down,
+div.ver-down {
   padding-bottom:8px;
   margin-bottom:12px;
-  margin-top:12px;
 }
 
 a.common,
 button.common,
 button.popup-button,
-div.common,
 input.common,
+div.common,
 textarea.common {
   padding-left:12px;
   padding-right:12px;

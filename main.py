@@ -34,6 +34,8 @@ from control_admin import _ROUTE_PAGE as _ROUTE_PAGE_ADMIN
 from control_admin import route_main as route_Admin
 from control_admin import route_api_change_config as route_Admin_api_ChangeConfig
 from control_admin import route_api_update_known_asset_names as route_Admin_api_UpdateKnownAssetNames
+from control_admin import route_fgmt_section_users as route_Admin_fgmt_UsersConfig
+from control_admin import route_fgmt_section_misc as route_Admin_fgmt_MiscConfig
 
 from control_assets import _ROUTE_PAGE as _ROUTE_PAGE_ASSETS
 from control_assets import route_main as route_Assets
@@ -202,14 +204,26 @@ def build_app(
 			_ROUTE_PAGE_ADMIN,
 			route_Admin
 		),
-			web_POST(
-				"/api/admin/change-config",
-				route_Admin_api_ChangeConfig
+			web_GET(
+				"/fgmt/admin/misc",
+				route_Admin_fgmt_MiscConfig
 			),
-			web_POST(
-				"/api/admin/update-known-assets",
-				route_Admin_api_UpdateKnownAssetNames
+				web_POST(
+					"/api/admin/misc/change-config",
+					route_Admin_api_ChangeConfig
+				),
+				web_POST(
+					"/api/admin/misc/update-known-assets",
+					route_Admin_api_UpdateKnownAssetNames
+				),
+
+			web_GET(
+				"/fgmt/admin/users",
+				route_Admin_fgmt_UsersConfig
 			),
+
+				# /fgmt/admin/users/get-user
+				# /fgmt/admin/users/search
 
 		# ACCOUNT
 

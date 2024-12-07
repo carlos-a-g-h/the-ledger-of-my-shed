@@ -23,11 +23,14 @@ from frontend_Any import _CSS_CLASS_COMMON
 from frontend_Any import write_fullpage
 from frontend_Any import write_popupmsg
 from frontend_Any import write_link_homepage
+from frontend_Any import write_ul
 
 from frontend_account import write_html_user_section
 
 from frontend_admin import write_form_update_config
 from frontend_admin import write_button_update_known_asset_names
+from frontend_admin import write_button_nav_users
+from frontend_admin import write_button_nav_misc_settings
 
 from control_Any import _ERR_DETAIL_DBI_FAIL
 from control_Any import _ERR_DETAIL_DATA_NOT_VALID
@@ -54,9 +57,11 @@ _ERR_TITLE_CONFIG_CHANGE={
 	_LANG_ES:"Error de cambio de configuración"
 }
 
-async def route_api_update_known_asset_names(
+async def route_fgmt_section_users(
 		request:Request
 	)->Union[json_response,Response]:
+
+	# GET: /fgmt/admin/users
 
 	ct=get_client_type(request)
 	if not assert_referer(ct,request,_ROUTE_PAGE):
@@ -64,36 +69,44 @@ async def route_api_update_known_asset_names(
 
 	lang=request[_REQ_LANGUAGE]
 
-	ok=await util_update_known_assets(request.app)
+	return Response(
+		body=(
+			"""<section hx-swap-oob="innerHTML:#navigation">""" "\n"
+				f"{write_ul([write_button_nav_misc_settings(lang)])}\n"
+			"</section>\n"
 
-	if not ok:
-		return response_errormsg(
-			_ERR_TITLE_CONFIG_CHANGE[lang],
-			_ERR_DETAIL_DBI_FAIL[lang],ct
-		)
-
-	if ct==_TYPE_CUSTOM:
-		return json_response(
-			data={}
-		)
-
-	tl={
-		_LANG_EN:"Know asset names updated",
-		_LANG_ES:"Nombres de activos actualizados"
-	}[lang]
-	html_text=f"<h2>{tl}</h2>"
-
-	tl={
-		_LANG_EN:"The local in-memory database for quick name lookups has been updated",
-		_LANG_ES:"La base de datos en memoria local para la búsqueda por nombres ha sido actualizada"
-	}[lang]
-	html_text=(
-		f"{html_text}\n"
-		f"<p>{tl}</p>"
+			"""<section hx-swap-oob="innerHTML:#main">""" "\n"
+				"<!-- USER SETTINGS -->\n"
+				# f"{write_form_update_config(lang)}\n"
+				# f"{write_button_update_known_asset_names(lang)}\n"
+			"</section>"
+		),
+		content_type=_MIMETYPE_HTML
 	)
 
+async def route_fgmt_section_misc(
+		request:Request
+	)->Union[json_response,Response]:
+
+	# GET: /fgmt/admin/misc
+
+	ct=get_client_type(request)
+	if not assert_referer(ct,request,_ROUTE_PAGE):
+		return Response(status=406)
+
+	lang=request[_REQ_LANGUAGE]
+
 	return Response(
-	body=write_popupmsg(html_text),
+		body=(
+			"""<section hx-swap-oob="innerHTML:#navigation">""" "\n"
+				f"{write_ul([write_button_nav_users(lang)])}\n"
+			"</section>\n"
+
+			"""<section hx-swap-oob="innerHTML:#main">""" "\n"
+				f"{write_form_update_config(lang)}\n"
+				f"{write_button_update_known_asset_names(lang)}\n"
+			"</section>"
+		),
 		content_type=_MIMETYPE_HTML
 	)
 
@@ -101,7 +114,7 @@ async def route_api_change_config(
 		request:Request
 	)->Union[json_response,Response]:
 
-	# POST: /api/admin/change-config
+	# POST: /api/admin/misc/change-config
 	# {
 	# 	change-lang:bool,
 	# 	lang:str,
@@ -276,22 +289,50 @@ async def route_api_change_config(
 		content_type=_MIMETYPE_HTML
 	)
 
-	# #################
+async def route_api_update_known_asset_names(
+		request:Request
+	)->Union[json_response,Response]:
 
+	# POST: /api/admin/misc/update-known-assets
 
-	# if isinstance(new_lang,str):
+	ct=get_client_type(request)
+	if not assert_referer(ct,request,_ROUTE_PAGE):
+		return Response(status=406)
 
-	# 	tl={
-	# 		_LANG_EN:"You changed the language to english",
-	# 		_LANG_ES:"Ha cambiado el idioma a español"
-	# 	}[lang]
-	# 	html_text=(
-	# 		f"{html_text}\n"
-	# 		f"<p>{tl}</p>"
-	# 	)
+	lang=request[_REQ_LANGUAGE]
 
-	# if isinstance(new_port,int):
+	ok=await util_update_known_assets(request.app)
 
+	if not ok:
+		return response_errormsg(
+			_ERR_TITLE_CONFIG_CHANGE[lang],
+			_ERR_DETAIL_DBI_FAIL[lang],ct
+		)
+
+	if ct==_TYPE_CUSTOM:
+		return json_response(
+			data={}
+		)
+
+	tl={
+		_LANG_EN:"Know asset names updated",
+		_LANG_ES:"Nombres de activos actualizados"
+	}[lang]
+	html_text=f"<h2>{tl}</h2>"
+
+	tl={
+		_LANG_EN:"The local in-memory database for quick name lookups has been updated",
+		_LANG_ES:"La base de datos en memoria local para la búsqueda por nombres ha sido actualizada"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		f"<p>{tl}</p>"
+	)
+
+	return Response(
+	body=write_popupmsg(html_text),
+		content_type=_MIMETYPE_HTML
+	)
 
 async def route_main(
 		request:Request
@@ -314,8 +355,8 @@ async def route_main(
 			_LANG_ES:"Esta página es solo para administradores"
 		}[lang],
 		True:{
-			_LANG_EN:"Be careful and don't shoot yourself in the foot",
-			_LANG_ES:"Cuidado y no te dispares en el pie"
+			_LANG_EN:"Manage users and server settings",
+			_LANG_ES:"Administra usuarios y ajustes del servidor"
 		}[lang]
 	}[is_admin]
 	html_text=(
@@ -323,7 +364,6 @@ async def route_main(
 		f"<h3>{tl}</h3>"
 		f"{write_link_homepage(lang)}\n"
 		f"{write_html_user_section(lang,username=username)}"
-		"""<section id="main">"""
 	)
 
 	if not is_admin:
@@ -356,13 +396,19 @@ async def route_main(
 	if is_admin:
 		html_text=(
 			f"{html_text}\n"
-			f"{write_form_update_config(lang)}\n"
-			f"{write_button_update_known_asset_names(lang)}"
+
+			"""<section id="navigation">""" "\n"
+				f"{write_ul([write_button_nav_users(lang),write_button_nav_misc_settings(lang)])}\n"
+			"</section>\n"
+
+			"""<section id="main">""" "\n"
+				"<!-- ADMIN PAGE -->\n"
+			"</section>"
 		)
 
 	html_text=(
 		f"{html_text}\n"
-		"</section>\n"
+
 		"""<section id="messages">""" "\n"
 			"<!-- MESSAGES GO HERE -->\n"
 		"</section>"

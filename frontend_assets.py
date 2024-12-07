@@ -7,6 +7,8 @@ from symbols_Any import _LANG_EN,_LANG_ES
 
 # from frontend_Any import _CSS_CLASS_BUTTON
 from frontend_Any import _CSS_CLASS_DANGER
+from frontend_Any import _CSS_CLASS_VUP
+from frontend_Any import _CSS_CLASS_VDOWN
 # from frontend_Any import _CSS_CLASS_INPUT
 
 from frontend_Any import _CSS_CLASS_COMMON
@@ -159,13 +161,14 @@ def write_form_edit_asset_metadata(
 	html_text=(
 		"<!-- ASSET METADATA EDITOR -->\n"
 		f"<summary>{tl}</summary>\n"
-		"<div>\n"
-		f"""<form hx-post="/api/assets/change-metadata" """ "\n"
-			"""hx-swap="innerHTML" """ "\n"
-			"""hx-target="#messages" """ "\n"
-			">\n"
-			f"""<input name="id" type=hidden value="{asset_id}">"""
-			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
+		f"""<div class="{_CSS_CLASS_VUP}">""" "\n"
+			f"""<form hx-post="/api/assets/change-metadata" """ "\n"
+				"""hx-swap="innerHTML" """ "\n"
+				"""hx-target="#messages" """ "\n"
+				">\n"
+				f"""<input name="id" type=hidden value="{asset_id}">"""
+				# f"""<div class="{_CSS_CLASS_COMMON}">"""
+				"<div>"
 	)
 
 	tl={
@@ -229,7 +232,8 @@ def write_form_edit_asset_metadata(
 
 	if full:
 		html_text=(
-			f"""<details id="asset-{asset_id}-editor">""" "\n"
+			f"""<details class="{_CSS_CLASS_VUP} {_CSS_CLASS_VDOWN}" """
+				f"""id="asset-{asset_id}-editor">""" "\n"
 				f"{html_text}\n"
 			"</details>"
 		)
@@ -730,50 +734,7 @@ def write_html_record(
 			"</table>"
 		)
 
-	# if borders:
-	# 	html_text=(
-	# 		f"""<div id="history-record-{record_uid_ok}" """
-	# 			f"""class="{_CSS_CLASS_COMMON}" """
-	# 			">\n"
-	# 			f"{html_text}\n"
-	# 		"</div>"
-	# 	)
-
 	return html_text
-
-# def write_html_record_history(
-# 		lang:str,asset_id:str,
-# 		history:Optional[Mapping]
-# 	):
-
-# 	print(f"HISTORY FOR {asset_id}:",history)
-
-# 	empty=(not isinstance(history,Mapping))
-# 	if not empty:
-# 		empty=(len(history)==0)
-
-# 	if empty:
-# 		return (
-# 			"<div>"+{
-# 				_LANG_EN:"History is empty/unknown",
-# 				_LANG_ES:"Historial vacío/desconocido"
-# 			}[lang]+"</div>"
-# 		)
-
-# 	html_text=""
-
-# 	history_keys=list(history.keys())
-# 	history_keys.reverse()
-
-# 	for record_uid in history_keys:
-
-# 		html_text=f"{html_text}\n"+write_html_record(
-# 			lang,asset_id,
-# 			history[record_uid],
-# 			record_uid=record_uid
-# 		)
-
-# 	return html_text
 
 def write_html_asset_info(
 		lang:str,data:Mapping,

@@ -6,14 +6,42 @@ from symbols_Any import _CFG_LANG,_CFG_PORT
 
 from frontend_Any import _CSS_CLASS_COMMON
 from frontend_Any import _CSS_CLASS_HORIZONTAL
-from frontend_Any import _CSS_CLASS_VERTICAL
+from frontend_Any import _CSS_CLASS_VUP
+
+def write_button_nav_users(lang:str)->str:
+	tl={
+		_LANG_EN:"Users",
+		_LANG_ES:"Usuarios"
+	}[lang]
+	return (
+		f"""<button class="{_CSS_CLASS_COMMON}" """
+			"""hx-get="/fgmt/admin/users" """
+			"""hx-target="#messages" """
+			"""hx-swap="innerHTML">"""
+			f"{tl}"
+		"</button>"
+	)
+
+def write_button_nav_misc_settings(lang:str)->str:
+	tl={
+		_LANG_EN:"Misc settings",
+		_LANG_ES:"Ajustes varios"
+	}[lang]
+	return (
+		f"""<button class="{_CSS_CLASS_COMMON}" """
+			"""hx-get="/fgmt/admin/misc" """
+			"""hx-target="#messages" """
+			"""hx-swap="innerHTML">"""
+			f"{tl}"
+		"</button>"
+	)
 
 def write_form_update_config(
 		lang:str,
 		full:bool=True
 	)->str:
 
-	# POST: /api/admin/change-config
+	# POST: /api/admin/misc/change-config
 	# {
 	# 	change-lang:bool,
 	# 	lang:str,
@@ -23,7 +51,7 @@ def write_form_update_config(
 
 	html_text=(
 		"<form "
-			"""hx-post="/api/admin/change-config" """
+			"""hx-post="/api/admin/misc/change-config" """
 			"""hx-trigger="submit" """
 			"""hx-target="#messages" """
 			"""hx-swap="innerHTML" """
@@ -37,7 +65,7 @@ def write_form_update_config(
 	html_text=(
 		f"{html_text}\n"
 		"<!-- LANG CONFIG -->\n"
-		f"""<div class={_CSS_CLASS_VERTICAL}>""" "\n"
+		f"""<div class={_CSS_CLASS_VUP}>""" "\n"
 			"<div>\n"
 				f"""<input name="change-lang" type=checkbox>""" "\n"
 				f"""<label for=change-lang>{tl}</label>""" "\n"
@@ -80,7 +108,7 @@ def write_form_update_config(
 
 		"<!-- PORT CONFIG -->\n"
 
-		f"""<div class={_CSS_CLASS_VERTICAL}>""" "\n"
+		f"""<div class={_CSS_CLASS_VUP}>""" "\n"
 			"<div>\n"
 				f"""<input name="change-port" type=checkbox>""" "\n"
 				f"""<label for=change-port>{tl}</label>""" "\n"
@@ -162,7 +190,7 @@ def write_button_update_known_asset_names(lang:str)->str:
 	return (
 			f"{html_text}\n"
 			"""<button class="common" """
-				"""hx-post="/api/admin/update-known-assets" """
+				"""hx-post="/api/admin/misc/update-known-assets" """
 				"""hx-swap="innerHTML" """
 				"""hx-target="#messages" """
 				">\n"
