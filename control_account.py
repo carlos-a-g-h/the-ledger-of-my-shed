@@ -82,7 +82,7 @@ async def route_fgmt_login(request:Request)->Union[json_response,Response]:
 
 	return Response(
 		body=(
-			"""<section hx-swap-oob="innerHTML:#main">""" "\n"
+			"""<section hx-swap-oob="innerHTML:#session-login">""" "\n"
 				f"{write_form_login(lang,False)}" "\n"
 			"""</section>"""
 		),

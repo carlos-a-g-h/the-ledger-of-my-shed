@@ -5,13 +5,14 @@ from symbols_Any import _PORT_MIN,_PORT_MAX
 from symbols_Any import _CFG_LANG,_CFG_PORT
 
 from frontend_Any import _CSS_CLASS_COMMON
+from frontend_Any import _CSS_CLASS_CONTROLS
 from frontend_Any import _CSS_CLASS_HORIZONTAL
-from frontend_Any import _CSS_CLASS_VUP
+from frontend_Any import _CSS_CLASS_VUP,_CSS_CLASS_VDOWN
 
 def write_button_nav_users(lang:str)->str:
 	tl={
-		_LANG_EN:"Users",
-		_LANG_ES:"Usuarios"
+		_LANG_EN:"Users control panel",
+		_LANG_ES:"Panel de control de usuarios"
 	}[lang]
 	return (
 		f"""<button class="{_CSS_CLASS_COMMON}" """
@@ -35,6 +36,207 @@ def write_button_nav_misc_settings(lang:str)->str:
 			f"{tl}"
 		"</button>"
 	)
+
+def write_form_create_user(
+		lang:str,full:bool=True
+	)->str:
+
+	# POST: /api/admin/users/new-user
+
+	html_text=(
+		# f"""<div class="{_CSS_CLASS_VDOWN}"><strong>{tl}</strong></div>""" "\n"
+		"<form "
+			"""hx-post="/api/admin/users/new-user" """
+			"""hx-trigger="submit" """
+			"""hx-target="#messages" """
+			"""hx-swap="innerHTML" """
+			">\n"
+			"<div>"
+	)
+
+	tl={
+		_LANG_EN:"Username",
+		_LANG_ES:"Nombre de usuario"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
+			f"""<label class="{_CSS_CLASS_COMMON}" for="username">{tl}</label>""" "\n"
+				f"""<input class="{_CSS_CLASS_COMMON}" """
+					"""name="username" """
+					"""type="text" """
+					"""max-length=16 """
+					"required>\n"
+		"</div>"
+	)
+
+	tl={
+		_LANG_EN:"E-Mail",
+		_LANG_ES:"Correo electrónico"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
+			f"""<label class="{_CSS_CLASS_COMMON}" for="email">{tl}</label>""" "\n"
+				f"""<input class="{_CSS_CLASS_COMMON}" """
+					"""name="email" """
+					"""type="email" """
+					"""max-length=16 """
+					"required>\n"
+		"</div>"
+	)
+
+	tl={
+		_LANG_EN:"Telegram User ID",
+		_LANG_ES:"ID de usuario de Telegram"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
+			f"""<label class="{_CSS_CLASS_COMMON}" for="telegram">{tl}</label>""" "\n"
+				f"""<input class="{_CSS_CLASS_COMMON}" """
+					"""name="telegram" """
+					"""type="text" """
+					"""max-length=32 """
+					"required>\n"
+		"</div>"
+	)
+
+	tl={
+		_LANG_EN:"Create",
+		_LANG_ES:"Crear"
+	}[lang]
+	html_text=(
+				f"{html_text}\n"
+			"</div>\n"
+			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
+				f"""<button type="submit" """
+					f"""class="{_CSS_CLASS_COMMON}">""" "\n"
+						f"{tl}\n"
+				"</button>" "\n"
+			"</div>\n"
+		"</form>"
+	)
+
+	if full:
+		tl={
+			_LANG_EN:"User creation",
+			_LANG_ES:"Creación de usuario"
+		}[lang]
+		html_text=(
+			f"<h3>{tl}</h3>\n"
+			"""<div id="user-creation">""" "\n"
+				f"{html_text}\n"
+			"</div>\n"
+			"""<div id="user-creation-result">""" "\n"
+				"<!-- CREATED USERS GO HERE -->\n"
+			"</div>"
+		)
+
+	return html_text
+
+def write_form_search_users(
+		lang:str,full:bool=True
+	)->str:
+
+	# POST: /api/admin/users/search
+
+	html_text=(
+		"<form "
+			"""hx-post="/api/admin/users/search" """
+			"""hx-trigger="submit" """
+			"""hx-target="#messages" """
+			"""hx-swap="innerHTML" """
+			">\n"
+			"<div>"
+	)
+
+	tl={
+		_LANG_EN:"Username",
+		_LANG_ES:"Nombre de usuario"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
+			f"""<label class="{_CSS_CLASS_COMMON}" for="username">{tl}</label>""" "\n"
+				f"""<input class="{_CSS_CLASS_COMMON}" """
+					"""name="username" """
+					"""type="text" """
+					"""max-length=16 """
+					"required>\n"
+		"</div>"
+	)
+
+	tl={
+		_LANG_EN:"E-Mail",
+		_LANG_ES:"Correo electrónico"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
+			f"""<label class="{_CSS_CLASS_COMMON}" for="email">{tl}</label>""" "\n"
+				f"""<input class="{_CSS_CLASS_COMMON}" """
+					"""name="email" """
+					"""type="email" """
+					"""max-length=16 """
+					"required>\n"
+		"</div>"
+	)
+
+	tl={
+		_LANG_EN:"Telegram User ID",
+		_LANG_ES:"ID de usuario de Telegram"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
+			f"""<label class="{_CSS_CLASS_COMMON}" for="telegram">{tl}</label>""" "\n"
+				f"""<input class="{_CSS_CLASS_COMMON}" """
+					"""name="telegram" """
+					"""type="text" """
+					"""max-length=32 """
+					"required>\n"
+		"</div>"
+	)
+
+	tl={
+		_LANG_EN:"Search",
+		_LANG_ES:"Buscar"
+	}[lang]
+	html_text=(
+				f"{html_text}\n"
+			"</div>\n"
+			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
+				f"""<button type="submit" """
+					f"""class="{_CSS_CLASS_COMMON}">""" "\n"
+						f"{tl}\n"
+				"</button>\n"
+			"</div>\n"
+		"</form>"
+	)
+
+	if full:
+		tl={
+			_LANG_EN:"User search",
+			_LANG_ES:"Búsqueda de usuarios"
+		}[lang]
+		html_text=(
+			f"<h3>{tl}</h3>\n"
+			"""<div id="user-search">""" "\n"
+				f"{html_text}\n"
+			"</div>\n"
+			"""<div id="user-search-result">""" "\n"
+				"<!-- USERS FOUND GO HERE -->\n"
+			"</div>"
+		)
+
+	return html_text
+
+
+
+
+
+
 
 def write_form_update_config(
 		lang:str,

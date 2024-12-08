@@ -80,8 +80,13 @@ def write_form_login(lang:str,full:bool=True)->str:
 	)
 
 	if full:
+		tl={
+			_LANG_EN:"Session login",
+			_LANG_ES:"Inicio de sesión"
+		}[lang]
 		html_text=(
-			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
+			f"<h3>{tl}</h3>\n"
+			f"""<div id="session-login">""" "\n"
 				f"{html_text}\n"
 			"</div>"
 		)
@@ -97,7 +102,7 @@ def write_form_otp(
 
 	# Sends: POST /api/account/login-otp {username:String,otp:String}
 
-	# NOTE: The form leads to a whole page, so I can't use HTMX here
+	# NOTE: The form leads to a full page or a redirect, so I can't use HTMX here
 	# html_text=(
 	# 	"""<form """
 	# 		"""hx-post="/api/account/login-otp" """
@@ -169,8 +174,13 @@ def write_form_otp(
 		)
 
 	if full:
+		tl={
+			_LANG_EN:"Session login (OTP)",
+			_LANG_ES:"Inicio de sesión (OTP)"
+		}[lang]
 		html_text=(
-			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
+			f"<h3>{tl}</h3>\n"
+			f"""<div id="session-login">""" "\n"
 				f"{html_text}\n"
 			"</div>"
 		)

@@ -31,6 +31,8 @@ from frontend_admin import write_form_update_config
 from frontend_admin import write_button_update_known_asset_names
 from frontend_admin import write_button_nav_users
 from frontend_admin import write_button_nav_misc_settings
+from frontend_admin import write_form_create_user
+from frontend_admin import write_form_search_users
 
 from control_Any import _ERR_DETAIL_DBI_FAIL
 from control_Any import _ERR_DETAIL_DATA_NOT_VALID
@@ -69,6 +71,11 @@ async def route_fgmt_section_users(
 
 	lang=request[_REQ_LANGUAGE]
 
+	tl={
+		_LANG_EN:"Users control panel",
+		_LANG_ES:"Panel de control de usuarios"
+	}[lang]
+
 	return Response(
 		body=(
 			"""<section hx-swap-oob="innerHTML:#navigation">""" "\n"
@@ -77,6 +84,9 @@ async def route_fgmt_section_users(
 
 			"""<section hx-swap-oob="innerHTML:#main">""" "\n"
 				"<!-- USER SETTINGS -->\n"
+				""
+				f"{write_form_create_user(lang)}\n"
+				f"{write_form_search_users(lang)}\n"
 				# f"{write_form_update_config(lang)}\n"
 				# f"{write_button_update_known_asset_names(lang)}\n"
 			"</section>"

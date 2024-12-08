@@ -9,9 +9,9 @@ from symbols_Any import _LANG_EN,_LANG_ES
 from frontend_Any import _CSS_CLASS_DANGER
 from frontend_Any import _CSS_CLASS_VUP
 from frontend_Any import _CSS_CLASS_VDOWN
-# from frontend_Any import _CSS_CLASS_INPUT
 
 from frontend_Any import _CSS_CLASS_COMMON
+from frontend_Any import _CSS_CLASS_CONTROLS
 from frontend_Any import _CSS_CLASS_HORIZONTAL
 
 from frontend_Any import write_div_display_error
@@ -140,12 +140,14 @@ def write_form_new_asset(lang:str,signed_by:str="")->str:
 	}[lang]
 	return (
 			f"{html_text}"
-			"""<button """
-				f"""class="{_CSS_CLASS_COMMON}" """
-				"""type="submit" """
-				">"
-				f"{tl}"
-			"</button>"
+			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
+				"""<button """
+					f"""class="{_CSS_CLASS_COMMON}" """
+					"""type="submit" """
+					">"
+					f"{tl}"
+				"</button>\n"
+			"</div>\n"
 		"</form>"
 	)
 
@@ -166,9 +168,14 @@ def write_form_edit_asset_metadata(
 				"""hx-swap="innerHTML" """ "\n"
 				"""hx-target="#messages" """ "\n"
 				">\n"
-				f"""<input name="id" type=hidden value="{asset_id}">"""
-				# f"""<div class="{_CSS_CLASS_COMMON}">"""
-				"<div>"
+				f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
+
+					f"""<input name="id" type=hidden value="{asset_id}">""" "\n"
+	)
+
+	html_text=(
+		f"{html_text}\n"
+		f"""<div>"""
 	)
 
 	tl={
@@ -178,11 +185,13 @@ def write_form_edit_asset_metadata(
 	html_text=(
 		f"{html_text}\n"
 
-		"<div>\n"
-			f"""<input name="change-name" type=checkbox>""" "\n"
-			f"""<label for=change-name>{tl}</label>""" "\n"
-		"</div>\n"
-		f"""<input class="{_CSS_CLASS_COMMON}" name="name" type=text max-length=32>"""
+		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
+			"<div>\n"
+				f"""<input name="change-name" type=checkbox>""" "\n"
+				f"""<label for=change-name>{tl}</label>""" "\n"
+			"</div>\n"
+			f"""<input class="{_CSS_CLASS_COMMON}" name="name" type=text max-length=32>""" "\n"
+		"</div>"
 	)
 
 	tl={
@@ -192,11 +201,18 @@ def write_form_edit_asset_metadata(
 	html_text=(
 		f"{html_text}\n"
 
-		"<div>\n"
-			f"""<input name="change-tag" type=checkbox>""" "\n"
-			f"""<label for=change-tag>{tl}</label>""" "\n"
-		"</div>\n"
-		f"""<input class="{_CSS_CLASS_COMMON}" name="tag" type=text max-length=32>"""
+		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
+			"<div>\n"
+				f"""<input name="change-tag" type=checkbox>""" "\n"
+				f"""<label for=change-tag>{tl}</label>""" "\n"
+			"</div>\n"
+			f"""<input class="{_CSS_CLASS_COMMON}" name="tag" type=text max-length=32>""" "\n"
+		"</div>"
+	)
+
+	html_text=(
+			f"{html_text}\n"
+		"</div>"
 	)
 
 	tl={
@@ -206,10 +222,10 @@ def write_form_edit_asset_metadata(
 	html_text=(
 		f"{html_text}\n"
 
-		"<div>"
-			f"""<input name="checkbox-comment" type=checkbox>"""
-			f"""<label for=checkbox-comment>{tl}</label>"""
-		"</div>"
+		"<div>\n"
+			f"""<input name="checkbox-comment" type=checkbox>""" "\n"
+			f"""<label for=checkbox-comment>{tl}</label>""" "\n"
+		"</div>\n"
 		f"""<textarea class="{_CSS_CLASS_COMMON}" """
 			"""name="comment" """
 			"max-length=256 "
@@ -222,9 +238,14 @@ def write_form_edit_asset_metadata(
 		_LANG_ES:"Aplicar cambios"
 	}[lang]
 	html_text=(
-		f"{html_text}\n"
+					f"{html_text}\n"
 
-					f"""<button class="common" type="submit">{tl}</button>""" "\n"
+					f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
+						f"""<button type="submit" """
+							f"""class="{_CSS_CLASS_COMMON}">""" "\n"
+								f"{tl}\n"
+						"</button>" "\n"
+					"</div>\n"
 				"</div>\n"
 			"</form>\n"
 		"</div>"
@@ -332,7 +353,7 @@ def write_form_search_assets(
 			"<div>\n"
 				f"ID: {order_id}"
 			"</div>\n"
-			"<div>\n"
+			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
 				f"""<button class="{_CSS_CLASS_COMMON}" """
 					f"""hx-get="/fgmt/orders/current/{order_id}/editor" """
 					"""hx-target="#messages" """
@@ -411,11 +432,13 @@ def write_form_search_assets(
 	return (
 			f"{html_text}\n"
 
-			"""<button type="submit" """
-				f"""class="{_CSS_CLASS_COMMON}" """
-				">"
-				f"{tl}"
-			"</button>\n"
+			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
+				"""<button type="submit" """
+					f"""class="{_CSS_CLASS_COMMON}" """
+					">"
+					f"{tl}"
+				"</button>\n"
+			"</div>\n"
 		"</form>"
 	)
 
@@ -508,11 +531,13 @@ def write_form_add_record(lang:str,asset_id:str,username:str="")->str:
 
 	return (
 			f"{html_text}\n"
-			"""<button type="submit" """
-				f"""class="{_CSS_CLASS_COMMON}" """
-				">"
-				f"{tl}"
-			"</button>\n"
+			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
+				"""<button type="submit" """
+					f"""class="{_CSS_CLASS_COMMON}" """
+					">"
+					f"{tl}"
+				"</button>\n"
+			"</div>\n"
 		"</form>\n"
 	)
 
@@ -549,7 +574,7 @@ def write_html_record(
 
 	record_uid_ok:Optional[str]=record_uid
 
-	print(type(record_uid_ok),record_uid_ok)
+	# print(type(record_uid_ok),record_uid_ok)
 
 	if record_uid_ok is None:
 
@@ -581,7 +606,7 @@ def write_html_record(
 
 	record_tag=util_valid_str(data.get("tag"),True)
 
-	html_text=f"<!-- HISTORY RECORD {record_uid_ok} -->"
+	html_text=f"\n<!-- HISTORY RECORD {record_uid_ok} -->"
 
 	if not detailed:
 
@@ -807,7 +832,7 @@ def write_html_asset(
 		username:Optional[str]=None,
 	)->str:
 
-	print("ASSET PRINTED BY",username)
+	# print("ASSET PRINTED BY",username)
 
 	has_username=isinstance(username,str)
 
@@ -817,9 +842,14 @@ def write_html_asset(
 
 	# info
 
+	tl="""<div """
+	if not fullview:
+		tl=f"""{tl}class="{_CSS_CLASS_COMMON}" """
+	tl=f"""{tl}id="asset-{asset_id}">"""
+
 	html_text=(
 		f"<!-- ASSET {asset_id} -->\n"
-		f"""<div class={_CSS_CLASS_COMMON} id="asset-{asset_id}">""" "\n"
+		f"{tl}\n"
 			f"{write_html_asset_info(lang,data,fullview)}"
 	)
 
@@ -844,15 +874,19 @@ def write_html_asset(
 
 	html_text=(
 		f"{html_text}\n"
-		f"""<div class="inner-controls" id="asset-{asset_id}-controls">""" "\n"
-			f"{write_button_asset_fullview_or_update(lang,asset_id,fullview)}\n"
+		f"""<div class="{_CSS_CLASS_CONTROLS}" id="asset-{asset_id}-controls">""" "\n"
+			f"""<div class="{_CSS_CLASS_HORIZONTAL}">"""
+				f"{write_button_asset_fullview_or_update(lang,asset_id,fullview)}\n"
+			"</div>"
 	)
 
 	if fullview and has_username:
 
 		html_text=(
 			f"{html_text}\n"
-			f"{write_form_delete_asset(lang,asset_id)}"
+			f"""<div class="{_CSS_CLASS_HORIZONTAL}">"""
+				f"{write_form_delete_asset(lang,asset_id)}"
+			"</div>"
 		)
 
 	html_text=(
@@ -882,7 +916,7 @@ def write_html_asset(
 		if has_username:
 			html_text=(
 				f"{html_text}\n"
-				f"""<div id="asset-{asset_id}-history-ctl" class="{_CSS_CLASS_COMMON}">""" "\n"
+				f"""<div id="asset-{asset_id}-history-ctl">""" "\n"
 					f"{write_form_add_record(lang,asset_id,username)}\n"
 				"</div>"
 			)

@@ -8,8 +8,11 @@ _CSS_CLASS_TITLE="title"
 
 _CSS_CLASS_COMMON="common"
 _CSS_CLASS_HORIZONTAL="horizontal"
-_CSS_CLASS_VUP="ver-up"
-_CSS_CLASS_VDOWN="ver-down"
+_CSS_CLASS_CONTROLS="controls"
+_CSS_CLASS_VUP="vertical-1"
+_CSS_CLASS_VDOWN="vertical-2"
+
+_CSS_CLASS_BTN_MENU="main-menu-button"
 
 _CSS_CLASS_DANGER="danger"
 
@@ -69,7 +72,7 @@ def write_button_anchor(label:str,link:str)->str:
 
 	return (
 		"<div>\n"
-			f"""<button class="{_CSS_CLASS_COMMON}" """
+			f"""<button class="{_CSS_CLASS_COMMON} {_CSS_CLASS_BTN_MENU}" """
 				f"""onclick="location.href='{link}'" """
 				">"
 				f"{label}"

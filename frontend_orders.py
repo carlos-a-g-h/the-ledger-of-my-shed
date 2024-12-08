@@ -4,6 +4,7 @@ from typing import Mapping,Union
 
 from symbols_Any import _LANG_EN,_LANG_ES
 from frontend_Any import _CSS_CLASS_COMMON
+from frontend_Any import _CSS_CLASS_CONTROLS
 from frontend_Any import _CSS_CLASS_HORIZONTAL
 from frontend_Any import _CSS_CLASS_DANGER
 from frontend_Any import write_div_display_error
@@ -109,7 +110,7 @@ def write_form_remove_asset_from_order(
 
 	return (
 		"<form "
-			"""style="text-align:right" """
+			"""class="controls" """
 			f"""hx-delete="/api/orders/current/{order_id}/update" """
 			"""hx-target="#messages" """
 			"""hx-swap="innerHTML">"""
@@ -444,8 +445,8 @@ def write_html_order(
 	if not edit_mode:
 		html_text=(
 			f"{html_text}\n"
-			f"{write_button_goto_order_editor(lang,order_id)}\n"
-			"""<div style="float:right;">"""
+			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
+				f"{write_button_goto_order_editor(lang,order_id)}\n"
 				f"{write_button_delete_order(lang,order_id,True)}\n"
 			"</div>"
 		)
@@ -454,8 +455,8 @@ def write_html_order(
 		html_text=(
 			f"{html_text}\n"
 			f"{write_button_goto_order_asset_search(lang,order_id)}\n"
-			f"{write_button_run_order(lang,order_id)}\n"
-			"""<div style="float:right;">"""
+			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
+				f"{write_button_run_order(lang,order_id)}\n"
 				f"{write_button_delete_order(lang,order_id)}\n"
 			"</div>"
 		)

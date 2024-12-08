@@ -1136,7 +1136,8 @@ async def route_api_add_record(
 
 	html_record=write_html_record(
 		lang,asset_id,dbi_result,
-		record_uid=dbi_result["uid"]
+		record_uid=dbi_result["uid"],
+		authorized=True
 	)
 
 	return Response(

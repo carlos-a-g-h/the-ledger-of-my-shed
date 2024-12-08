@@ -4,21 +4,21 @@ button.popup-button,
 input.common,
 summary.common,
 textarea.common,
-div.common {
+div.common,
+div.vertical {
   padding-top:6px;
   margin-top:8px;
   padding-bottom:6px;
   margin-bottom:8px;
 }
 
-details.ver-up,
-div.ver-up {
+details.vertical-1,
+div.vertical-1{
   padding-top:8px;
   margin-top:12px;
 }
-
-details.ver-down,
-div.ver-down {
+details.vertical-2,
+div.vertical-2 {
   padding-bottom:8px;
   margin-bottom:12px;
 }
@@ -79,6 +79,15 @@ button.popup-button:active {
   color:#0074E8;
 }
 
+button.popup-button {
+  width:6em;
+}
+
+button.main-menu-button {
+  width:12em;
+}
+
+
 button.danger:hover {
   border:2px solid red;
   background-color: red;
@@ -103,4 +112,10 @@ div.horizontal {
 div.popup-content {
   padding:16px;
   text-align:center;
+}
+
+@media screen and (orientation: portrait) and (max-width: 50vmin){
+  div.controls {
+    text-align:right
+  }
 }
