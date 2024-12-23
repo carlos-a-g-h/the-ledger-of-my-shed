@@ -2,61 +2,79 @@
 
 from pathlib import Path
 from secrets import token_hex
-# from typing import Any
-from typing import Mapping
-from typing import Union
-from typing import Optional
 
-# from aiohttp.web import Application
-from aiohttp.web import Request
-from aiohttp.web import Response
-from aiohttp.web import json_response
+from typing import (
+	Mapping,
+	Union,Optional
+)
 
-from symbols_Any import _APP_CACHE_ASSETS
-from symbols_Any import _LANG_EN,_LANG_ES
-from symbols_Any import _TYPE_CUSTOM
-from symbols_Any import _MIMETYPE_HTML
-from symbols_Any import _APP_RDBC,_APP_RDBN
-from symbols_Any import _REQ_LANGUAGE,_REQ_USERNAME,_REQ_CLIENT_TYPE
+from aiohttp.web import (
+	Request,
+	Response,json_response
+)
 
-from control_Any import _ERR_DETAIL_DATA_NOT_VALID
-from control_Any import _ERR_DETAIL_DBI_FAIL
-from control_Any import assert_referer
-from control_Any import get_request_body_dict
-from control_Any import response_errormsg
+from symbols_Any import (
+	_APP_CACHE_ASSETS,
+	_LANG_EN,_LANG_ES,
+	_TYPE_CUSTOM,
+	_MIMETYPE_HTML,
+	_APP_RDBC,_APP_RDBN,
+	_REQ_LANGUAGE,_REQ_USERID,_REQ_CLIENT_TYPE,
+)
 
-from dbi_orders import dbi_orders_DropOrder
-from dbi_orders import dbi_orders_GetOrders
-from dbi_orders import dbi_orders_NewOrder
-from dbi_orders import dbi_orders_Editor_AssetDrop
-from dbi_orders import dbi_orders_Editor_AssetPatch
-from dbi_orders import dbi_Orders_ApplyOrder
+from control_Any import (
+	_ERR_DETAIL_DATA_NOT_VALID,
+	_ERR_DETAIL_DBI_FAIL,
+	assert_referer,
+	get_username,
+	get_request_body_dict,
+	response_errormsg
+)
 
-from frontend_Any import _SCRIPT_HTMX
-from frontend_Any import _STYLE_CUSTOM
-from frontend_Any import _STYLE_POPUP
-from frontend_Any import _CSS_CLASS_COMMON
-from frontend_Any import _CSS_CLASS_HORIZONTAL
-from frontend_Any import _CSS_CLASS_TITLE
-from frontend_Any import write_fullpage
-from frontend_Any import write_popupmsg
-from frontend_Any import write_link_homepage
-from frontend_Any import write_ul
+from dbi_assets import (
+	_COL_ASSETS,
+	_KEY_ASSET,_KEY_SIGN,_KEY_TAG,_KEY_COMMENT,
+	_KEY_RECORD_MOD,
+)
 
-from frontend_account import write_html_user_section
+from dbi_orders import (
+	_KEY_ORDER,
+	dbi_orders_DropOrder,
+	dbi_orders_GetOrders,
+	dbi_orders_NewOrder,
+	dbi_orders_Editor_AssetDrop,
+	dbi_orders_Editor_AssetPatch,
+	dbi_Orders_ApplyOrder,
+)
 
-from internals import util_valid_bool
-from internals import util_valid_int
-from internals import util_valid_str
+from frontend_Any import (
+	_SCRIPT_HTMX,_STYLE_CUSTOM,_STYLE_POPUP,
 
-from frontend_orders import write_button_nav_new_order
-from frontend_orders import write_button_nav_list_orders
-from frontend_orders import write_button_goto_order_editor
-from frontend_orders import write_button_delete_order
-from frontend_orders import write_form_update_asset_in_order
-from frontend_orders import write_form_new_order
-from frontend_orders import write_html_order
-from frontend_orders import write_html_order_assets
+	_CSS_CLASS_COMMON,_CSS_CLASS_HORIZONTAL,
+	_CSS_CLASS_TITLE,
+
+	write_fullpage,write_popupmsg,
+	write_link_homepage,write_ul
+)
+
+from frontend_accounts import write_html_user_section
+
+from frontend_orders import (
+	write_button_nav_new_order,
+	write_button_nav_list_orders,
+	write_button_goto_order_editor,
+	write_button_delete_order,
+	write_form_update_asset_in_order,
+	write_form_new_order,
+	write_html_order,
+	write_html_order_assets
+)
+
+from internals import (
+	util_valid_bool,
+	util_valid_int,
+	util_valid_str,
+)
 
 _ROUTE_PAGE="/page/orders"
 
@@ -96,7 +114,8 @@ async def route_fgmt_new_order(
 		return Response(status=406)
 
 	lang=request[_REQ_LANGUAGE]
-	username=request[_REQ_USERNAME]
+	# username=request[_REQ_USERNAME]
+	username=await get_username(request)
 
 	return Response(
 		body=(
@@ -144,7 +163,7 @@ async def route_api_new_order(
 	lang=request[_REQ_LANGUAGE]
 
 	order_sign=util_valid_str(
-		req_data.get("sign")
+		req_data.get(_KEY_SIGN)
 	)
 	if not isinstance(order_sign,str):
 		return response_errormsg(
@@ -157,7 +176,7 @@ async def route_api_new_order(
 		)
 
 	order_tag=util_valid_str(
-		req_data.get("tag")
+		req_data.get(_KEY_TAG)
 	)
 	if not isinstance(order_tag,str):
 		return response_errormsg(
@@ -170,7 +189,7 @@ async def route_api_new_order(
 		)
 
 	order_comment=util_valid_str(
-		req_data.get("comment")
+		req_data.get(_KEY_COMMENT)
 	)
 	order_id=token_hex(16)
 
@@ -215,7 +234,8 @@ async def route_api_new_order(
 		"</div>"
 	)
 
-	username=request[_REQ_USERNAME]
+	# username=request[_REQ_USERNAME]
+	username=await get_username(request)
 
 	return Response(
 		body=(
@@ -308,7 +328,7 @@ async def route_fgmt_order_editor(
 
 	lang=request[_REQ_LANGUAGE]
 
-	order_id=request.match_info["order_id"]
+	order_id=request.match_info[_KEY_ORDER]
 
 	the_order=await dbi_orders_GetOrders(
 		request.app[_APP_RDBC],
@@ -329,11 +349,9 @@ async def route_fgmt_order_editor(
 
 	html_text=(
 
-		f"<!-- EDITOR MODE FOR ORDER {order_id} -->"
-		"\n"
+		f"<!-- EDITOR MODE FOR ORDER {order_id} -->\n"
 
-		"""<section hx-swap-oob="innerHTML:#navigation">"""
-		"\n"
+		"""<section hx-swap-oob="innerHTML:#navigation">""" "\n"
 			"<ul>\n"
 				f"<li>\n{write_button_nav_new_order(lang)}\n</li>\n"
 				f"<li>\n{write_button_nav_list_orders(lang)}\n</li>\n"
@@ -341,31 +359,27 @@ async def route_fgmt_order_editor(
 		"</section>"
 		"\n\n"
 
-		"""<section hx-swap-oob="innerHTML:#main-1">"""
-		"\n"
+		"""<section hx-swap-oob="innerHTML:#main-1">""" "\n"
 			f"{write_html_order(lang,the_order,True)}\n"
 		"</section>"
-
 		"\n\n"
 
-		"""<section hx-swap-oob="innerHTML:#main-2">"""
-		"\n"
+		"""<section hx-swap-oob="innerHTML:#main-2">""" "\n"
 			"<!-- EMPTY -->\n"
 		"</section>"
 	)
 
-	if isinstance(the_order.get("assets"),Mapping):
+	if isinstance(the_order.get(_COL_ASSETS),Mapping):
 
 		html_text_assets=write_html_order_assets(
 			lang,order_id,
-			the_order["assets"],
+			the_order[_COL_ASSETS],
 			request.app[_APP_CACHE_ASSETS]
 		)
 
 		html_text=(
 			f"{html_text}\n"
-			"""<section hx-swap-oob="innerHTML:#main-2">"""
-			"\n"
+			"""<section hx-swap-oob="innerHTML:#main-2">""" "\n"
 				f"{html_text_assets}\n"
 			"</section>"
 		)
@@ -394,7 +408,7 @@ async def route_api_update_asset_in_order(
 
 	lang=request[_REQ_LANGUAGE]
 
-	order_id=request.match_info["order_id"]
+	order_id=request.match_info[_KEY_ORDER]
 
 	reqdata=await get_request_body_dict(ct,request)
 	if reqdata is None:
@@ -410,7 +424,7 @@ async def route_api_update_asset_in_order(
 	# )
 
 	asset_id=util_valid_str(
-		reqdata.get("asset")
+		reqdata.get(_KEY_ASSET)
 	)
 	if not isinstance(asset_id,str):
 		return response_errormsg(
@@ -423,7 +437,7 @@ async def route_api_update_asset_in_order(
 		)
 
 	imod=util_valid_int(
-		reqdata.get("imod"),fallback=0
+		reqdata.get(_KEY_RECORD_MOD),fallback=0
 	)
 
 	justbool=util_valid_bool(
@@ -459,7 +473,7 @@ async def route_api_update_asset_in_order(
 	print("->",type(result))
 	if isinstance(result,Mapping):
 		curr_mod=util_valid_int(
-			result.get("assets",{}).get(asset_id),
+			result.get(_COL_ASSETS,{}).get(asset_id),
 			fallback="???"
 		)
 
@@ -475,11 +489,9 @@ async def route_api_update_asset_in_order(
 
 	if not justbool:
 		html_text=(
-			f"""<!-- {asset_id} CHANGED TO {curr_mod} ({imod}) -->"""
-			"\n"
+			f"""<!-- {asset_id} CHANGED TO {curr_mod} ({imod}) -->""" "\n"
 
-			f"""<div hx-swap-oob="innerHTML:#asset-{asset_id}-in-{order_id}-updater">"""
-			"\n"
+			f"""<div hx-swap-oob="innerHTML:#asset-{asset_id}-in-{order_id}-updater">""" "\n"
 				"<!-- UPDATED! -->\n"
 				f"{write_form_update_asset_in_order(lang,order_id,asset_id,currmod=curr_mod,inner=True)}\n"
 			"</div>"
@@ -502,7 +514,7 @@ async def route_api_remove_asset_from_order(
 
 	lang=request[_REQ_LANGUAGE]
 
-	order_id=request.match_info["order_id"]
+	order_id=request.match_info[_KEY_ORDER]
 
 	reqdata=await get_request_body_dict(ct,request)
 	if reqdata is None:
@@ -513,7 +525,7 @@ async def route_api_remove_asset_from_order(
 		)
 
 	asset_id=util_valid_str(
-		reqdata.get("asset")
+		reqdata.get(_KEY_ASSET)
 	)
 	if not isinstance(asset_id,str):
 		return response_errormsg(
@@ -543,8 +555,7 @@ async def route_api_remove_asset_from_order(
 	return Response(
 		body=(
 			f"<!-- REMOVED FROM ORDER: {order_id} -->\n"
-			f"""<div hx-swap-oob="innerHTML:#asset-{asset_id}-in-{order_id}">"""
-			"\n"
+			f"""<div hx-swap-oob="innerHTML:#asset-{asset_id}-in-{order_id}">""" "\n"
 				"<!-- REMOVED -->\n"
 			"</div>"
 		),
@@ -566,13 +577,13 @@ async def route_api_list_orders(
 		return Response(status=406)
 
 	order_id=util_valid_str(
-		req_data.get("id")
+		req_data.get(_KEY_ORDER)
 	)
 	order_sign=util_valid_str(
-		req_data.get("sign")
+		req_data.get(_KEY_SIGN)
 	)
 	order_tag=util_valid_str(
-		req_data.get("tag")
+		req_data.get(_KEY_TAG)
 	)
 
 	qres=await dbi_orders_GetOrders(
@@ -598,7 +609,7 @@ async def route_api_delete_order(
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
 
-	order_id=request.match_info["order_id"]
+	order_id=request.match_info[_KEY_ORDER]
 
 	lang=request[_REQ_LANGUAGE]
 
@@ -632,8 +643,8 @@ async def route_api_delete_order(
 		html_text=(
 			f"{html_text}\n"
 
-			f"""<div hx-swap-oob="innerHTML:#order-{order_id}">"""
-				"<!-- DEELTED! -->"
+			f"""<div hx-swap-oob="innerHTML:#order-{order_id}">""" "\n"
+				"<!-- DELETED! -->\n"
 			"</div>"
 
 		)
@@ -675,7 +686,7 @@ async def route_api_run_order(
 
 	lang=request[_REQ_LANGUAGE]
 
-	order_id=request.match_info["order_id"]
+	order_id=request.match_info[_KEY_ORDER]
 
 	ok=(
 		await dbi_Orders_ApplyOrder(
@@ -728,7 +739,8 @@ async def route_main(
 	)->Union[Response,json_response]:
 
 	lang=request[_REQ_LANGUAGE]
-	username:Optional[str]=request[_REQ_USERNAME]
+	# username:Optional[str]=request[_REQ_USERNAME]
+	username=await get_username(request,False)
 
 	page_title={
 		_LANG_EN:"Orders manager",
@@ -749,23 +761,25 @@ async def route_main(
 				f"{write_link_homepage(lang)}\n"
 				f"{write_html_user_section(lang,username=username)}"
 				"""<section id="navigation">""" "\n"
-					f"{write_ul([write_button_nav_new_order(lang),write_button_nav_list_orders(lang)])}\n"
+				f"{write_ul([write_button_nav_new_order(lang),write_button_nav_list_orders(lang)])}\n"
 				"</section>\n"
+
 				"""<section id="main-1">""" "\n"
 					"<!-- EMPTY -->\n"
 				"</section>\n"
+
 				"""<section id="main-2">""" "\n"
 					"<!-- EMPTY -->\n"
 				"</section>\n"
+
 				"""<section id="messages">""" "\n"
 					"<!-- WELCOME TO THE ORDER BOOK -->\n"
 				"</section>"
 			),
 			html_header_extra=[
 				_SCRIPT_HTMX,
-				_STYLE_POPUP,
-				_STYLE_CUSTOM
+				_STYLE_POPUP, 	_STYLE_CUSTOM
 			]
 		),
-		content_type=_MIMETYPE_HTML
+	content_type=_MIMETYPE_HTML
 	)

@@ -6,53 +6,72 @@ from typing import Optional,Union
 
 from secrets import token_hex
 
-from aiohttp.web import Request
-from aiohttp.web import HTTPFound,Response,json_response
+from aiohttp.web import (
+	Request,
+	Response,json_response,
+	HTTPFound
+)
 
-# from control_Any import _ERR_DETAIL_DBI_FAIL
-from control_Any import _ERR_DETAIL_DATA_NOT_VALID
-from control_Any import assert_referer
-from control_Any import get_client_type
-from control_Any import get_request_body_dict
-from control_Any import response_errormsg
-from control_Any import response_popupmsg
-from control_Any import response_fullpage
+from control_Any import (
+	_ERR_DETAIL_DATA_NOT_VALID,
+	assert_referer,
+	get_client_type,
+	get_username,
+	get_request_body_dict,
+	response_errormsg,
+	response_popupmsg,
+	response_fullpage,
+	is_root_local_autologin_allowed,
+)
 
-# from dbi_account import dbi_GetUser
-# from dbi_account import dbi_CreateUser
-# from dbi_account import dbi_PatchUser
-from dbi_account import _VM_EMAIL,_VM_TELEGRAM
-from dbi_account import _MS_OTP,_MS_DT,_MS_VM
-from dbi_account import create_session_candidate
-from dbi_account import convert_to_active_session
-from dbi_account import read_session
-from dbi_account import drop_session
+from dbi_accounts import (
+	_KEY_USERNAME,
+	_KEY_EMAIL,_KEY_TELEGRAM,
+	_KEY_OTP,_KEY_VM,
+	ldbi_get_userid,
+	ldbi_get_username,
+	ldbi_create_session_candidate,
+	ldbi_convert_to_active_session,
+	ldbi_read_session,
+	ldbi_drop_session,
+	ldbi_create_active_session,
+)
 
-from frontend_Any import _CSS_CLASS_COMMON
-from frontend_Any import _SCRIPT_HTMX,_STYLE_CUSTOM,_STYLE_POPUP
-from frontend_Any import write_fullpage
-from frontend_Any import write_popupmsg
-from frontend_Any import write_link_homepage
+from frontend_Any import (
+	_CSS_CLASS_COMMON,
+	_SCRIPT_HTMX,_STYLE_CUSTOM,_STYLE_POPUP,
+	write_fullpage,
+	write_popupmsg,
+	write_link_homepage
+)
 
-from frontend_account import write_form_login
-from frontend_account import write_form_otp
-from frontend_account import write_link_account
-from frontend_account import write_html_user_section
+from frontend_accounts import (
+	write_form_login,
+	write_form_otp,
+	write_link_account,
+	write_button_login_magical,
+	write_html_user_section,
+)
 
-from internals import util_valid_str,util_valid_date
-from internals import util_date_calc_expiration
-from internals import util_get_pid_from_request
+from internals import (
+	util_valid_str,util_valid_date,
+	util_date_calc_expiration,
+	util_get_pid_from_request
+)
 
-from symbols_Any import _COOKIE_AKEY,_COOKIE_USER
-from symbols_Any import _REQ_LANGUAGE,_LANG_EN,_LANG_ES
-from symbols_Any import _REQ_CLIENT_TYPE,_TYPE_CUSTOM,_TYPE_BROWSER
-from symbols_Any import _REQ_USERNAME
-from symbols_Any import _REQ_HAS_SESSION
-from symbols_Any import _APP_PROGRAMDIR
-from symbols_Any import _MIMETYPE_HTML
-from symbols_Any import _ROOT_USER
+from symbols_Any import (
+	_ERR,
+	_COOKIE_AKEY,_COOKIE_USER,
+	_REQ_LANGUAGE,_LANG_EN,_LANG_ES,
+	_REQ_CLIENT_TYPE,_TYPE_CUSTOM,_TYPE_BROWSER,
+	_REQ_USERID,
+	_REQ_HAS_SESSION,
+	_APP_PROGRAMDIR,_APP_ROOT_USERID,
+	_MIMETYPE_HTML,
+	_ROOT_USER,
+)
 
-_ROUTE_PAGE="/page/account"
+_ROUTE_PAGE="/page/accounts"
 
 _ERR_TITLE_LOGIN={
 	_LANG_EN:"Login error",
@@ -66,13 +85,11 @@ _ERR_TITLE_LOGOUT={
 
 async def route_fgmt_login(request:Request)->Union[json_response,Response]:
 
-	# GET /fgmt/account/login
+	# GET /fgmt/accounts/login
 
 	lang=request[_REQ_LANGUAGE]
-	has_session=request[_REQ_HAS_SESSION]
 
-	# if (await process_session_checkin(request)):
-	if has_session:
+	if request[_REQ_HAS_SESSION]:
 		return response_popupmsg(
 			"<h2>"+{
 				_LANG_EN:"You are already logged in",
@@ -91,16 +108,13 @@ async def route_fgmt_login(request:Request)->Union[json_response,Response]:
 
 async def route_api_login(request:Request)->Union[json_response,Response]:
 
-	# POST /api/account/login {username:String,vmethod:String}
+	# POST /api/accounts/login {username:String,vmethod:String}
 
 	ct=request[_REQ_CLIENT_TYPE]
 
-	# username=request[_REQ_USERNAME]
 	lang=request[_REQ_LANGUAGE]
-	has_session=request[_REQ_HAS_SESSION]
 
-	# if (await process_session_checkin(request)):
-	if has_session:
+	if request[_REQ_HAS_SESSION]:
 		return response_errormsg(
 			_ERR_TITLE_LOGIN[lang],
 			{
@@ -118,7 +132,7 @@ async def route_api_login(request:Request)->Union[json_response,Response]:
 		)
 
 	username=util_valid_str(
-		request_data.get("username"),True
+		request_data.get(_KEY_USERNAME),True
 	)
 	if username is None:
 		return response_errormsg(
@@ -130,7 +144,7 @@ async def route_api_login(request:Request)->Union[json_response,Response]:
 		)
 
 	vmethod=util_valid_str(
-		request_data.get(_MS_VM),
+		request_data.get(_KEY_VM),
 		True
 	)
 
@@ -143,30 +157,61 @@ async def route_api_login(request:Request)->Union[json_response,Response]:
 	# 		}[lang],_TYPE_BROWSER
 	# 	)
 
-	# First Check if the user is already waiting for a code
+	# Check if the root local autologin flag is active
+	# NOTE: This should not be enabled in production
+	# if _CFG_FLAG_ROOT_LOCAL_AUTOLOGIN in request.app[_CFG_FLAGS]:
+
+	# 	ip_address,user_agent=util_get_pid_from_request(request)
+
+	# 	await async_run(
+	# 		ldbi_create_active_session,
+	# 		request.app[_APP_PROGRAMDIR],
+	# 		ip_address,user_agent
+	# 	)
+
+	res_userid=await async_run(
+		ldbi_get_userid,
+		request.app[_APP_PROGRAMDIR],
+		username
+	)
+	if res_userid[0]==_ERR:
+
+		tl={
+			_LANG_EN:f"Unable to find the user '{username}'",
+			_LANG_ES:f"El usuario '{username}' no se pudo encontrar"
+		}[lang]
+
+		return response_errormsg(
+			_ERR_TITLE_LOGIN[lang],
+			f"{tl}<br>{res_userid[1]}",_TYPE_BROWSER
+		)
+
+	userid=res_userid[1]
+
+	is_root=(username==_ROOT_USER)
+
+	# Check if the user is already waiting for a code
 
 	ip_address,user_agent=util_get_pid_from_request(request)
 
 	session_candidate=await async_run(
-		read_session,
+		ldbi_read_session,
 		request.app[_APP_PROGRAMDIR],
-		username,ip_address,user_agent,True
+		userid,ip_address,user_agent,True
 	)
+	already_has_otp=(not session_candidate[0]==_ERR)
 
-	print(username,session_candidate)
+	if not already_has_otp:
 
-	already_has_otp=isinstance(
-		session_candidate.get(_MS_OTP),str
-	)
+		print(session_candidate[1])
 
 	if already_has_otp:
 
 		print("THE USER",username,"IS ALREADY WAITING FOR AN OTP")
 
 		stored_date=util_valid_date(
-			session_candidate.get(_MS_DT),True
+			session_candidate[1],True
 		)
-
 		if not util_date_calc_expiration(
 			stored_date,60,
 			get_age=False,
@@ -192,9 +237,9 @@ async def route_api_login(request:Request)->Union[json_response,Response]:
 			)
 
 		msg_error=await async_run(
-			drop_session,
+			ldbi_drop_session,
 			request.app[_APP_PROGRAMDIR],
-			username,ip_address,user_agent,True
+			userid,ip_address,user_agent,True
 		)
 		print(
 			"session drop error msg:",
@@ -207,11 +252,9 @@ async def route_api_login(request:Request)->Union[json_response,Response]:
 
 	login_prefs={}
 
-	is_root=(username==_ROOT_USER)
-
 	if not is_root:
 
-		if vmethod not in [_VM_EMAIL,_VM_TELEGRAM]:
+		if vmethod not in [_KEY_EMAIL,_KEY_TELEGRAM]:
 			return response_errormsg(
 				_ERR_TITLE_LOGIN[lang],
 				{
@@ -220,16 +263,18 @@ async def route_api_login(request:Request)->Union[json_response,Response]:
 				}[lang],_TYPE_BROWSER
 			)
 
-		login_prefs.update({"error":"THE ONLY USER RIGHT NOW IS ROOT"})
+		# login_prefs.update({_ERR:"THE ONLY USER RIGHT NOW IS ROOT"})
 
-	error_msg:Optional[str]=login_prefs.get("error")
+	error_msg:Optional[str]=login_prefs.get(_ERR)
 	if error_msg is not None:
+		tl={
+			_LANG_EN:"The user doesn't exist",
+			_LANG_ES:"El usuario no existe"
+		}[lang]
 		return response_errormsg(
 			_ERR_TITLE_LOGIN[lang],
-			{
-				_LANG_EN:"The user doesn't exist",
-				_LANG_ES:"El usuario no existe"
-			}[lang]+f"<br>{error_msg}",_TYPE_BROWSER
+			f"{tl}<br>{error_msg}",
+			_TYPE_BROWSER
 		)
 
 	# generate OTP
@@ -257,17 +302,18 @@ async def route_api_login(request:Request)->Union[json_response,Response]:
 	# Create the session candidate
 
 	error_msg=await async_run(
-		create_session_candidate,
+		ldbi_create_session_candidate,
 		request.app[_APP_PROGRAMDIR],
-		username,ip_address,user_agent,otp_new
+		userid,ip_address,user_agent,otp_new
 	)
 	if isinstance(error_msg,str):
+		tl={
+			_LANG_EN:"Details",
+			_LANG_ES:"Detalles"
+		}[lang]
 		return response_errormsg(
 			_ERR_TITLE_LOGIN[lang],
-			{
-				_LANG_EN:"Details",
-				_LANG_ES:"Detalles"
-			}[lang]+f": {error_msg}",
+			f"{tl}: {error_msg}",
 			_TYPE_BROWSER
 		)
 
@@ -282,10 +328,9 @@ async def route_api_login(request:Request)->Union[json_response,Response]:
 
 async def route_api_login_otp(request:Request)->Union[json_response,Response]:
 
-	# POST /api/account/login-otp {username:String,otp:String}
+	# POST /api/accounts/login-otp {username:String,otp:String}
 	# NOTE: The response is an entire page (cookie must be delivered)
 
-	# ct=get_client_type(request)
 	ct=request[_REQ_CLIENT_TYPE]
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
@@ -293,19 +338,17 @@ async def route_api_login_otp(request:Request)->Union[json_response,Response]:
 		return json_response(data={})
 
 	lang=request[_REQ_LANGUAGE]
-	has_session=request[_REQ_HAS_SESSION]
 
-	# if (await process_session_checkin(request)):
-	if has_session:
+	if request[_REQ_HAS_SESSION]:
 		tl={
 			_LANG_EN:"You are already logged in",
 			_LANG_ES:"Ya tienes una sesión iniciada"
 		}[lang]
 		return response_fullpage(
-			lang,"Error",
+			lang,_ERR,
 			_ERR_TITLE_LOGIN[lang],
 			(
-				f"<p>{tl}</p>"
+				f"<p>{tl}</p>\n"
 				f"<p>{write_link_account(lang,True)}</p>"
 			)
 		)
@@ -313,10 +356,10 @@ async def route_api_login_otp(request:Request)->Union[json_response,Response]:
 	request_data=await get_request_body_dict(ct,request)
 	if not request_data:
 		return response_fullpage(
-			lang,"Error",
+			lang,_ERR,
 			_ERR_TITLE_LOGIN[lang],
 			(
-				f"<p>{_ERR_DETAIL_DATA_NOT_VALID[lang]}</p>"
+				f"<p>{_ERR_DETAIL_DATA_NOT_VALID[lang]}</p>\n"
 				f"<p>{write_link_account(lang,True)}</p>"
 			)
 		)
@@ -324,7 +367,7 @@ async def route_api_login_otp(request:Request)->Union[json_response,Response]:
 	print(request_data)
 
 	username=util_valid_str(
-		request_data.get("username"),True
+		request_data.get(_KEY_USERNAME),True
 	)
 	if username is None:
 		tl={
@@ -332,16 +375,16 @@ async def route_api_login_otp(request:Request)->Union[json_response,Response]:
 			_LANG_ES:"Revise el campo 'username' (nombre de usuario)"
 		}[lang]
 		return response_fullpage(
-			lang,"Error",
+			lang,_ERR,
 			_ERR_TITLE_LOGIN[lang],
 			(
-				f"<p>{tl}</p>"
+				f"<p>{tl}</p>\n"
 				f"<p>{write_link_account(lang,True)}</p>"
 			)
 		)
 
 	otp=util_valid_str(
-		request_data.get(_MS_OTP),
+		request_data.get(_KEY_OTP),
 		True
 	)
 	if otp is None:
@@ -350,72 +393,97 @@ async def route_api_login_otp(request:Request)->Union[json_response,Response]:
 			_LANG_ES:"Revise el campo 'otp' (La contraseña)"
 		}[lang]
 		return response_fullpage(
-			lang,"Error",
+			lang,_ERR,
 			_ERR_TITLE_LOGIN[lang],
 			(
-				f"<p>{tl}</p>"
+				f"<p>{tl}</p>\n"
 				f"<p>{write_link_account(lang,True)}</p>"
 			)
 		)
 
 	ip_address,user_agent=util_get_pid_from_request(request)
 
-	session_candidate=await async_run(
-		read_session,
+	res_get_userid=await async_run(
+		ldbi_get_userid,
 		request.app[_APP_PROGRAMDIR],
-		username,ip_address,user_agent,True
+		username
 	)
-	print(session_candidate)
-	error_msg=session_candidate.get("error",None)
-	if error_msg is not None:
+	if res_get_userid[0]==_ERR:
+
+		tl={
+			_LANG_EN:f"Unable to find the user '{username}'",
+			_LANG_ES:f"El usuario '{username}' no se pudo encontrar"
+		}[lang]
+
+		# return response_errormsg(
+		# 	_ERR_TITLE_LOGIN[lang],
+		# 	f"{tl}<br>{res_get_userid[1]}",
+		# 	_TYPE_BROWSER
+		# )
+
+		return response_fullpage(
+			lang,_ERR,
+			_ERR_TITLE_LOGIN[lang],
+			(
+				f"<p>{tl}<br>{res_get_userid[1]}</p>\n"
+				f"<p>{write_link_account(lang,True)}</p>"
+			)
+		)
+
+	userid=res_get_userid[1]
+
+	session_candidate=await async_run(
+		ldbi_read_session,
+		request.app[_APP_PROGRAMDIR],
+		userid,ip_address,user_agent,True
+	)
+	if session_candidate[0]==_ERR:
 		tl={
 			_LANG_EN:"Details",
 			_LANG_ES:"Detalles"
 		}[lang]
 		return response_fullpage(
-			lang,"Error",
+			lang,_ERR,
 			_ERR_TITLE_LOGIN[lang],
 			(
-				f"<p>{tl}: {error_msg}</p>"
+				f"<p>{tl}: {session_candidate[1]}</p>\n"
 				f"<p>{write_link_account(lang,True)}</p>"
 			)
 		)
 
-	stored_date=util_valid_date(
-		session_candidate.get(_MS_DT),True
-	)
-	print(stored_date)
-	calc=util_date_calc_expiration(
-			stored_date,60,
-			# get_age=False,
-			# get_exp_date=False
-		)
-	print(calc)
-	if calc.get("expired",True):
+	if util_date_calc_expiration(
+		util_valid_date(
+			session_candidate[1],
+			True
+		),60,
+		get_age=False,
+		get_exp_date=False
+	).get("expired",True):
+
 		tl={
 			_LANG_EN:"The session is either not valid or the password expired",
 			_LANG_ES:"La sesión o no es váida o la contraseña expiró"
 		}[lang]
 		return response_fullpage(
-			lang,"Error",
+			lang,_ERR,
 			_ERR_TITLE_LOGIN[lang],
 			(
-				f"<p>{tl}</p>"
+				f"<p>{tl}</p>\n"
 				f"<p>{write_link_account(lang,True)}</p>"
 			)
 		)
 
-	if not (otp==session_candidate.get(_MS_OTP)):
+	if not otp==session_candidate[2]:
 
 		tl={
 			_LANG_EN:"The password is incorrect; return to the account page and try again",
 			_LANG_ES:"La contraseña es incorrecta; vuelva a la página de la cuenta para intentar denuevo"
 		}[lang]
 		return response_fullpage(
-			lang,"Error",
+			lang,_ERR,
 			_ERR_TITLE_LOGIN[lang],
 			(
-				f"<p>{tl}</p>"
+				f"<p>{tl}</p>\n"
 				f"<p>{write_link_account(lang,True)}</p>"
 			)
 		)
@@ -424,9 +492,9 @@ async def route_api_login_otp(request:Request)->Union[json_response,Response]:
 	access_key=token_hex(32)
 
 	error_msg=await async_run(
-		convert_to_active_session,
+		ldbi_convert_to_active_session,
 		request.app[_APP_PROGRAMDIR],
-		username,ip_address,user_agent,
+		userid,ip_address,user_agent,
 		access_key
 	)
 	if isinstance(error_msg,str):
@@ -435,10 +503,10 @@ async def route_api_login_otp(request:Request)->Union[json_response,Response]:
 			_LANG_ES:"Detalles"
 		}[lang]
 		return response_fullpage(
-			lang,"Error",
+			lang,_ERR,
 			_ERR_TITLE_LOGIN[lang],
 			(
-				f"<p>{tl}: {error_msg}</p>"
+				f"<p>{tl}: {error_msg}<br>UID: {userid}</p>"
 				f"<p>{write_link_account(lang,True)}</p>"
 			)
 		)
@@ -447,13 +515,108 @@ async def route_api_login_otp(request:Request)->Union[json_response,Response]:
 
 	# TODO: improve cookie security
 	the_redirect.set_cookie(_COOKIE_AKEY,access_key)
-	the_redirect.set_cookie(_COOKIE_USER,username)
+	the_redirect.set_cookie(_COOKIE_USER,userid)
+
+	raise the_redirect
+
+async def route_api_login_magical(request:Request)->Union[json_response,Response]:
+
+	# POST: /api/accounts/login-magical
+	# NOTE: The response is an entire page (cookie must be delivered)
+
+	if get_client_type(request)==_TYPE_CUSTOM:
+		return json_response(data={})
+
+	ct=request[_REQ_CLIENT_TYPE]
+	if not assert_referer(ct,request,_ROUTE_PAGE):
+		return Response(status=406)
+	if ct==_TYPE_CUSTOM:
+		return json_response(data={})
+
+	lang=request[_REQ_LANGUAGE]
+
+	if request[_REQ_HAS_SESSION]:
+		tl={
+			_LANG_EN:"You are already logged in",
+			_LANG_ES:"Ya tienes una sesión iniciada"
+		}[lang]
+		return response_fullpage(
+			lang,_ERR,
+			_ERR_TITLE_LOGIN[lang],
+			(
+				f"<p>{tl}</p>\n"
+				f"<p>{write_link_account(lang,True)}</p>"
+			)
+		)
+
+	allow_magic=is_root_local_autologin_allowed(request)
+
+	if not allow_magic:
+		tl={
+			_LANG_EN:"The local automatic login to root account is not enabled",
+			_LANG_ES:"El inicio de sesión directo a la cuenta de root está deshabilitado"
+		}[lang]
+		return response_fullpage(
+			lang,_ERR,
+			_ERR_TITLE_LOGIN[lang],
+			(
+				f"<p>{tl}</p>\n"
+				f"<p>{write_link_account(lang,True)}</p>"
+			)
+		)
+
+	if request[_REQ_HAS_SESSION]:
+		tl={
+			_LANG_EN:"You are already logged in",
+			_LANG_ES:"Ya tienes una sesión iniciada"
+		}[lang]
+		return response_fullpage(
+			lang,_ERR,
+			_ERR_TITLE_LOGIN[lang],
+			(
+				f"<p>{tl}</p>\n"
+				f"<p>{write_link_account(lang,True)}</p>"
+			)
+		)
+
+	root_userid=request.app[_APP_ROOT_USERID]
+
+	path_program=request.app[_APP_PROGRAMDIR]
+
+	ip_address,user_agent=util_get_pid_from_request(request)
+
+	access_key=token_hex(32)
+
+	error_msg=await async_run(
+		ldbi_create_active_session,
+		path_program,root_userid,
+		ip_address,user_agent,access_key
+	)
+	if error_msg is not None:
+		tl={
+			_LANG_EN:"Failed to create the active session",
+			_LANG_ES:"No se pudo crear la sesión activa"
+		}[lang]
+		return response_fullpage(
+			lang,_ERR,
+			_ERR_TITLE_LOGIN[lang],
+			(
+				f"<p>{tl}<br>{error_msg}</p>\n"
+				f"<p>{write_link_account(lang,True)}</p>"
+			)
+		)
+
+	print("ROOT AUTOLOGIN PERFORMED")
+
+	the_redirect=HTTPFound(location=_ROUTE_PAGE)
+	the_redirect.set_cookie(_COOKIE_AKEY,access_key)
+	the_redirect.set_cookie(_COOKIE_USER,root_userid)
 
 	raise the_redirect
 
 async def route_api_logout(request:Request)->Union[json_response,Response]:
 
-	# DELETE /api/account/logout
+	# DELETE /api/accounts/logout
 
 	# NOTE: Accessible from any page
 
@@ -461,12 +624,12 @@ async def route_api_logout(request:Request)->Union[json_response,Response]:
 		return json_response(data={})
 
 	lang=request[_REQ_LANGUAGE]
-	username=request[_REQ_USERNAME]
+	userid=request[_REQ_USERID]
 	has_session=request[_REQ_HAS_SESSION]
 
-	if (not has_session) or (username is None):
+	if (not has_session) or (userid is None):
 		return response_errormsg(
-			_ERR_TITLE_LOGIN[lang],
+			_ERR_TITLE_LOGOUT[lang],
 			{
 				_LANG_EN:"You do not have a session",
 				_LANG_ES:"No tienes una sesión"
@@ -476,14 +639,17 @@ async def route_api_logout(request:Request)->Union[json_response,Response]:
 	# username=util_extract_from_cookies(request)[0]
 	ip_address,user_agent=util_get_pid_from_request(request)
 
+	path_program=request.app[_APP_PROGRAMDIR]
+
 	msg_error=await async_run(
-		drop_session,
-		request.app[_APP_PROGRAMDIR],
-		username,ip_address,user_agent,False
+		ldbi_drop_session,
+		path_program,
+		userid,ip_address,
+		user_agent,False
 	)
 	if isinstance(msg_error,str):
 		return response_errormsg(
-			_ERR_TITLE_LOGIN[lang],
+			_ERR_TITLE_LOGOUT[lang],
 			{
 				_LANG_EN:"Details",
 				_LANG_ES:"Detalles"
@@ -491,9 +657,23 @@ async def route_api_logout(request:Request)->Union[json_response,Response]:
 			_TYPE_BROWSER
 		)
 
+	res_get_uname=await async_run(
+		ldbi_get_username,
+		path_program,userid
+	)
+	if res_get_uname[0]==_ERR:
+		return response_errormsg(
+			_ERR_TITLE_LOGOUT[lang],
+			{
+				_LANG_EN:"Details",
+				_LANG_ES:"Detalles"
+			}[lang]+f": {res_get_uname[1]}",
+			_TYPE_BROWSER
+		)
+
 	tl={
-		_LANG_EN:f"{username} was here...",
-		_LANG_ES:f"{username} estuvo aquí..."
+		_LANG_EN:f"{res_get_uname[1]} was here...",
+		_LANG_ES:f"{res_get_uname[1]} estuvo aquí..."
 	}[lang]
 
 	html_text=(
@@ -517,7 +697,7 @@ async def route_api_logout(request:Request)->Union[json_response,Response]:
 async def route_main(request:Request)->Union[json_response,Response]:
 
 	lang=request[_REQ_LANGUAGE]
-	username:Optional[str]=request[_REQ_USERNAME]
+	username=await get_username(request,False)
 
 	print("USERNAME??:",username)
 
@@ -547,10 +727,24 @@ async def route_main(request:Request)->Union[json_response,Response]:
 	# Show login form
 
 	if username is None:
-		html_text=(
-			f"{html_text}\n"
-			f"{write_form_login(lang)}"
-		)
+
+		magical_login=is_root_local_autologin_allowed(request)
+
+		# Standard login form
+
+		if not magical_login:
+			html_text=(
+				f"{html_text}\n"
+				f"{write_form_login(lang)}"
+			)
+
+		# "Magical" login button
+
+		if magical_login:
+			html_text=(
+				f"{html_text}\n"
+				f"{write_button_login_magical(lang)}"
+			)
 
 	# main section end
 	html_text=(

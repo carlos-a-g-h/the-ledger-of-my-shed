@@ -2,55 +2,68 @@
 
 from typing import Optional,Union
 
-from aiohttp.web import Request
-from aiohttp.web import Response
-from aiohttp.web import json_response
+from aiohttp.web import (
+	Request,
+	Response,json_response
+)
 
-from symbols_Any import _APP_LANG,_LANG_EN,_LANG_ES
-from symbols_Any import _APP_PROGRAMDIR
-from symbols_Any import _MIMETYPE_HTML
-from symbols_Any import _TYPE_CUSTOM
+from symbols_Any import (
+	# _ROOT_USER,
+	_APP_LANG,_LANG_EN,_LANG_ES,
+	_APP_PROGRAMDIR,_APP_ROOT_USERID,
+	_MIMETYPE_HTML,
+	_TYPE_CUSTOM,
+	_CFG_LANG,_CFG_PORT,
+	_REQ_LANGUAGE,_REQ_USERID,
+	_CFG_PORT_MIN,_CFG_PORT_MAX,
 
-from symbols_Any import _CFG_LANG,_CFG_PORT
+	# _CFG_FLAGS,
+	# _CFG_FLAG_ROOT_LOCAL_AUTOLOGIN
+)
 
-from symbols_Any import _REQ_LANGUAGE,_REQ_USERNAME
-from symbols_Any import _ROOT_USER
-from symbols_Any import _PORT_MIN,_PORT_MAX
+from frontend_Any import (
+	_STYLE_CUSTOM,_STYLE_POPUP,
+	_SCRIPT_HTMX,
+	write_fullpage,
+	write_popupmsg,
+	write_link_homepage,
+	write_ul,
+)
 
-from frontend_Any import _STYLE_CUSTOM,_STYLE_POPUP
-from frontend_Any import _SCRIPT_HTMX
-from frontend_Any import _CSS_CLASS_COMMON
-from frontend_Any import write_fullpage
-from frontend_Any import write_popupmsg
-from frontend_Any import write_link_homepage
-from frontend_Any import write_ul
+# from frontend_accounts import write_html_user_section
 
-from frontend_account import write_html_user_section
+from frontend_admin import (
+	write_form_update_config,
+	write_button_update_known_asset_names,
+	write_button_nav_users,
+	write_button_nav_misc_settings,
+	write_form_create_user,
+	write_form_search_users,
+)
 
-from frontend_admin import write_form_update_config
-from frontend_admin import write_button_update_known_asset_names
-from frontend_admin import write_button_nav_users
-from frontend_admin import write_button_nav_misc_settings
-from frontend_admin import write_form_create_user
-from frontend_admin import write_form_search_users
+from control_Any import (
+	_ERR_DETAIL_DBI_FAIL,
+	_ERR_DETAIL_DATA_NOT_VALID,
+)
 
-from control_Any import _ERR_DETAIL_DBI_FAIL
-from control_Any import _ERR_DETAIL_DATA_NOT_VALID
-
-from control_Any import assert_referer
-from control_Any import get_client_type
-from control_Any import get_request_body_dict
-from control_Any import response_errormsg
+from control_Any import (
+	assert_referer,
+	get_client_type,
+	get_request_body_dict,
+	response_errormsg,
+)
 
 from control_assets import util_update_known_assets
 
-from internals import util_valid_bool
-from internals import util_valid_str
-from internals import util_valid_str_inrange
-from internals import util_valid_int
-from internals import util_valid_int_inrange
-from internals import read_yaml_file_async
-from internals import write_yaml_file_async
+from internals import (
+	util_valid_bool,
+	util_valid_str,
+	util_valid_str_inrange,
+	util_valid_int,
+	util_valid_int_inrange,
+	read_yaml_file_async,
+	write_yaml_file_async,
+)
 
 _ROUTE_PAGE="/page/admin"
 
@@ -71,10 +84,10 @@ async def route_fgmt_section_users(
 
 	lang=request[_REQ_LANGUAGE]
 
-	tl={
-		_LANG_EN:"Users control panel",
-		_LANG_ES:"Panel de control de usuarios"
-	}[lang]
+	# tl={
+	# 	_LANG_EN:"Users control panel",
+	# 	_LANG_ES:"Panel de control de usuarios"
+	# }[lang]
 
 	return Response(
 		body=(
@@ -201,8 +214,8 @@ async def route_api_change_config(
 			util_valid_int(
 				request_data.get(_CFG_PORT)
 			),
-			minimum=_PORT_MIN,
-			maximum=_PORT_MAX
+			minimum=_CFG_PORT_MIN,
+			maximum=_CFG_PORT_MAX
 		)
 		if new_port is None:
 			return response_errormsg(
@@ -348,9 +361,9 @@ async def route_main(
 		request:Request
 	)->Union[json_response,Response]:
 
-	username:Optional[str]=request[_REQ_USERNAME]
-	has_session=isinstance(username,str)
-	is_admin=(username==_ROOT_USER)
+	userid:Optional[str]=request[_REQ_USERID]
+	has_session=isinstance(userid,str)
+	is_admin=(userid==request.app[_APP_ROOT_USERID])
 
 	lang=request[_REQ_LANGUAGE]
 
@@ -373,7 +386,6 @@ async def route_main(
 		f"<h1>{tl_title}</h1>\n"
 		f"<h3>{tl}</h3>"
 		f"{write_link_homepage(lang)}\n"
-		f"{write_html_user_section(lang,username=username)}"
 	)
 
 	if not is_admin:

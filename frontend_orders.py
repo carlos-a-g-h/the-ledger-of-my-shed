@@ -3,14 +3,23 @@
 from typing import Mapping,Union
 
 from symbols_Any import _LANG_EN,_LANG_ES
-from frontend_Any import _CSS_CLASS_COMMON
-from frontend_Any import _CSS_CLASS_CONTROLS
-from frontend_Any import _CSS_CLASS_HORIZONTAL
-from frontend_Any import _CSS_CLASS_DANGER
-from frontend_Any import write_div_display_error
+
+from dbi_assets import (
+	_KEY_ASSET,
+	_KEY_SIGN,_KEY_TAG,_KEY_COMMENT,
+	_KEY_RECORD_MOD,
+	_KEY_DATE,
+)
+
+from dbi_orders import _KEY_ORDER
+
+from frontend_Any import (
+	_CSS_CLASS_COMMON,_CSS_CLASS_CONTROLS,
+	_CSS_CLASS_HORIZONTAL,_CSS_CLASS_DANGER,
+	write_div_display_error,
+)
 
 from internals import util_valid_str
-# from internals import util_valid_int
 
 def write_button_nav_new_order(lang:str)->str:
 
@@ -60,7 +69,7 @@ def write_button_add_asset_to_order(
 			"""hx-swap="innerHTML" """
 			">\n"
 
-			f"""<input type="hidden" name="asset" value="{asset_id}">""" "\n"
+			f"""<input type="hidden" name="{_KEY_ASSET}" value="{asset_id}">""" "\n"
 			"""<input type="hidden" name="justbool" value="true">""" "\n"
 
 			f"""<button class="{_CSS_CLASS_COMMON}" type="submit">""" "\n"
@@ -116,7 +125,7 @@ def write_form_remove_asset_from_order(
 			"""hx-swap="innerHTML">"""
 			"\n"
 
-			f"""<input type="hidden" name="asset" value="{asset_id}">""" "\n"
+			f"""<input type="hidden" name="{_KEY_ASSET}" value="{asset_id}">""" "\n"
 
 			"""<button type="submit" """
 				f"""class="{_CSS_CLASS_COMMON} {_CSS_CLASS_DANGER}">"""
@@ -155,8 +164,8 @@ def write_form_update_asset_in_order(
 				"\n"
 
 				f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-					f"""<input type="hidden" name="asset" value="{asset_id}">""" "\n"
-					f"""<input type="number" name="imod" value=0 class="{_CSS_CLASS_COMMON}">""" "\n"
+					f"""<input type="hidden" name="{_KEY_ASSET}" value="{asset_id}">""" "\n"
+					f"""<input type="number" name="{_KEY_RECORD_MOD}" value=0 class="{_CSS_CLASS_COMMON}">""" "\n"
 				"</div>\n"
 
 				"\n"
@@ -286,9 +295,9 @@ def write_form_new_order(lang:str,username:str="")->str:
 	html_text=(
 		f"{html_text}\n"
 		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-				f"""<label class="{_CSS_CLASS_COMMON}" for="sign">{tl}</label>""" "\n"
+				f"""<label class="{_CSS_CLASS_COMMON}" for="{_KEY_SIGN}">{tl}</label>""" "\n"
 				f"""<input class="{_CSS_CLASS_COMMON}" """
-					""" name="sign" """
+					f""" name="{_KEY_SIGN}" """
 					"""type="text" """
 					"""max-length=32 """
 					f"""value="{username}" """
@@ -303,9 +312,9 @@ def write_form_new_order(lang:str,username:str="")->str:
 	html_text=(
 		f"{html_text}\n"
 		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-				f"""<label class="{_CSS_CLASS_COMMON}" for="tag">{tl}</label>""" "\n"
+				f"""<label class="{_CSS_CLASS_COMMON}" for="{_KEY_TAG}">{tl}</label>""" "\n"
 				f"""<input class="{_CSS_CLASS_COMMON}" """
-					""" name="tag" """
+					f""" name="{_KEY_TAG}" """
 					"""type="text" """
 					"""max-length=32 """
 					"required>\n"
@@ -320,9 +329,9 @@ def write_form_new_order(lang:str,username:str="")->str:
 			f"{html_text}\n"
 		"</div>\n"
 		"<div>\n"
-			f"""<label class="{_CSS_CLASS_COMMON}" for="comment">{tl}</label>""" "\n"
+			f"""<label class="{_CSS_CLASS_COMMON}" for="{_KEY_COMMENT}">{tl}</label>""" "\n"
 			f"""<textarea class="{_CSS_CLASS_COMMON}" """
-				"""name="comment" """
+				f"""name="{_KEY_COMMENT}" """
 				"max-length=256 "
 				">"
 			"""</textarea>""" "\n"
@@ -376,25 +385,25 @@ def write_html_order(
 	)->str:
 
 	order_id=util_valid_str(
-		data.get("id")
+		data.get(_KEY_ORDER)
 	)
 	if not isinstance(order_id,str):
 		return write_div_display_error(lang)
 
 	order_sign=util_valid_str(
-		data.get("sign")
+		data.get(_KEY_SIGN)
 	)
 	if not isinstance(order_sign,str):
 		return write_div_display_error(lang)
 
 	order_date=util_valid_str(
-		data.get("date")
+		data.get(_KEY_DATE)
 	)
 	if not isinstance(order_date,str):
 		return write_div_display_error(lang)
 
 	order_tag=util_valid_str(
-		data.get("tag")
+		data.get(_KEY_TAG)
 	)
 	if not isinstance(order_tag,str):
 		return write_div_display_error(lang)

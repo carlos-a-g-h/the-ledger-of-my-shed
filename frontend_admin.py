@@ -1,13 +1,16 @@
 #!/usr/bin/python3.9
 
-from symbols_Any import _LANG_EN,_LANG_ES
-from symbols_Any import _PORT_MIN,_PORT_MAX
-from symbols_Any import _CFG_LANG,_CFG_PORT
+from symbols_Any import (
+	_LANG_EN,_LANG_ES,
+	_CFG_PORT_MIN,_CFG_PORT_MAX,
+	_CFG_LANG,_CFG_PORT
+)
 
-from frontend_Any import _CSS_CLASS_COMMON
-from frontend_Any import _CSS_CLASS_CONTROLS
-from frontend_Any import _CSS_CLASS_HORIZONTAL
-from frontend_Any import _CSS_CLASS_VUP,_CSS_CLASS_VDOWN
+from frontend_Any import (
+	_CSS_CLASS_COMMON,_CSS_CLASS_CONTROLS,
+	_CSS_CLASS_HORIZONTAL,
+	_CSS_CLASS_VUP,
+)
 
 def write_button_nav_users(lang:str)->str:
 	tl={
@@ -320,8 +323,8 @@ def write_form_update_config(
 					f""" name="{_CFG_PORT}" """
 					"""type="number" """
 					"""value=1024 """
-					f"""min={_PORT_MIN} """
-					f"""max={_PORT_MAX} """
+					f"""min={_CFG_PORT_MIN} """
+					f"""max={_CFG_PORT_MAX} """
 					">\n"
 			"</div>"
 		"</div>\n"

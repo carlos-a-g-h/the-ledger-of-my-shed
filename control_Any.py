@@ -7,47 +7,66 @@ from typing import Optional,Union,Mapping
 
 from multidict import MultiDictProxy
 
-from aiohttp.web import Request
-from aiohttp.web import json_response
-from aiohttp.web import Response
+from aiohttp.web import (
+	Request,
+	Response,json_response,
+	HTTPNotAcceptable,
+)
 
-import yarl
+from yarl import URL as yarl_URL
 
-# from frontend_Any import _LANG_EN
-# from frontend_Any import _LANG_ES
-# from frontend_Any import _CSS_CLASS_COMMON
-from frontend_Any import _STYLE_CUSTOM,_STYLE_POPUP_CONTENTS
-# from frontend_Any import _SCRIPT_HTMX,_SCRIPT_HYPERSCRIPT
-from frontend_Any import _CSS_CLASS_TITLE_UNIQUE
-from frontend_Any import write_popupmsg
-from frontend_Any import write_fullpage
-from frontend_Any import write_button_anchor
+from frontend_Any import (
+	_STYLE_CUSTOM,_STYLE_POPUP_CONTENTS,
+	_CSS_CLASS_TITLE_UNIQUE,
+	write_popupmsg,
+	write_fullpage,
+	write_button_anchor,
+)
 
-from frontend_account import write_link_account
+from frontend_accounts import write_link_account
 
-from internals import util_valid_str,util_valid_date
-from internals import util_extract_from_cookies
-from internals import util_get_pid_from_request
-from internals import util_date_calc_expiration
+from internals import (
+	util_valid_str,util_valid_date,
+	util_extract_from_cookies,
+	util_get_pid_from_request,
+	util_date_calc_expiration,
+)
 
-from symbols_Any import _ROOT_USER,_ONE_MB
-from symbols_Any import _APP_PROGRAMDIR
-from symbols_Any import _APP_LANG,_LANG_EN,_LANG_ES
-from symbols_Any import _MIMETYPE_HTML,_MIMETYPE_CSS,_MIMETYPE_JS,_MIMETYPE_JSON,_MIMETYPE_FORM
-from symbols_Any import _TYPE_BROWSER,_TYPE_CUSTOM
-from symbols_Any import _HEADER_ACCEPT,_HEADER_CONTENT_TYPE,_HEADER_REFERER,_HEADER_USER_AGENT
-from symbols_Any import _COOKIE_AKEY,_COOKIE_USER
-from symbols_Any import _REQ_USERNAME,_REQ_ACCESS_KEY,_REQ_CLIENT_TYPE,_REQ_HAS_SESSION,_REQ_LANGUAGE
+from symbols_Any import (
 
-# from symbols_Any import _APP_RDBC
-# from symbols_Any import _APP_RDBN
-from dbi_account import _MS_DT
-from dbi_account import _MS_AKEY
-from dbi_account import read_session
-from dbi_account import drop_session
-from dbi_account import renovate_active_session
+	# _ROOT_USER,
+	_ONE_MB,
+	_ERR,
 
-# from dbi_account import 
+	_APP_PROGRAMDIR,_APP_ROOT_USERID,
+	_APP_LANG,_LANG_EN,_LANG_ES,
+
+	_MIMETYPE_HTML,_MIMETYPE_CSS,_MIMETYPE_JS,
+	_MIMETYPE_JSON,_MIMETYPE_FORM,
+
+	_TYPE_BROWSER,_TYPE_CUSTOM,
+
+	_HEADER_ACCEPT,_HEADER_CONTENT_TYPE,
+	_HEADER_REFERER,_HEADER_USER_AGENT,
+
+	_COOKIE_AKEY,_COOKIE_USER,
+
+	_REQ_USERID,_REQ_ACCESS_KEY,_REQ_CLIENT_TYPE,
+	_REQ_HAS_SESSION,_REQ_LANGUAGE,
+
+	_CFG_FLAGS,_CFG_FLAG_ROOT_LOCAL_AUTOLOGIN,
+
+)
+
+from dbi_accounts import (
+
+	# _KEY_USERNAME,
+
+	ldbi_read_session,
+	ldbi_drop_session,
+	ldbi_get_username,
+	ldbi_renovate_active_session
+)
 
 _src_files={
 	"popup.css":{
@@ -112,11 +131,47 @@ def assert_referer(
 	if not isinstance(referer,str):
 		return False
 
-	referer_path=yarl.URL(referer).path
+	referer_path=yarl_URL(referer).path
 
 	return (
 		Path(referer_path)==Path(url_path)
 	)
+
+def is_root_local_autologin_allowed(request:Request)->bool:
+
+	if request.remote not in ("::1","127.0.0.1"):
+		return False
+
+	if _CFG_FLAG_ROOT_LOCAL_AUTOLOGIN not in request.app[_CFG_FLAGS]:
+		return False
+
+	return True
+
+async def get_username(
+		request:Request,
+		explode:bool=True
+	)->Optional[str]:
+
+	userid=request[_REQ_USERID]
+	result=await async_run(
+		ldbi_get_username,
+		request.app[_APP_PROGRAMDIR],
+		userid
+	)
+
+	if result[0]==_ERR:
+		err_msg=(
+			f"Failed to get username from ID {userid}\n"
+			f"{result[1]}"
+		)
+		if explode:
+			raise HTTPNotAcceptable(body=err_msg)
+
+		if not explode:
+			print(err_msg)
+			return None
+
+	return result[1]
 
 async def get_request_body_dict(
 		client_type:str,
@@ -250,26 +305,28 @@ async def process_session_checkin(request:Request,test_only:bool=False)->Optiona
 	if from_cookie is None:
 		return "The request has either no credentials or the they are not valid"
 
-	username,access_key=from_cookie
+	userid,access_key=from_cookie
 
 	ip_address,user_agent=util_get_pid_from_request(request)
 
-	session_data=await async_run(
-		read_session,
+	active_session=await async_run(
+		ldbi_read_session,
 		request.app[_APP_PROGRAMDIR],
-		username,ip_address,user_agent,False
+		userid,ip_address,user_agent,False
 	)
-	msg_error=session_data.get("error")
-	if msg_error is not None:
-		return f"Failed to read active session: {msg_error}"
+	if active_session[0]==_ERR:
+		return f"Failed to read active session: {active_session[1]}"
 
-	if not (access_key==session_data.get(_MS_AKEY)):
-		return "The stored access key does not match"
+	if not active_session[1]==userid:
+		return "??? The User ID does not match"
 
 	stored_date=util_valid_date(
-		session_data.get(_MS_DT),
+		active_session[2],
 		True
 	)
+	if not access_key==active_session[3]:
+		return "The stored access key does not match"
+
 	if util_date_calc_expiration(
 		stored_date,5,in_min=True,
 		get_age=False,get_exp_date=False
@@ -278,9 +335,9 @@ async def process_session_checkin(request:Request,test_only:bool=False)->Optiona
 			return "The active sesion expired"
 
 		await async_run(
-			drop_session,
+			ldbi_drop_session,
 			request.app[_APP_PROGRAMDIR],
-			username,ip_address,user_agent,True
+			userid,ip_address,user_agent,True
 		)
 		return "The active session expired. It has been destroyed?"
 
@@ -288,11 +345,11 @@ async def process_session_checkin(request:Request,test_only:bool=False)->Optiona
 		return None
 
 	msg_error=await async_run(
-		renovate_active_session,
+		ldbi_renovate_active_session,
 		request.app[_APP_PROGRAMDIR],
-		username,ip_address,user_agent
+		userid,ip_address,user_agent
 	)
-	if isinstance(msg_error,str):
+	if msg_error is not None:
 		# await async_run(
 		# 	drop_session,
 		# 	request.app[_APP_PATH_PROGRAM_DIR],
@@ -339,7 +396,8 @@ async def the_middleware_factory(app,handler):
 			"}"
 		)
 
-		username:Optional[str]=None
+		userid:Optional[str]=None
+		# username:Optional[str]=None
 		access_key:Optional[str]=None
 		has_session=False
 
@@ -347,8 +405,8 @@ async def the_middleware_factory(app,handler):
 		url_is_page=request.path.startswith("/page/")
 		url_is_admin=request.path.startswith("/api/admin/")
 		url_is_account=(
-			request.path.startswith("/api/account/") or
-			request.path.startswith("/fgmt/account/")
+			request.path.startswith("/api/accounts/") or
+			request.path.startswith("/fgmt/accounts/")
 		)
 
 		# The following routes will require user authentication
@@ -371,40 +429,50 @@ async def the_middleware_factory(app,handler):
 
 		# Custom client
 
-		if not client_is_browser:
+		if (not client_is_browser):
 
-			# NOTE: The following if block is temporary
-			if request.remote not in ("127.0.0.1","::1"):
-				return json_response(
-					data={
-						"error":(
-							"Custom clients can only access "
-							"from localhost at the moment"
-						)
-					},
-					status=501
-				)
-				# 501 == Not implemented
+			if url_is_admin or url_is_account or url_is_page:
 
-			if (
-				request.path=="/" or
-				url_is_page or
-				request.path.startswith("/fgmt/")
-			):
-				return json_response(data={})
+				# NOTE: The following if block is temporary
 
-		# Get username and access key
+				if request.remote not in ("127.0.0.1","::1"):
+					return json_response(
+						data={
+							"error":(
+								"Custom clients can only access "
+								"from localhost at the moment"
+							)
+						},
+						status=501
+					)
+					# 501 == Not implemented
+
+				if (
+					request.path=="/" or
+					url_is_page or
+					request.path.startswith("/fgmt/")
+				):
+					return json_response(data={})
+
+		# Get userid and access_key
 
 		if needs_session_checkin:
-			test_session=request.path=="/api/account/debug"
+
+			test_session=(
+				request.path=="/api/accounts/debug"
+			)
 			if client_is_browser:
-				msg_error=(await process_session_checkin(request,test_session))
+				msg_error=(
+					await process_session_checkin(
+						request,test_session
+					)
+				)
 				has_session=(msg_error is None)
 				if not has_session:
 					print("SESSION CHECK-IN FAILED:",msg_error)
 
 				if has_session:
-					username,access_key=util_extract_from_cookies(request)
+					userid,access_key=util_extract_from_cookies(request)
 
 			# The following routes despite asking for a session will return
 			# "partial" content to unauthenticated users instead of denying it
@@ -420,13 +488,10 @@ async def the_middleware_factory(app,handler):
 						return response_unauthorized(lang,client_type)
 
 				if (not url_is_page) and url_is_admin:
-					if not username==_ROOT_USER:
+					if not userid==request.app[_APP_ROOT_USERID]:
 						return response_unauthorized(lang,client_type,True)
 
-		# print("\tHas session?",has_session)
-		# print("\tCredentials?",util_extract_from_cookies(request))
-
-		request[_REQ_USERNAME]=username
+		request[_REQ_USERID]=userid
 		request[_REQ_ACCESS_KEY]=access_key
 		request[_REQ_HAS_SESSION]=has_session
 
@@ -440,7 +505,6 @@ async def the_middleware_factory(app,handler):
 				(not has_session) and
 				(util_extract_from_cookies(request) is not None)
 			):
-				print("COOKIES HAVE BEEN WIPED OUT")
 				the_response.del_cookie(_COOKIE_AKEY)
 				the_response.del_cookie(_COOKIE_USER)
 

@@ -1,26 +1,35 @@
 #!/usr/bin/python3.9
 
-from typing import Mapping
-from typing import Optional,Union
-# from secrets import token_hex
+from typing import Mapping,Optional,Union
 
-from motor.motor_asyncio import AsyncIOMotorClient
-from motor.motor_asyncio import AsyncIOMotorCursor
-from motor.motor_asyncio import AsyncIOMotorCollection
+from motor.motor_asyncio import (
+	AsyncIOMotorClient,
+	AsyncIOMotorCursor,
+	AsyncIOMotorCollection
+)
+
 from pymongo import UpdateOne
 from pymongo.results import BulkWriteResult
-# from pymongo.results import UpdateResult
 
-from internals import util_rnow
-from internals import util_valid_str
-from internals import util_valid_int
-from internals import util_valid_date
-# from internals import util_valid_list
+from internals import (
+	util_rnow,
+	util_valid_int,
+	util_valid_str,
+	util_valid_date
+)
 
-from dbi_assets import _COL_ASSETS
-# from dbi_assets import 
+from dbi_assets import (
+
+	_COL_ASSETS,
+
+	_KEY_SIGN,_KEY_TAG,_KEY_COMMENT,
+	_KEY_RECORD_MOD,
+	_KEY_HISTORY,_KEY_DATE,
+)
 
 _COL_ORDERS="orders"
+
+_KEY_ORDER="order_id"
 
 async def dbi_orders_NewOrder(
 		rdbc:AsyncIOMotorClient,name_db:str,
@@ -35,13 +44,13 @@ async def dbi_orders_NewOrder(
 
 	new_order={
 		"_id":order_id,
-		"sign":order_sign,
-		"tag":order_tag,
-		"date":util_rnow()
+		_KEY_SIGN:order_sign,
+		_KEY_TAG:order_tag,
+		_KEY_DATE:util_rnow()
 	}
 	if isinstance(order_comment,str):
 		new_order.update({
-			"comment":order_comment
+			_KEY_COMMENT:order_comment
 		})
 
 	try:
@@ -54,10 +63,10 @@ async def dbi_orders_NewOrder(
 		return {}
 
 	if v==1:
-		return {"id":order_id}
+		return {_KEY_ORDER:order_id}
 
 	new_order.pop("_id")
-	new_order.update({"id":order_id})
+	new_order.update({_KEY_ORDER:order_id})
 
 	return new_order
 
@@ -76,9 +85,9 @@ async def dbi_orders_GetOrders(
 	if isinstance(order_id,str):
 		find_match.update({"_id":order_id})
 	if isinstance(order_sign,str):
-		find_match.update({"sign":order_sign})
+		find_match.update({_KEY_SIGN:order_sign})
 	if isinstance(order_tag,str):
-		find_match.update({"tag":order_tag})
+		find_match.update({_KEY_TAG:order_tag})
 
 	agg_params=[
 		{"$match":find_match}
@@ -93,7 +102,7 @@ async def dbi_orders_GetOrders(
 		)
 
 	agg_params.append(
-		{"$set":{"id":"$_id","_id":"$$REMOVE"}}
+		{"$set":{_KEY_ORDER:"$_id","_id":"$$REMOVE"}}
 	)
 
 	list_of_orders=[]
@@ -159,7 +168,7 @@ async def dbi_orders_Editor_GetAsset(
 		return {}
 
 	data.pop("_id")
-	data.update({"id":order_id})
+	data.update({_KEY_ORDER:order_id})
 
 	return data
 
@@ -234,14 +243,14 @@ async def dbi_Orders_ApplyOrder(
 		return False
 
 	the_sign=util_valid_str(
-		the_order.get("sign"),True
+		the_order.get(_KEY_SIGN),True
 	)
 	if not the_sign:
 		print("'Sign' field missing")
 		return False
 
 	the_tag=util_valid_str(
-		the_order.get("tag"),True
+		the_order.get(_KEY_TAG),True
 	)
 	if not the_tag:
 		print("'tag' field missing")
@@ -249,7 +258,7 @@ async def dbi_Orders_ApplyOrder(
 
 	the_date=util_valid_date(
 		util_valid_str(
-			the_order.get("date")
+			the_order.get(_KEY_DATE)
 		),
 	)
 	if not the_date:
@@ -295,11 +304,11 @@ async def dbi_Orders_ApplyOrder(
 				{"_id":asset_id},
 				{
 					"$set":{
-						f"history.{order_id}":{
-							"date":the_date,
-							"sign":the_sign,
-							"tag":the_tag,
-							"mod":the_mod
+						f"{_KEY_HISTORY}.{order_id}":{
+							_KEY_DATE:the_date,
+							_KEY_SIGN:the_sign,
+							_KEY_TAG:the_tag,
+							_KEY_RECORD_MOD:the_mod
 						}
 					}
 				}

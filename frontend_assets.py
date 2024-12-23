@@ -5,21 +5,35 @@ from typing import Optional
 
 from symbols_Any import _LANG_EN,_LANG_ES
 
-# from frontend_Any import _CSS_CLASS_BUTTON
-from frontend_Any import _CSS_CLASS_DANGER
-from frontend_Any import _CSS_CLASS_VUP
-from frontend_Any import _CSS_CLASS_VDOWN
+from frontend_Any import (
+	_CSS_CLASS_DANGER,
+	_CSS_CLASS_VUP,
+	_CSS_CLASS_VDOWN,
+	_CSS_CLASS_COMMON,
+	_CSS_CLASS_CONTROLS,
+	_CSS_CLASS_HORIZONTAL,
+	
+	write_div_display_error
+)
 
-from frontend_Any import _CSS_CLASS_COMMON
-from frontend_Any import _CSS_CLASS_CONTROLS
-from frontend_Any import _CSS_CLASS_HORIZONTAL
+from internals import (
+	util_valid_int,
+	util_valid_str,
+	util_valid_date
+)
 
-from frontend_Any import write_div_display_error
-
-# from internals import util_valid_list
-from internals import util_valid_str
-from internals import util_valid_int
-from internals import util_valid_date
+from dbi_assets import(
+	_KEY_ASSET,
+	_KEY_NAME,
+	_KEY_TAG,
+	_KEY_SIGN,
+	_KEY_COMMENT,
+	_KEY_VALUE,
+	_KEY_TOTAL,
+	_KEY_DATE,
+	_KEY_RECORD_UID,
+	_KEY_RECORD_MOD,
+)
 
 def write_button_nav_new_asset(lang:str)->str:
 
@@ -77,9 +91,9 @@ def write_form_new_asset(lang:str,signed_by:str="")->str:
 		f"{html_text}\n"
 		"<div>\n"
 			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-				f"""<label class="{_CSS_CLASS_COMMON}" for="name">{tl}</label>""" "\n"
+				f"""<label class="{_CSS_CLASS_COMMON}" for="{_KEY_NAME}">{tl}</label>""" "\n"
 				f"""<input class="{_CSS_CLASS_COMMON}" """
-					""" name="name" """
+					f""" name="{_KEY_NAME}" """
 					"""type="text" """
 					"""max-length=64 """
 					"required>\n"
@@ -93,9 +107,9 @@ def write_form_new_asset(lang:str,signed_by:str="")->str:
 	html_text=(
 		f"{html_text}\n"
 		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-			f"""<label class="{_CSS_CLASS_COMMON}" for="sign">{tl}</label>""" "\n"
+			f"""<label class="{_CSS_CLASS_COMMON}" for="{_KEY_SIGN}">{tl}</label>""" "\n"
 			f"""<input class="{_CSS_CLASS_COMMON}" """
-				""" name="sign" """
+				f""" name="{_KEY_SIGN}" """
 				"""type="text" """
 				"""max-length=32 """
 				f"""value="{signed_by}" """
@@ -110,12 +124,29 @@ def write_form_new_asset(lang:str,signed_by:str="")->str:
 	html_text=(
 			f"{html_text}\n"
 			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-				f"""<label class="{_CSS_CLASS_COMMON}" for="tag">{tl}</label>""" "\n"
+				f"""<label class="{_CSS_CLASS_COMMON}" for="{_KEY_TAG}">{tl}</label>""" "\n"
 				f"""<input class="{_CSS_CLASS_COMMON}" """
-					""" name="tag" """
+					f""" name="{_KEY_TAG}" """
 					"""type="text" """
 					"""max-length=32 """
 					">\n"
+			"</div>\n"
+		"</div>"
+	)
+
+	tl={
+		_LANG_EN:"Value",
+		_LANG_ES:"Valor"
+	}[lang]
+	html_text=(
+			f"{html_text}\n"
+			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
+				f"""<label class="{_CSS_CLASS_COMMON}" for="{_KEY_VALUE}">{tl}</label>""" "\n"
+				f"""<input class="{_CSS_CLASS_COMMON}" """
+					f""" name="{_KEY_VALUE}" """
+					"""type="number" """
+					"""value=0 """
+					"required>\n"
 			"</div>\n"
 		"</div>"
 	)
@@ -126,9 +157,9 @@ def write_form_new_asset(lang:str,signed_by:str="")->str:
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"""<label class="{_CSS_CLASS_COMMON}" for="comment">{tl}</label>""" "\n"
+		f"""<label class="{_CSS_CLASS_COMMON}" for="{_KEY_COMMENT}">{tl}</label>""" "\n"
 		f"""<textarea class="{_CSS_CLASS_COMMON}" """
-			"""name="comment" """
+			f"""name="{_KEY_COMMENT}" """
 			"max-length=256 "
 			">"
 		"""</textarea>"""
@@ -170,7 +201,7 @@ def write_form_edit_asset_metadata(
 				">\n"
 				f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
 
-					f"""<input name="id" type=hidden value="{asset_id}">""" "\n"
+					f"""<input name="{_KEY_ASSET}" type=hidden value="{asset_id}">""" "\n"
 	)
 
 	html_text=(
@@ -190,7 +221,7 @@ def write_form_edit_asset_metadata(
 				f"""<input name="change-name" type=checkbox>""" "\n"
 				f"""<label for=change-name>{tl}</label>""" "\n"
 			"</div>\n"
-			f"""<input class="{_CSS_CLASS_COMMON}" name="name" type=text max-length=32>""" "\n"
+			f"""<input class="{_CSS_CLASS_COMMON}" name="{_KEY_NAME}" type=text max-length=32>""" "\n"
 		"</div>"
 	)
 
@@ -206,7 +237,7 @@ def write_form_edit_asset_metadata(
 				f"""<input name="change-tag" type=checkbox>""" "\n"
 				f"""<label for=change-tag>{tl}</label>""" "\n"
 			"</div>\n"
-			f"""<input class="{_CSS_CLASS_COMMON}" name="tag" type=text max-length=32>""" "\n"
+			f"""<input class="{_CSS_CLASS_COMMON}" name="{_KEY_TAG}" type=text max-length=32>""" "\n"
 		"</div>"
 	)
 
@@ -227,7 +258,7 @@ def write_form_edit_asset_metadata(
 			f"""<label for=checkbox-comment>{tl}</label>""" "\n"
 		"</div>\n"
 		f"""<textarea class="{_CSS_CLASS_COMMON}" """
-			"""name="comment" """
+			f"""name="{_KEY_COMMENT}" """
 			"max-length=256 "
 			">"
 		"</textarea>"
@@ -313,7 +344,7 @@ def write_form_delete_asset(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-			f"""<input name="id" type="hidden" value="{asset_id}">"""
+			f"""<input name="{_KEY_ASSET}" type="hidden" value="{asset_id}">"""
 			f"""<button class="{_CSS_CLASS_COMMON} {_CSS_CLASS_DANGER}" """
 				"""type="submit">"""
 				f"{tl}"
@@ -378,10 +409,10 @@ def write_form_search_assets(
 			">"
 				"<div>\n"
 					f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-						f"""<label class="{_CSS_CLASS_COMMON}" for="name">{tl}</label>"""
+						f"""<label class="{_CSS_CLASS_COMMON}" for="{_KEY_NAME}">{tl}</label>"""
 						"\n"
 						f"""<input class="{_CSS_CLASS_COMMON}" """
-							"""name="name" """
+							f"""name="{_KEY_NAME}" """
 							"""type="text" """
 							"""max-length=32 """
 							">\n"
@@ -396,9 +427,9 @@ def write_form_search_assets(
 	html_text=(
 		f"{html_text}\n"
 		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-			f"""<label class="{_CSS_CLASS_COMMON}" for="sign">{tl}</label>""" "\n"
+			f"""<label class="{_CSS_CLASS_COMMON}" for="{_KEY_SIGN}">{tl}</label>""" "\n"
 			f"""<input class="{_CSS_CLASS_COMMON}" """
-				"""name="sign" """
+				f"""name="{_KEY_SIGN}" """
 				"""type="text" """
 				"""max-length=32 """
 				">\n"
@@ -413,10 +444,10 @@ def write_form_search_assets(
 	html_text=(
 			f"{html_text}\n"
 			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-				f"""<label class="{_CSS_CLASS_COMMON}" for="tag">{tl}</label>"""
+				f"""<label class="{_CSS_CLASS_COMMON}" for="{_KEY_TAG}">{tl}</label>"""
 				"\n"
 				f"""<input class="{_CSS_CLASS_COMMON}" """
-					"""name="tag" """
+					f"""name="{_KEY_TAG}" """
 					"""type="text" """
 					"""max-length=32 """
 					">\n"
@@ -466,9 +497,9 @@ def write_form_add_record(lang:str,asset_id:str,username:str="")->str:
 			"<div>"
 
 				f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-					f"""<label class="{_CSS_CLASS_COMMON}" for="mod">{tl}</label>""" "\n"
+					f"""<label class="{_CSS_CLASS_COMMON}" for="{_KEY_RECORD_MOD}">{tl}</label>""" "\n"
 					f"""<input class="{_CSS_CLASS_COMMON}" """
-						""" name="mod" """
+						f""" name="{_KEY_RECORD_MOD}" """
 						"""type="number" """
 						"""value=0 """
 						"required>\n"
@@ -482,9 +513,9 @@ def write_form_add_record(lang:str,asset_id:str,username:str="")->str:
 	html_text=(
 		f"{html_text}\n"
 		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-			f"""<label class="{_CSS_CLASS_COMMON}" for="sign">{tl}</label>""" "\n"
+			f"""<label class="{_CSS_CLASS_COMMON}" for="{_KEY_SIGN}">{tl}</label>""" "\n"
 			f"""<input class="{_CSS_CLASS_COMMON}" """
-				""" name="sign" """
+				f""" name="{_KEY_SIGN}" """
 				""" type="text" """
 				"""max-length=32 """
 				f"""value="{username}" """
@@ -500,9 +531,9 @@ def write_form_add_record(lang:str,asset_id:str,username:str="")->str:
 	html_text=(
 		f"{html_text}\n"
 		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-			f"""<label class="{_CSS_CLASS_COMMON}" for="tag">{tl}</label>""" "\n"
+			f"""<label class="{_CSS_CLASS_COMMON}" for="{_KEY_TAG}">{tl}</label>""" "\n"
 			f"""<input class="{_CSS_CLASS_COMMON}" """
-				""" name="tag" """
+				f""" name="{_KEY_TAG}" """
 				""" type="text" """
 				"""max-length=32 """
 				">\n"
@@ -516,9 +547,9 @@ def write_form_add_record(lang:str,asset_id:str,username:str="")->str:
 	html_text=(
 			f"{html_text}\n"
 		"</div>\n"
-		f"""<label class="{_CSS_CLASS_COMMON}" for="comment">{tl}</label>""" "\n"
+		f"""<label class="{_CSS_CLASS_COMMON}" for="{_KEY_COMMENT}">{tl}</label>""" "\n"
 		f"""<textarea class="{_CSS_CLASS_COMMON}" """ 
-			"""name="comment" """
+			f"""name="{_KEY_COMMENT}" """
 			"max-length=256 "
 			">"
 		"</textarea>"
@@ -589,22 +620,22 @@ def write_html_record(
 		print(1)
 		return write_div_display_error(lang)
 
-	record_date=util_valid_date(data.get("date"))
+	record_date=util_valid_date(data.get(_KEY_DATE))
 	if not isinstance(record_date,str):
 		print(2)
 		return write_div_display_error(lang)
 
-	record_mod=util_valid_int(data.get("mod"))
+	record_mod=util_valid_int(data.get(_KEY_RECORD_MOD))
 	if not isinstance(record_mod,int):
 		print(3)
 		return write_div_display_error(lang)
 
-	record_sign=util_valid_str(data.get("sign"),True)
+	record_sign=util_valid_str(data.get(_KEY_SIGN),True)
 	if not isinstance(record_sign,str):
 		print(4)
 		return write_div_display_error(lang)
 
-	record_tag=util_valid_str(data.get("tag"),True)
+	record_tag=util_valid_str(data.get(_KEY_TAG),True)
 
 	html_text=f"\n<!-- HISTORY RECORD {record_uid_ok} -->"
 
@@ -766,11 +797,11 @@ def write_html_asset_info(
 		full:bool=True
 	)->str:
 
-	asset_id=util_valid_str(data.get("id"))
+	asset_id=util_valid_str(data.get(_KEY_ASSET))
 	if not isinstance(asset_id,str):
 		return write_div_display_error(lang)
 
-	asset_name=util_valid_str(data.get("name"))
+	asset_name=util_valid_str(data.get(_KEY_NAME))
 	if not isinstance(asset_name,str):
 		return write_div_display_error(lang)
 
@@ -783,7 +814,7 @@ def write_html_asset_info(
 		f"<div>{tl}: <code>{asset_name}</code></div>"
 	)
 
-	asset_tag=util_valid_str(data.get("tag"),True)
+	asset_tag=util_valid_str(data.get(_KEY_TAG),True)
 	if isinstance(asset_tag,str):
 		tl={
 			_LANG_EN:"Tag",
@@ -794,7 +825,7 @@ def write_html_asset_info(
 			f"<div>{tl}: <code>{asset_tag}</code></div>"
 		)
 
-	asset_sign=util_valid_str(data.get("sign"))
+	asset_sign=util_valid_str(data.get(_KEY_SIGN))
 	if isinstance(asset_sign,str):
 		tl={
 			_LANG_EN:"Sign",
@@ -805,7 +836,18 @@ def write_html_asset_info(
 			f"<div>{tl}: <code>{asset_sign}</code></div>"
 		)
 
-	asset_comment=util_valid_str(data.get("comment"))
+	asset_value=util_valid_str(data.get(_KEY_VALUE))
+	if isinstance(asset_value,str):
+		tl={
+			_LANG_EN:"Value",
+			_LANG_ES:"Valor"
+		}[lang]
+		html_text=(
+			f"{html_text}\n"
+			f"<div>{tl}: <code>{asset_value}</code></div>"
+		)
+
+	asset_comment=util_valid_str(data.get(_KEY_COMMENT))
 	if isinstance(asset_comment,str):
 		tl={
 			_LANG_EN:"Comment",
@@ -836,7 +878,7 @@ def write_html_asset(
 
 	has_username=isinstance(username,str)
 
-	asset_id=util_valid_str(data.get("id"))
+	asset_id=util_valid_str(data.get(_KEY_ASSET))
 	if not isinstance(asset_id,str):
 		return write_div_display_error(lang)
 
@@ -853,7 +895,7 @@ def write_html_asset(
 			f"{write_html_asset_info(lang,data,fullview)}"
 	)
 
-	asset_total=util_valid_int(data.get("total"))
+	asset_total=util_valid_int(data.get(_KEY_TOTAL))
 	if isinstance(asset_total,int):
 		tl={
 			_LANG_EN:"Current amount",

@@ -1,11 +1,5 @@
-# Port must be larger than 1023 and smaller than 65536
+db-name: my-inventory
+lang: en
 port: 6969
-
-# Available languages are: 'en' (English) and 'es' (Spanish)
-lang: "en"
-
-# MongoDB Database name
-db-name: "my-inventory"
-
-# MongoDB Connection string
-# db-url: ""
+#flags:
+#  - "root-local-autologin"

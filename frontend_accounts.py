@@ -2,11 +2,17 @@
 
 from typing import Optional
 
-from dbi_account import _VM_EMAIL,_VM_TELEGRAM,_MS_VM,_MS_OTP
+from dbi_accounts import (
+	_KEY_EMAIL,_KEY_TELEGRAM,
+	_KEY_VM,_KEY_OTP,_KEY_USERNAME
+)
 
 from symbols_Any import _LANG_EN,_LANG_ES
-from frontend_Any import _CSS_CLASS_COMMON,_CSS_CLASS_HORIZONTAL
-from frontend_Any import write_button_anchor
+
+from frontend_Any import (
+	_CSS_CLASS_COMMON,_CSS_CLASS_HORIZONTAL,
+	write_button_anchor
+)
 
 def write_link_account(lang:str,return_there:bool=False)->str:
 
@@ -21,16 +27,16 @@ def write_link_account(lang:str,return_there:bool=False)->str:
 				False:"Cuenta"
 			}[return_there],
 		}[lang],
-		"/page/account"
+		"/page/accounts"
 	)
 
 def write_form_login(lang:str,full:bool=True)->str:
 
-	# Sends: POST /api/account/login {username:String,vmethod:String}
+	# Sends: POST /api/accounts/login {username:String,vmethod:String}
 
 	html_text=(
 		"""<form """
-			"""hx-post="/api/account/login" """
+			"""hx-post="/api/accounts/login" """
 			"""hx-target="#messages" """
 			"""hx-swap="innerHTML" """
 			">"
@@ -56,15 +62,15 @@ def write_form_login(lang:str,full:bool=True)->str:
 		f"{html_text}\n"
 		f"<div>{tl}</div>\n"
 		"<div>\n"
-			f"""<input id=vm-email name="{_MS_VM}" type=radio value="{_VM_EMAIL}" checked>""" "\n"
+			f"""<input id=vm-email name="{_KEY_VM}" type=radio value="{_KEY_EMAIL}" checked>""" "\n"
 			"""<label for="vm-email">E-Mail</label>""" "\n"
 		"</div>"
 		"<div>\n"
-			f"""<input id=vm-telegram name="{_MS_VM}" type=radio value="{_VM_TELEGRAM}">""" "\n"
+			f"""<input id=vm-telegram name="{_KEY_VM}" type=radio value="{_KEY_TELEGRAM}">""" "\n"
 			"""<label for="vm-telegram">Telegram</label>""" "\n"
 		"</div>\n"
 		"<div>\n"
-			f"""<input id=vm-none name="{_MS_VM}" type=radio value="">""" "\n"
+			f"""<input id=vm-none name="{_KEY_VM}" type=radio value="">""" "\n"
 			"""<label for="vm-none">Backend/Local</label>""" "\n"
 		"</div>"
 	)
@@ -93,6 +99,24 @@ def write_form_login(lang:str,full:bool=True)->str:
 
 	return html_text
 
+def write_button_login_magical(
+		lang:str,
+	)->str:
+
+	tl={
+		_LANG_EN:"Local login",
+		_LANG_ES:"Inicio de sesión local"
+	}[lang]
+
+	return (
+		"""<form method="POST" """
+			"""action="/api/accounts/login-magical" """
+			">"
+			f"""<button class="{_CSS_CLASS_COMMON}" type=submit>{tl}</button>"""
+		"</form>"
+	)
+
+
 def write_form_otp(
 		lang:str,
 		username:str,
@@ -100,12 +124,12 @@ def write_form_otp(
 		full:bool=True,
 	)->str:
 
-	# Sends: POST /api/account/login-otp {username:String,otp:String}
+	# Sends: POST /api/accounts/login-otp {username:String,otp:String}
 
 	# NOTE: The form leads to a full page or a redirect, so I can't use HTMX here
 	# html_text=(
 	# 	"""<form """
-	# 		"""hx-post="/api/account/login-otp" """
+	# 		"""hx-post="/api/accounts/login-otp" """
 	# 		"""hx-target="#messages" """
 	# 		"""hx-swap="innerHTML" """
 	# 		">"
@@ -113,7 +137,7 @@ def write_form_otp(
 
 	html_text=(
 		"""<form method="POST" """
-			"""action="/api/account/login-otp" """
+			"""action="/api/accounts/login-otp" """
 			">"
 	)
 
@@ -125,8 +149,8 @@ def write_form_otp(
 		f"{html_text}\n"
 		f"<div>{tl}</div>\n"
 		"<div>\n"
-			f"""<input name="username" type=hidden value="{username}">""" "\n"
-			f"""<input name="{_MS_OTP}" type=text class={_CSS_CLASS_COMMON} required>"""
+			f"""<input name="{_KEY_USERNAME}" type=hidden value="{username}">""" "\n"
+			f"""<input name="{_KEY_OTP}" type=text class={_CSS_CLASS_COMMON} required>"""
 		"</div>"
 	)
 
@@ -146,14 +170,14 @@ def write_form_otp(
 
 		tl=""
 
-		if vmethod==_VM_EMAIL:
+		if vmethod==_KEY_EMAIL:
 			known=True
 			tl={
 				_LANG_EN:"The generated password has been sent to your e-mail",
 				_LANG_ES:"La contraseña generada fue enviada a su correo electrónico"
 			}[lang]
 
-		if vmethod==_VM_TELEGRAM:
+		if vmethod==_KEY_TELEGRAM:
 			known=True
 			tl={
 				_LANG_EN:"The generated password has been sent to you through the Telegram bot",
@@ -189,7 +213,7 @@ def write_form_otp(
 
 # def write_button_session_test(lang:str)->str:
 
-# 	# Sends: GET /api/account/debug
+# 	# Sends: GET /api/accounts/debug
 
 # 	tl={
 # 		_LANG_EN:"",
@@ -200,7 +224,7 @@ def write_form_otp(
 # def write_button_logout(lang:str,username:str)->str:
 def write_button_logout(lang:str)->str:
 
-	# Sends: DELETE /api/account/logout {username:String}
+	# Sends: DELETE /api/accounts/logout {username:String}
 
 	tl={
 		_LANG_EN:"Are you sure you want to logout?",
@@ -208,7 +232,7 @@ def write_button_logout(lang:str)->str:
 	}[lang]
 	html_text=(
 		"""<form """
-			"""hx-delete="/api/account/logout" """
+			"""hx-delete="/api/accounts/logout" """
 			"""hx-target="#messages" """
 			"""hx-swap="innerHTML" """
 			f"""hx-confirm="{tl}" """

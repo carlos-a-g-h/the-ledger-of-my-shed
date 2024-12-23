@@ -2,72 +2,103 @@
 
 from pathlib import Path
 from typing import Optional
+from secrets import token_hex
 
-from aiohttp.web import Application
-from aiohttp.web import run_app
-from aiohttp.web import get as web_GET
-from aiohttp.web import post as web_POST
-from aiohttp.web import delete as web_DELETE
-
-# from aiohttp.web import Request,Response,json_response
+from aiohttp.web import (
+	Application,
+	run_app,
+	get as web_GET,
+	post as web_POST,
+	delete as web_DELETE,
+)
 
 from motor.motor_asyncio import AsyncIOMotorClient
 
-from symbols_Any import _APP_LANG,_LANG_EN,_LANG_ES
-# from symbols_Any import _TYPE_CUSTOM
-from symbols_Any import _APP_CACHE_ASSETS,_APP_PROGRAMDIR,_APP_RDBC,_APP_RDBN
-from symbols_Any import _CFG_PORT,_CFG_LANG,_CFG_DB_NAME,_CFG_DB_URL
-from symbols_Any import _PORT_MIN,_PORT_MAX
+from symbols_Any import (
 
-# from control_Any import get_client_type
-from control_Any import the_middleware_factory
-from control_Any import route_src
-from control_Any import route_main as route_Home
+	# _ROOT_USER,
 
-from control_account import _ROUTE_PAGE as _ROUTE_PAGE_ACCOUNT
-from control_account import route_main as route_Account
-from control_account import route_api_login as route_Account_api_Login
-from control_account import route_api_login_otp as route_Account_api_LoginOTP
-from control_account import route_api_logout as route_Account_api_Logout
+	_APP_LANG,_LANG_EN,_LANG_ES,
 
-from control_admin import _ROUTE_PAGE as _ROUTE_PAGE_ADMIN
-from control_admin import route_main as route_Admin
-from control_admin import route_api_change_config as route_Admin_api_ChangeConfig
-from control_admin import route_api_update_known_asset_names as route_Admin_api_UpdateKnownAssetNames
-from control_admin import route_fgmt_section_users as route_Admin_fgmt_UsersConfig
-from control_admin import route_fgmt_section_misc as route_Admin_fgmt_MiscConfig
+	_APP_CACHE_ASSETS,_APP_PROGRAMDIR,_APP_ROOT_USERID,
+	_APP_RDBC,_APP_RDBN,
 
-from control_assets import _ROUTE_PAGE as _ROUTE_PAGE_ASSETS
-from control_assets import route_main as route_Assets
-from control_assets import route_api_select_asset as route_Assets_api_GetAsset
-from control_assets import route_fgmt_asset_panel as route_Assets_fgmt_AssetPanel
-from control_assets import route_fgmt_new_asset as route_Assets_fgmt_NewAsset
-from control_assets import route_api_new_asset as route_Assets_api_NewAsset
-from control_assets import route_api_asset_change_metadata as route_Assets_api_ChangeMetadata
-from control_assets import route_fgmt_search_assets as route_Assets_fgmt_SearchAssets
-from control_assets import route_api_search_assets as route_Assets_api_SearchAssets
-from control_assets import route_api_drop_asset as route_Assets_api_DropAsset
-from control_assets import route_api_add_record as route_Assets_api_AddRecord
-from control_assets import route_api_get_record as route_Assets_api_GetRecord
-from control_assets import util_update_known_assets as init_assets_cache
+	_CFG_PORT,_CFG_LANG,_CFG_DB_NAME,_CFG_DB_URL,_CFG_FLAGS,
 
-from control_orders import _ROUTE_PAGE as _ROUTE_PAGE_ORDERS
-from control_orders import route_main as route_Orders
-from control_orders import route_fgmt_new_order as route_Orders_fgmt_NewOrder
-from control_orders import route_fgmt_list_orders as route_Orders_fgmt_ListOrders
-from control_orders import route_fgmt_order_editor as route_Order_fgmt_Editor
-from control_orders import route_api_new_order as route_Orders_api_NewOrder
-from control_orders import route_api_delete_order as route_Orders_api_DeleteOrder
-from control_orders import route_api_update_asset_in_order as route_Orders_api_UpdateAsset
-from control_orders import route_api_remove_asset_from_order as route_Orders_api_RemoveAsset
-from control_orders import route_api_run_order as route_Orders_api_RunOrder
+	# _CFG_FLAG_ROOT_LOCAL_AUTOLOGIN,
+	# _CFG_FLAG_PUB_READ_ACCESS_TO_HISTORY,
+	# _CFG_FLAG_PUB_READ_ACCESS_TO_ORDERS,
+	# _CFG_FLAG_PVT_READ_ACCESS_TO_ASSETS,
 
-from dbi_account import init_sessions_database
+	_CFG_PORT_MIN,_CFG_PORT_MAX
+)
 
-from internals import read_yaml_file
-from internals import util_valid_int
-from internals import util_valid_int_inrange
-from internals import util_valid_str
+from control_Any import (
+	the_middleware_factory,
+	route_src,
+	route_main as route_Home
+)
+
+from control_accounts import (
+	_ROUTE_PAGE as _ROUTE_PAGE_ACCOUNT,
+	route_main as route_Accounts,
+	route_api_login as route_Accounts_api_Login,
+	route_api_login_otp as route_Accounts_api_LoginOTP,
+	route_api_login_magical as route_Accounts_api_LoginMagical,
+	route_api_logout as route_Accounts_api_Logout,
+)
+
+from control_admin import (
+	_ROUTE_PAGE as _ROUTE_PAGE_ADMIN,
+	route_main as route_Admin,
+	route_api_change_config as route_Admin_api_ChangeConfig,
+	route_api_update_known_asset_names as route_Admin_api_UpdateKnownAssetNames,
+	route_fgmt_section_users as route_Admin_fgmt_UsersConfig,
+	route_fgmt_section_misc as route_Admin_fgmt_MiscConfig
+)
+
+from control_assets import (
+	_ROUTE_PAGE as _ROUTE_PAGE_ASSETS,
+	route_main as route_Assets,
+	route_api_select_asset as route_Assets_api_GetAsset,
+	route_fgmt_asset_panel as route_Assets_fgmt_AssetPanel,
+	route_fgmt_new_asset as route_Assets_fgmt_NewAsset,
+	route_api_new_asset as route_Assets_api_NewAsset,
+	route_api_asset_change_metadata as route_Assets_api_ChangeMetadata,
+	route_fgmt_search_assets as route_Assets_fgmt_SearchAssets,
+	route_api_search_assets as route_Assets_api_SearchAssets,
+	route_api_drop_asset as route_Assets_api_DropAsset,
+	route_api_add_record as route_Assets_api_AddRecord,
+	route_api_get_record as route_Assets_api_GetRecord,
+	util_update_known_assets as init_assets_cache
+)
+
+from control_orders import (
+	_ROUTE_PAGE as _ROUTE_PAGE_ORDERS,
+	route_main as route_Orders,
+	route_fgmt_new_order as route_Orders_fgmt_NewOrder,
+	route_fgmt_list_orders as route_Orders_fgmt_ListOrders,
+	route_fgmt_order_editor as route_Order_fgmt_Editor,
+	route_api_new_order as route_Orders_api_NewOrder,
+	route_api_delete_order as route_Orders_api_DeleteOrder,
+	route_api_update_asset_in_order as route_Orders_api_UpdateAsset,
+	route_api_remove_asset_from_order as route_Orders_api_RemoveAsset,
+	route_api_run_order as route_Orders_api_RunOrder
+)
+
+from dbi_accounts import (
+	ldbi_init_sessions,
+	ldbi_init_users,
+	# ldbi_save_user,
+)
+
+from internals import (
+	read_yaml_file,
+	util_valid_int,
+	util_valid_int_inrange,
+	util_valid_str,
+	util_valid_list,
+)
 
 def read_config(path_config:Path)->dict:
 
@@ -78,14 +109,16 @@ def read_config(path_config:Path)->dict:
 
 	rawconfig=read_yaml_file(path_config)
 
+	print("Config:",rawconfig)
+
 	# port
 
 	cfg_port=util_valid_int_inrange(
 		util_valid_int(
 			rawconfig.get(_CFG_PORT),
 		),
-		minimum=_PORT_MIN,
-		maximum=_PORT_MAX
+		minimum=_CFG_PORT_MIN,
+		maximum=_CFG_PORT_MAX
 	)
 	if not isinstance(cfg_port,int):
 		print(
@@ -142,7 +175,8 @@ def read_config(path_config:Path)->dict:
 		_CFG_DB_NAME:cfg_db_name,
 		_CFG_DB_URL:cfg_db_url,
 		_CFG_PORT:cfg_port,
-		_CFG_LANG:cfg_lang
+		_CFG_LANG:cfg_lang,
+		_CFG_FLAGS:util_valid_list(rawconfig.get(_CFG_FLAGS),True)
 	}
 
 # def print_request_info(request:Request):
@@ -158,28 +192,47 @@ def build_app(
 		lang:str,
 		rdb_name:str,
 		rdb_url:Optional[str],
+		flags:list
 	)->Application:
 
-	msg_err:Optional[str]=init_sessions_database(path_programdir)
+	msg_err:Optional[str]=ldbi_init_sessions(path_programdir)
 	if msg_err is not None:
-		raise Exception(msg_err)
+		raise Exception(f"LDBI err.1: {msg_err}")
+
+	userid_root=f"0x{token_hex(24)[:-2]}"
+
+	msg_err:Optional[str]=ldbi_init_users(path_programdir,userid_root)
+	if msg_err is not None:
+		raise Exception(f"LDBI err.2: {msg_err}")
+
+	# msg_err:Optional[str]=ldbi_save_user(
+	# 	path_programdir,_ROOT_USER,_ROOT_USER
+	# )
+	# if msg_err is not None:
+	# 	raise Exception(f"LDBI err.3: {msg_err}")
 
 	app=Application(
 		middlewares=[the_middleware_factory]
 	)
 
+	app[_CFG_FLAGS]=tuple(flags)
+
+	app[_APP_ROOT_USERID]=userid_root
+
 	app[_APP_PROGRAMDIR]=path_programdir
+
 	app[_APP_CACHE_ASSETS]={}
+	
 	app[_APP_LANG]=lang
 
 	app[_APP_RDBN]=rdb_name
 
 	has_connection_url=isinstance(rdb_name,str)
-	if has_connection_url:
+	if not has_connection_url:
 		print("Connecting to a local MongoDB database")
 		app[_APP_RDBC]=AsyncIOMotorClient()
 
-	if not has_connection_url:
+	if has_connection_url:
 		print(
 			"Connecting to a remote MongoDB database:",
 			rdb_url
@@ -229,19 +282,23 @@ def build_app(
 
 		web_GET(
 			_ROUTE_PAGE_ACCOUNT,
-			route_Account,
+			route_Accounts,
 		),
 			web_POST(
-				"/api/account/login",
-				route_Account_api_Login
+				"/api/accounts/login",
+				route_Accounts_api_Login
 			),
 			web_POST(
-				"/api/account/login-otp",
-				route_Account_api_LoginOTP
+				"/api/accounts/login-otp",
+				route_Accounts_api_LoginOTP
+			),
+			web_POST(
+				"/api/accounts/login-magical",
+				route_Accounts_api_LoginMagical
 			),
 			web_DELETE(
-				"/api/account/logout",
-				route_Account_api_Logout
+				"/api/accounts/logout",
+				route_Accounts_api_Logout
 			),
 
 		# ASSETS
@@ -370,26 +427,27 @@ if __name__=="__main__":
 			)
 		)
 
-	cfg_port=the_config.get("port")
+	cfg_port=the_config.get(_CFG_PORT)
 	if not isinstance(cfg_port,int):
 		sys_exit(1)
 		
-	cfg_lang=the_config.get("lang")
+	cfg_lang=the_config.get(_CFG_LANG)
 	if not isinstance(cfg_lang,str):
 		sys_exit(1)
 
-	cfg_db_name=the_config.get("db-name")
+	cfg_db_name=the_config.get(_CFG_DB_NAME)
 	if not isinstance(cfg_db_name,str):
 		sys_exit(1)
 
-	cfg_db_url=the_config.get("db-url")
+	cfg_db_url=the_config.get(_CFG_DB_URL)
 
 	run_app(
 		build_app(
 			path_appdir,
 			cfg_lang,
 			cfg_db_name,
-			cfg_db_url
+			cfg_db_url,
+			the_config[_CFG_FLAGS]
 		),
 		port=cfg_port,
 	)

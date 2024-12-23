@@ -1,21 +1,27 @@
 #!/usr/bin/python3.9
 
 from datetime import datetime,timedelta
-from hashlib import sha256 as hash_sha256
-from hashlib import md5 as hash_md5
+from hashlib import (
+	sha256 as hash_sha256,
+	md5 as hash_md5
+)
 from pathlib import Path
-from typing import Optional,Union,Mapping
+from typing import Mapping,Optional,Union
 
 from aiohttp.web import Request
 from aiofiles import open as async_open
-from yaml import Loader as yaml_Loader
-from yaml import load as yaml_load
-from yaml import dump as yaml_dump
-from yaml import Dumper as yaml_Dumper
+from yaml import (
+	Loader as yaml_Loader,
+	load as yaml_load,
+	dump as yaml_dump,
+	Dumper as yaml_Dumper
+)
 
-from symbols_Any import _excel_columns
-from symbols_Any import _COOKIE_AKEY,_COOKIE_USER
-from symbols_Any import _HEADER_USER_AGENT
+from symbols_Any import (
+	_excel_columns,
+	_COOKIE_AKEY,_COOKIE_USER,
+	_HEADER_USER_AGENT
+)
 
 # excel related
 
@@ -34,7 +40,7 @@ def util_excel_dectocol(decimal_start:int):
 	
 	return result
 
-# hashing stuff
+# hi-level string to hash functions
 
 def util_hash_sha256(content:str)->str:
 	m=hash_sha256()
@@ -74,6 +80,8 @@ def util_extract_from_cookies(
 		return None
 
 	return (username,access_key)
+
+# date and time
 
 def util_date_calc_age(
 		pit:datetime,

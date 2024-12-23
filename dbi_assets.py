@@ -4,22 +4,40 @@
 
 import secrets
 
-from typing import Mapping,Optional
-from typing import Union
+from typing import Mapping,Optional,Union
 
-from motor.motor_asyncio import AsyncIOMotorClient
-from motor.motor_asyncio import AsyncIOMotorCursor
-from motor.motor_asyncio import AsyncIOMotorCollection
+from motor.motor_asyncio import (
+	AsyncIOMotorClient,
+	AsyncIOMotorCursor,
+	AsyncIOMotorCollection
+)
 
 # from pymongo.results import InsertOneResult
 from pymongo.results import UpdateResult
 
-from internals import util_rnow
-from internals import util_valid_int
-from internals import util_valid_str
-from internals import util_valid_date
+from symbols_Any import _ERR
+
+from internals import (
+	util_rnow,
+	util_valid_int,
+	util_valid_str,
+	util_valid_date
+)
 
 _COL_ASSETS="assets"
+
+_KEY_ASSET="asset_id"
+_KEY_NAME="name"
+_KEY_TAG="tag"
+_KEY_SIGN="sign"
+_KEY_COMMENT="comment"
+_KEY_VALUE="value"
+_KEY_TOTAL="total"
+
+_KEY_HISTORY="history"
+_KEY_RECORD_UID="record_id"
+_KEY_RECORD_MOD="mod"
+_KEY_DATE="date"
 
 def util_get_total_from_history(history:Mapping)->Mapping:
 	if len(history)==0:
@@ -28,7 +46,7 @@ def util_get_total_from_history(history:Mapping)->Mapping:
 	total=0
 	for key in history:
 		total=total+util_valid_int(
-			history[key].get("mod"),
+			history[key].get(_KEY_RECORD_MOD),
 			fallback=0
 		)
 
@@ -36,24 +54,24 @@ def util_get_total_from_history(history:Mapping)->Mapping:
 
 def util_calculate_total_in_asset(
 		asset:Mapping,
-		mutate:bool=True
+		mutate:bool=False
 	)->Union[bool,int]:
 
-	if "history" not in asset.keys():
+	if _KEY_HISTORY not in asset.keys():
 		if not mutate:
 			return 0
 		return False
 
-	if not isinstance(asset["history"],Mapping):
+	if not isinstance(asset[_KEY_HISTORY],Mapping):
 		if not mutate:
 			return 0
 		return False
 
-	asset_total=util_get_total_from_history(asset["history"])
+	asset_total=util_get_total_from_history(asset[_KEY_HISTORY])
 	if not mutate:
 		return asset_total
 
-	asset.update({"total":asset_total})
+	asset.update({_KEY_TOTAL:asset_total})
 
 	return True
 
@@ -63,6 +81,7 @@ async def dbi_assets_CreateAsset(
 		asset_sign:str,
 		asset_comment:Optional[str]=None,
 		asset_tag:Optional[str]=None,
+		asset_value:int=0,
 		outverb:int=2,
 	)->Mapping:
 
@@ -72,23 +91,24 @@ async def dbi_assets_CreateAsset(
 
 	new_asset={
 		"_id":asset_id,
-		"name":asset_name,
-		"sign":asset_sign
+		_KEY_NAME:asset_name,
+		_KEY_SIGN:asset_sign,
+		_KEY_VALUE:asset_value
 	}
 
 	if isinstance(asset_comment,str):
 		if not len(asset_comment)==0:
-			new_asset.update({"comment":asset_comment})
+			new_asset.update({_KEY_COMMENT:asset_comment})
 
 	if isinstance(asset_tag,str):
 		if not len(asset_tag)==0:
-			new_asset.update({"tag":asset_tag})
+			new_asset.update({_KEY_TAG:asset_tag})
 
 	try:
 		tgtcol:AsyncIOMotorCollection=rdbc[name_db][_COL_ASSETS]
 		await tgtcol.insert_one(new_asset)
 	except Exception as exc:
-		return {"error":f"{exc}"}
+		return {_ERR:f"{exc}"}
 
 	if v==0:
 		return {}
@@ -101,14 +121,22 @@ async def dbi_assets_CreateAsset(
 	return new_asset
 
 async def dbi_assets_ChangeAssetMetadata(
-		rdbc:AsyncIOMotorClient,name_db:str,
+
+		rdbc:AsyncIOMotorClient,
+
+		name_db:str,
 		asset_id:str,
+
 		asset_name:Optional[str],
 		asset_tag:Optional[str]=None,
 		asset_comment:Optional[str]=None,
+		asset_value:Optional[int]=None,
+
 		change_name:bool=False,
 		change_tag:bool=False,
-		change_comment=False,
+		change_comment:bool=False,
+		change_value:bool=False
+
 	)->Mapping:
 
 	changes_set={}
@@ -117,27 +145,34 @@ async def dbi_assets_ChangeAssetMetadata(
 	if change_name:
 		name_ok=util_valid_str(asset_name)
 		if name_ok:
-			changes_set.update({"name":asset_name})
+			changes_set.update({_KEY_NAME:asset_name})
 		if not name_ok:
-			changes_set.update({"name":asset_id})
+			changes_set.update({_KEY_NAME:asset_id})
 
 	if change_tag:
 		tag_ok=util_valid_str(asset_tag)
 		if tag_ok:
-			changes_set.update({"tag":asset_tag})
+			changes_set.update({_KEY_TAG:asset_tag})
 		if not tag_ok:
-			# changes_unset.update({"$unset":{"tag":1}})
-			changes_unset.append("tag")
+			# changes_unset.update({"$unset":{_KEY_TAG:1}})
+			changes_unset.append(_KEY_TAG)
 
 	if change_comment:
 		comment_ok=util_valid_str(asset_comment)
 		if comment_ok:
-			changes_set.update({"comment":asset_comment})
+			changes_set.update({_KEY_COMMENT:asset_comment})
 		if not comment_ok:
-			changes_unset.append("comment")
+			changes_unset.append(_KEY_COMMENT)
+
+	if change_value:
+		value_ok=util_valid_str(asset_value)
+		if value_ok:
+			changes_set.update({_KEY_VALUE:asset_value})
+		if not value_ok:
+			changes_set.update({_KEY_VALUE:0})
 
 	if len(changes_set)==0 and len(changes_unset)==0:
-		return {"error":"Nothing to change"}
+		return {_ERR:"Nothing to change"}
 
 	aggr_pipeline=[{"$match":{"_id":asset_id}}]
 
@@ -171,7 +206,7 @@ async def dbi_assets_ChangeAssetMetadata(
 			pass
 
 	except Exception as exc:
-		return {"error":f"{exc}"}
+		return {_ERR:f"{exc}"}
 
 	# print(cursor)
 
@@ -187,6 +222,7 @@ async def dbi_assets_AssetQuery(
 		get_comment:bool=False,
 		get_total:bool=False,
 		get_history:bool=False,
+		get_value:bool=False,
 	)->Union[Mapping,list]:
 
 	only_one=isinstance(asset_id,str)
@@ -195,24 +231,26 @@ async def dbi_assets_AssetQuery(
 	spec_tag=isinstance(asset_tag,str)
 
 	find_match={}
-	projection={"_id":1,"name":1}
+	projection={"_id":1,_KEY_NAME:1}
 	if isinstance(asset_id,str):
 		find_match.update({"_id":asset_id})
 	if spec_tag:
-		find_match.update({"tag":asset_tag})
-		projection.update({"tag":asset_tag})
+		find_match.update({_KEY_TAG:asset_tag})
+		projection.update({_KEY_TAG:asset_tag})
 	if spec_sign:
-		find_match.update({"sign":asset_sign})
-		projection.update({"sign":asset_sign})
+		find_match.update({_KEY_SIGN:asset_sign})
+		projection.update({_KEY_SIGN:asset_sign})
 
 	if get_sign and (not spec_sign):
-		projection.update({"sign":1})
+		projection.update({_KEY_SIGN:1})
 	if get_tag and (not spec_tag):
-		projection.update({"tag":1})
+		projection.update({_KEY_TAG:1})
 	if get_comment:
-		projection.update({"comment":1})
+		projection.update({_KEY_COMMENT:1})
 	if get_total or get_history:
-		projection.update({"history":1})
+		projection.update({_KEY_HISTORY:1})
+	if get_value:
+		projection.update({_KEY_VALUE:1})
 
 	list_of_assets=[]
 	try:
@@ -227,7 +265,7 @@ async def dbi_assets_AssetQuery(
 
 	except Exception as exc:
 		if only_one:
-			return {"error":f"{exc}"}
+			return {_ERR:f"{exc}"}
 
 		# NOTE: Never remove this
 		print(exc)
@@ -235,7 +273,8 @@ async def dbi_assets_AssetQuery(
 
 	if get_total:
 		for asset in list_of_assets:
-			util_calculate_total_in_asset(asset)
+			total=util_calculate_total_in_asset(asset)
+			asset.update({_KEY_TOTAL:total})
 
 	if only_one:
 		return list_of_assets.pop()
@@ -258,7 +297,7 @@ async def dbi_assets_DropAsset(
 			{"_id":asset_id}
 		)
 	except Exception as exc:
-		return {"error":f"{exc}"}
+		return {_ERR:f"{exc}"}
 
 	if v==0:
 		return {}
@@ -267,6 +306,8 @@ async def dbi_assets_DropAsset(
 		return {"id":asset_id}
 
 	return result
+
+# QUESTION: Have every record carry the value at the moment?
 
 async def dbi_assets_History_AddRecord(
 		rdbc:AsyncIOMotorClient,name_db:str,
@@ -286,16 +327,16 @@ async def dbi_assets_History_AddRecord(
 	record_uid=secrets.token_hex(8)
 
 	record_object={
-		"date":record_date,
-		"mod":record_mod,
-		"sign":record_sign,
+		_KEY_DATE:record_date,
+		_KEY_RECORD_MOD:record_mod,
+		_KEY_SIGN:record_sign,
 	}
 
 	if isinstance(record_tag,str):
-		record_object.update({"tag":record_tag})
+		record_object.update({_KEY_TAG:record_tag})
 
 	if isinstance(record_comment,str):
-		record_object.update({"comment":record_comment})
+		record_object.update({_KEY_COMMENT:record_comment})
 
 	res:Optional[UpdateResult]=None
 
@@ -304,26 +345,26 @@ async def dbi_assets_History_AddRecord(
 		res=await col.update_one(
 			{ "_id" : asset_id } ,
 			{
-				"$set":{ f"history.{record_uid}": record_object }
+				"$set":{ f"{_KEY_HISTORY}.{record_uid}": record_object }
 			}
 		)
 
 	except Exception as exc:
-		return {"error":f"{exc}"}
+		return {_ERR:f"{exc}"}
 
 	if res.modified_count==0:
-		return {"error":"???"}
+		return {_ERR:"???"}
 
 	if v==0:
 		return {}
 
 	if v==1:
 		return {
-			"uid":record_uid,
-			"date":record_date
+			_KEY_RECORD_UID:record_uid,
+			_KEY_DATE:record_date
 		}
 
-	record_object.update({"uid":record_uid})
+	record_object.update({_KEY_RECORD_UID:record_uid})
 
 	return record_object
 
@@ -361,20 +402,20 @@ async def dbi_assets_History_GetSingleRecord(
 			break
 
 	except Exception as exc:
-		return {"error":f"{exc}"}
+		return {_ERR:f"{exc}"}
 
 	if len(result)==0:
-		return {"error":"Nothing was found"}
+		return {_ERR:"Nothing was found"}
 
-	if not isinstance(result.get("history"),Mapping):
-		return {"error":"No history/records found in the asset"}
+	if not isinstance(result.get(_KEY_HISTORY),Mapping):
+		return {_ERR:"No history/records found in the asset"}
 
-	if not isinstance(result["history"].get(record_uid),Mapping):
-		return {"error":"The specified record was not found in the history"}
+	if not isinstance(result[_KEY_HISTORY].get(record_uid),Mapping):
+		return {_ERR:"The specified record was not found in the history"}
 
-	the_record=result["history"][record_uid]
+	the_record=result[_KEY_HISTORY][record_uid]
 
-	the_record.update({"uid":record_uid})
+	the_record.update({_KEY_RECORD_UID:record_uid})
 
 	return the_record
 
@@ -409,23 +450,23 @@ if __name__=="__main__":
 	wb:Workbook=Workbook()
 	ws:Worksheet=wb.active
 	ws.title="Assets"
-	ws.append(["ID","Name","Total"])
+	ws.append(["ID",_KEY_NAME,_KEY_TOTAL])
 	row=1
 	for asset in all_assets:
 		row=row+1
 
-		asset_name=asset.get("name")
+		asset_name=asset.get(_KEY_NAME)
 		asset_id=asset.get("id")
 
 		ws[f"A{row}"]=asset_id
 		ws[f"B{row}"]=asset_name
 
-		has_history=isinstance(asset.get("history"),Mapping)
+		has_history=isinstance(asset.get(_KEY_HISTORY),Mapping)
 		if not has_history:
 			ws[f"C{row}"]=0
 			continue
 
-		history_len=len(asset["history"])
+		history_len=len(asset[_KEY_HISTORY])
 		if history_len==0:
 			ws[f"C{row}"]=0
 			continue
@@ -439,20 +480,20 @@ if __name__=="__main__":
 
 		col_idx=-1
 
-		for uid in asset["history"]:
+		for uid in asset[_KEY_HISTORY]:
 
 			col_idx=col_idx+1
 
 			record_mod=util_valid_int(
-				asset["history"][uid].get("mod")
+				asset[_KEY_HISTORY][uid].get(_KEY_RECORD_MOD)
 			)
 
 			record_comment=util_valid_str(
-				asset["history"][uid].get("comment")
+				asset[_KEY_HISTORY][uid].get(_KEY_COMMENT)
 			)
 
 			record_date=util_valid_date(
-				asset["history"][uid].get("date")
+				asset[_KEY_HISTORY][uid].get(_KEY_DATE)
 			)
 
 			cell_comment=(
