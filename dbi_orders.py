@@ -8,7 +8,7 @@ from motor.motor_asyncio import (
 	AsyncIOMotorCollection
 )
 
-from pymongo import UpdateOne
+from pymongo import UpdateOne,ReturnDocument
 from pymongo.results import BulkWriteResult
 
 from internals import (
@@ -18,28 +18,67 @@ from internals import (
 	util_valid_date
 )
 
-from dbi_assets import (
+from symbols_Any import (
+
+	_ERR,_WARN,
+	
+	_KEY_SIGN,
+	_KEY_TAG,
+	_KEY_COMMENT,
+	_KEY_DATE,
+)
+
+from symbols_assets import (
 
 	_COL_ASSETS,
 
-	_KEY_SIGN,_KEY_TAG,_KEY_COMMENT,
+	_KEY_NAME,
+	_KEY_TOTAL,
+	_KEY_VALUE,
+
 	_KEY_RECORD_MOD,
-	_KEY_HISTORY,_KEY_DATE,
+	_KEY_HISTORY,
 )
 
-_COL_ORDERS="orders"
+from symbols_orders import (
+	_COL_ORDERS,
+	_KEY_ORDER,
+	_KEY_ORDER_VALUE,
+	_KEY_LOCKED_BY,
+)
 
-_KEY_ORDER="order_id"
+from dbi_assets import dbi_assets_AssetQuery
+
+
+async def dbi_orders_IsItLocked(
+		rdbc:AsyncIOMotorClient,
+		name_db:str,order_id:str
+	)->Mapping:
+
+	locked:Optional[str]=None
+	try:
+		result=await rdbc[name_db][_COL_ORDERS].find_one(
+			{"_id":order_id},{_KEY_LOCKED_BY:1}
+		)
+		locked=result.get(_KEY_LOCKED_BY)
+
+	except Exception as exc:
+		return {_ERR:f"{exc}"}
+
+	if not isinstance(locked,str):
+		return {}
+
+	return {_KEY_LOCKED_BY:locked}
 
 async def dbi_orders_NewOrder(
 		rdbc:AsyncIOMotorClient,name_db:str,
 		order_id:str,order_sign:str,order_tag:str,
 		order_comment:Optional[str]=None,
-		outverb:int=2,
+		vlevel:int=2,
 	)->Mapping:
 
-	v=outverb
-	if outverb not in range(0,3):
+	v=vlevel
+	if vlevel not in range(0,3):
 		v=2
 
 	new_order={
@@ -57,7 +96,7 @@ async def dbi_orders_NewOrder(
 		tgtcol:AsyncIOMotorCollection=rdbc[name_db][_COL_ORDERS]
 		await tgtcol.insert_one(new_order)
 	except Exception as exc:
-		return {"error":f"{exc}"}
+		return {_ERR:f"{exc}"}
 
 	if v==0:
 		return {}
@@ -70,13 +109,15 @@ async def dbi_orders_NewOrder(
 
 	return new_order
 
-async def dbi_orders_GetOrders(
+async def dbi_orders_QueryOrders(
 		rdbc:AsyncIOMotorClient,
 		name_db:str,
 		order_id:Optional[str]=None,
 		order_sign:Optional[str]=None,
 		order_tag:Optional[str]=None,
 		include_assets:bool=False,
+		include_comment:bool=False,
+		# include_value:bool=False
 	)->Union[list,Mapping]:
 
 	only_one=isinstance(order_id,str)
@@ -92,33 +133,50 @@ async def dbi_orders_GetOrders(
 	agg_params=[
 		{"$match":find_match}
 	]
+
+	project={
+		# _KEY_DATE:1,
+		# _KEY_SIGN:1
+	}
 	if not include_assets:
-		agg_params.append(
-			{
-				"$project":{
-					"assets":0
-				}
-			}
-		)
+		project.update({_COL_ASSETS:0})
+	if not include_comment:
+		project.update({_KEY_COMMENT:0})
+
+	if len(project)>0:
+		agg_params.append({
+			"$project":project
+		})
 
 	agg_params.append(
-		{"$set":{_KEY_ORDER:"$_id","_id":"$$REMOVE"}}
+		{"$set":{
+				_KEY_ORDER:"$_id",
+				"_id":"$$REMOVE"
+			}
+		}
 	)
 
 	list_of_orders=[]
 	try:
 		collection=rdbc[name_db][_COL_ORDERS]
 		cursor:AsyncIOMotorCursor=collection.aggregate(agg_params)
-		print("\tOrder(s) found:")
+		# print("\tOrder(s) found:")
 		async for order in cursor:
 			list_of_orders.append(order)
-			print("\t-",list_of_orders[-1])
+			# print("\t-",list_of_orders[-1])
+
+		print(
+			"ORDER(s) found",
+			list_of_orders
+		)
 
 	except Exception as exc:
 		if only_one:
-			return {"error":f"{exc}"}
+			return {_ERR:f"{exc}"}
 
-		return []
+		return [
+			{_ERR:f"{exc}"}
+		]
 
 	if len(list_of_orders)==0:
 		if only_one:
@@ -127,6 +185,7 @@ async def dbi_orders_GetOrders(
 		return []
 
 	if only_one:
+
 		return list_of_orders.pop()
 
 	return list_of_orders
@@ -134,127 +193,281 @@ async def dbi_orders_GetOrders(
 async def dbi_orders_DropOrder(
 		rdbc:AsyncIOMotorClient,
 		name_db:str,order_id:str
-	)->bool:
+	)->Mapping:
 
 	try:
 		await rdbc[name_db][_COL_ORDERS].find_one_and_delete(
 			{"_id":order_id}
 		)
-	except Exception as e:
-		print(e)
-		return False
+	except Exception as exc:
+		return {_ERR:f"{exc}"}
 
-	return True
+	return {}
 
-async def dbi_orders_Editor_GetAsset(
+async def dbi_orders_PatchAsset(
 		rdbc:AsyncIOMotorClient,name_db:str,
 		order_id:str,asset_id:str,
+		asset_mod:int=0,
+		asset_value:Optional[int]=None,
+		algsum:bool=True,
+		vlevel:int=3,
 	)->Mapping:
 
-	data:Optional[Mapping]
+	# NOTE:
+	# About the verbosity levels:
+	# 0 - Nothing
+	# 1 - Asset-in-order object (+ the name and value)
+	# 2 - Entire order but with only the targeted asset (+ the name and value)
+	# 3 - Entire order with all assets (raw)
 
-	try:
-		data=await rdbc[name_db][_COL_ORDERS].find_one(
-			{"_id":order_id},{f"assets.{asset_id}":1}
-		)
-	except Exception as e:
-		print(e)
-		return {}
-
-	if not isinstance(
-		data.get("assets"),
-		Mapping
-	):
-		return {}
-
-	data.pop("_id")
-	data.update({_KEY_ORDER:order_id})
-
-	return data
-
-async def dbi_orders_Editor_AssetPatch(
-		rdbc:AsyncIOMotorClient,name_db:str,
-		order_id:str,asset_id:str,
-		imod:int=0,justbool:bool=False,
-		algsum:bool=True,
-	)->Union[bool,Mapping]:
-
-	what_to_do={
+	action={
 		False:"$set",
 		True:"$inc"
 	}[algsum]
 
+	changes={
+		action:{
+			f"{_COL_ASSETS}.{asset_id}.{_KEY_RECORD_MOD}":asset_mod
+		}
+	}
+
+	vlevel_ok=vlevel
+	if vlevel_ok not in range(0,4):
+		vlevel_ok=3
+
+	return_after=False
+	if vlevel_ok>0:
+		return_after=ReturnDocument.AFTER
+
+	if isinstance(asset_value,int):
+		changes.update({"$set":{
+				f"{_COL_ASSETS}.{asset_id}.{_KEY_VALUE}":asset_value
+			}
+		})
+
+	result_ok:Mapping={}
+
 	try:
-		print(
-			"\t",
-			await rdbc[name_db][_COL_ORDERS].update_one(
-				{"_id":order_id},
-				{what_to_do:{f"assets.{asset_id}":imod}}
+		result=await rdbc[name_db][_COL_ORDERS].find_one_and_update(
+			{"_id":order_id},changes,
+			{
+				_KEY_SIGN:1,
+				_KEY_TAG:1,
+				_KEY_DATE:1,
+				_KEY_COMMENT:1,
+				_COL_ASSETS:1,
+			},
+			return_document=return_after
+		)
+
+		if vlevel_ok==1:
+			result_ok.update(
+				result[_COL_ASSETS].pop(asset_id)
 			)
+
+		if vlevel_ok>1:
+
+			result_ok.update(
+				result
+			)
+
+	except Exception as exc:
+
+		return {_ERR:f"{exc}"}
+
+	if vlevel_ok==0:
+
+		return result_ok
+
+	if vlevel_ok>0 and vlevel_ok<3:
+
+		the_value:Optional[int]=None
+
+		if vlevel_ok==1:
+			the_value=util_valid_int(
+				result_ok.get(_KEY_VALUE)
+			)
+
+		if vlevel_ok==2:
+			the_value=util_valid_int(
+				result_ok[_COL_ASSETS][asset_id].get(_KEY_VALUE)
+			)
+
+		get_that_value=(
+			not isinstance(the_value,int)
 		)
-	except Exception as e:
-		print("ERROR (2):",e)
 
-		if justbool:
-			return False
-
-		return {}
-
-	if justbool:
-		return True
-
-	return (
-		await dbi_orders_Editor_GetAsset(
-			rdbc,name_db,order_id,asset_id
+		the_asset=await dbi_assets_AssetQuery(
+			rdbc,name_db,asset_id=asset_id,
+			get_value=get_that_value
 		)
-	)
+		if get_that_value:
+			the_value=the_asset[_KEY_VALUE]
+			if vlevel==1:
+				result_ok.update({_KEY_VALUE:the_value})
+			if vlevel==2:
+				result_ok[_COL_ASSETS][asset_id].update({_KEY_VALUE:the_value})
 
-async def dbi_orders_Editor_AssetDrop(
+		the_name=the_asset[_KEY_NAME]
+		if vlevel==1:
+			result_ok.update({_KEY_NAME:the_name})
+			# {mod:int,value:Optional[int]}
+			return result_ok
+
+		if vlevel==2:
+			result_ok[_COL_ASSETS][asset_id].update({_KEY_NAME:the_name})
+
+	# Returns full order
+
+	result_ok.pop("_id")
+	result_ok.update({_KEY_ORDER:order_id})
+
+	return result_ok
+
+async def dbi_orders_GetAsset(
 		rdbc:AsyncIOMotorClient,name_db:str,
 		order_id:str,asset_id:str,
-	)->bool:
+	)->Mapping:
+
+	result_ok:Mapping={}
 
 	try:
-		col:AsyncIOMotorCollection=rdbc[name_db][_COL_ORDERS]
-		print(
-			await col.update_one(
-				{"_id":order_id},
-				{"$unset":{f"assets.{asset_id}":1}}
-			)
+		result=await rdbc[name_db][_COL_ORDERS].find_one(
+			{"_id":order_id},{f"{_COL_ASSETS}.{asset_id}":1}
 		)
-	except Exception as e:
-		print("ERROR:",e)
-		return False
+		result_ok.update(
+			result[_COL_ASSETS].pop(asset_id)
+		)
+	except Exception as exc:
+		return {_ERR:f"{exc}"}
 
-	return True
+	# {mod:int,value:Optional[int]}
+
+	return result_ok
+
+async def dbi_orders_DropAsset(
+		rdbc:AsyncIOMotorClient,name_db:str,
+		order_id:str,asset_id:str,
+		vlevel:int=3,
+	)->Mapping:
+
+	vlevel_ok=vlevel
+	if vlevel_ok not in range(0,4):
+		vlevel_ok=3
+
+	return_after=False
+	if vlevel_ok>0:
+		return_after=ReturnDocument.AFTER
+
+	result_ok:Mapping={}
+	try:
+		col:AsyncIOMotorCollection=rdbc[name_db][_COL_ORDERS]
+		result=await col.find_one_and_update(
+			{"_id":order_id},
+			{"$unset":{f"{_COL_ASSETS}.{asset_id}":0}},
+			{
+				_KEY_SIGN:1,
+				_KEY_TAG:1,
+				_KEY_DATE:1,
+				_KEY_COMMENT:1,
+				_COL_ASSETS:1,
+			},
+			return_document=return_after
+		)
+
+		if vlevel_ok==1:
+			result_ok.update(
+				result[_COL_ASSETS].pop(asset_id)
+			)
+
+		if vlevel_ok>1:
+
+			result_ok.update(
+				result
+			)
+
+	except Exception as exc:
+		return {_ERR:f"{exc}"}
+
+	# return {}
+	if vlevel_ok==0:
+
+		return result_ok
+
+	if vlevel_ok>0 and vlevel_ok<3:
+
+		the_value:Optional[int]=None
+
+		if vlevel_ok==1:
+			the_value=util_valid_int(
+				result_ok.get(_KEY_VALUE)
+			)
+
+		if vlevel_ok==2:
+			the_value=util_valid_int(
+				result_ok[_COL_ASSETS][asset_id].get(_KEY_VALUE)
+			)
+
+		get_that_value=(
+			not isinstance(the_value,int)
+		)
+
+		the_asset=await dbi_assets_AssetQuery(
+			rdbc,name_db,asset_id=asset_id,
+			get_value=get_that_value
+		)
+		if get_that_value:
+			the_value=the_asset[_KEY_VALUE]
+			if vlevel==1:
+				result_ok.update({_KEY_VALUE:the_value})
+			if vlevel==2:
+				result_ok[_COL_ASSETS][asset_id].update({_KEY_VALUE:the_value})
+
+		the_name=the_asset[_KEY_NAME]
+		if vlevel==1:
+			result_ok.update({_KEY_NAME:the_name})
+			# {mod:int,value:Optional[int]}
+			return result_ok
+
+		if vlevel==2:
+			result_ok[_COL_ASSETS][asset_id].update({_KEY_NAME:the_name})
+
+	# Returns full order
+
+	result_ok.pop("_id")
+	result_ok.update({_KEY_ORDER:order_id})
+
+	return result_ok
 
 async def dbi_Orders_ApplyOrder(
 		rdbc:AsyncIOMotorClient,
-		name_db:str,order_id:str
-	)->bool:
+		name_db:str,order_id:str,
+		user_runner:Optional[str]=None
+	)->Mapping:
 
-	the_order:Mapping=await dbi_orders_GetOrders(
+	print("APPLYING ORDER",order_id)
+
+	the_order:Mapping=await dbi_orders_QueryOrders(
 		rdbc,name_db,
 		order_id=order_id,
 		include_assets=True
 	)
-	if not the_order:
-		print("Order not found")
-		return False
+	print("Order:",the_order)
+	msg_err:Optional[str]=the_order.get(_ERR)
+	if msg_err is not None:
+		return {_ERR:f"{msg_err}"}
 
 	the_sign=util_valid_str(
 		the_order.get(_KEY_SIGN),True
 	)
 	if not the_sign:
-		print("'Sign' field missing")
-		return False
+		return {_ERR:"Check the 'sign' field"}
 
 	the_tag=util_valid_str(
 		the_order.get(_KEY_TAG),True
 	)
 	if not the_tag:
-		print("'tag' field missing")
-		return False
+		return {_ERR:"Check the 'tag' field"}
 
 	the_date=util_valid_date(
 		util_valid_str(
@@ -262,38 +475,37 @@ async def dbi_Orders_ApplyOrder(
 		),
 	)
 	if not the_date:
-		print("'date' field missing")
-		return False
+		return {_ERR:"Check 'date' field"}
 
 	if not isinstance(
-		the_order.get("assets"),
+		the_order.get(_COL_ASSETS),
 		Mapping
 	):
-		print("No assets ¿?")
-		return False
+		return {_ERR:"Check the 'assets' field"}
 
-	if len(the_order["assets"])==0:
-		print("No assets ¿? (empty map)")
-		return False
+	if len(the_order[_COL_ASSETS])==0:
+		return {_ERR:"Check the 'assets' field (it's empty)"}
 
-	col_orders:AsyncIOMotorCollection=rdbc[name_db][_COL_ORDERS]
+	lock_order=isinstance(user_runner,str)
 
-	try:
-		await col_orders.update_one(
-			{"_id":order_id},
-			{"$set":{"locked":True}}
-		)
-
-	except Exception as exc:
-		print("Failed to lock the order",exc)
-		return False
+	if lock_order:
+		try:
+			# NOTE: The order will be locked
+			col_orders:AsyncIOMotorCollection=rdbc[name_db][_COL_ORDERS]
+			await col_orders.update_one(
+				{"_id":order_id},
+				{"$set":{_KEY_LOCKED_BY:user_runner}}
+			)
+	
+		except Exception as exc:
+			print("WARNING",exc)
 
 	total_ops=0
 	bulk_write_ops=[]
-	for asset_id in the_order["assets"]:
+	for asset_id in the_order[_COL_ASSETS]:
 
 		the_mod=util_valid_int(
-			the_order["assets"].get(asset_id)
+			the_order[_COL_ASSETS][asset_id].get(_KEY_RECORD_MOD)
 		)
 		if not isinstance(the_mod,int):
 			continue
@@ -316,26 +528,31 @@ async def dbi_Orders_ApplyOrder(
 		)
 
 	if total_ops==0:
-		print("No write ops detected")
-		return False
+		return {_ERR:"There are no write operations???"}
 
-	col_assets:AsyncIOMotorCollection=rdbc[name_db][_COL_ASSETS]
-
-	results:BulkWriteResult=await col_assets.bulk_write(
-		bulk_write_ops
-	)
-	print(
-		f"TOTAL: {total_ops}" "\n"
-		f"MODIFIED: {results.modified_count}" "\n"
-		f"MATCHED: {results.matched_count}" "\n"
-	)
+	try:
+		col_assets:AsyncIOMotorCollection=rdbc[name_db][_COL_ASSETS]
+		results:BulkWriteResult=await col_assets.bulk_write(
+			bulk_write_ops
+		)
+		print(
+			f"TOTAL: {total_ops}" "\n"
+			f"MODIFIED: {results.modified_count}" "\n"
+			f"MATCHED: {results.matched_count}" "\n"
+		)
+	
+	except Exception as exc:
+		return {_ERR:f"{exc}"}
 
 	if not total_ops==results.matched_count:
-		return False
+		return {_ERR:"The matched count does not equal to the total"}
 
-	print("Dropping...")
-	return (
-		await dbi_orders_DropOrder(
-			rdbc,name_db,order_id
+	if not lock_order:
+
+		return (
+			await dbi_orders_DropOrder(
+				rdbc,name_db,order_id
+			)
 		)
-	)
+
+	return {}

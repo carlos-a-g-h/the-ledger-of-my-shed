@@ -1,10 +1,19 @@
 #!/usr/bin/python3.9
 
-_LANG_EN="en"
-_LANG_ES="es"
+from typing import Any,Optional
+from symbols_Any import _LANG_EN,_LANG_ES
+
+_ID_NAVIGATION="navigation"
+_ID_MAIN="main"
+_ID_MAIN1="main-1"
+_ID_MAIN2="main-2"
+_ID_MESSAGES="messages"
 
 _CSS_CLASS_TITLE_UNIQUE="title-uniq"
 _CSS_CLASS_TITLE="title"
+
+_CSS_CLASS_CONTAINER="container"
+_CSS_CLASS_CONTENT="content"
 
 _CSS_CLASS_COMMON="common"
 _CSS_CLASS_HORIZONTAL="horizontal"
@@ -15,12 +24,15 @@ _CSS_CLASS_VDOWN="vertical-2"
 _CSS_CLASS_BTN_MENU="main-menu-button"
 
 _CSS_CLASS_DANGER="danger"
+_CSS_CLASS_FOCUSED="focused"
 
 _SCRIPT_HTMX="""<script src="/src/local/htmx.min.js"></script>"""
 _SCRIPT_HYPERSCRIPT="""<script src="/src/local/hyperscript.js"></script>"""
 
 _STYLE_CUSTOM="""<link rel="stylesheet" href="/src/local/custom.css">"""
 _STYLE_POPUP="""<link rel="stylesheet" href="/src/baked/popup.css">"""
+
+_STYLE_TALIGN_R="text-align:right;"
 
 _STYLE_POPUP_CONTENTS="""
 div.popup-background {
@@ -68,6 +80,11 @@ div.popup-button-area {text-align: center;}
 .popup-centered {text-align: center;}
 """
 
+_DETAILS={
+	_LANG_EN:"Details",
+	_LANG_ES:"Detalles"
+}
+
 def write_button_anchor(label:str,link:str)->str:
 
 	return (
@@ -76,26 +93,18 @@ def write_button_anchor(label:str,link:str)->str:
 				f"""onclick="location.href='{link}'" """
 				">"
 				f"{label}"
-			"</button>" "\n"
-
-			# f"""<form action="{link}">""" "\n"
-			# 	f"""<button class="{_CSS_CLASS_COMMON}">"""
-			# 		f"{label}"
-			# 	"</button>" "\n"
-			# "</form>\n"
-
+			"</button>\n"
 		"</div>"
 	)
 
 def write_link_homepage(lang:str)->str:
 
-	return write_button_anchor(
-		{
-			_LANG_EN:"Back to homepage",
-			_LANG_ES:"Volver a la página principal"
-		}[lang],
-		"/"
-	)
+	tl={
+		_LANG_EN:"Homepage",
+		_LANG_ES:"Pág. principal"
+	}[lang]
+
+	return write_button_anchor(tl,"/")
 
 def write_popupmsg(html_content:str)->str:
 	return (
@@ -166,18 +175,23 @@ def write_ul(
 		"</ul>"
 	)
 
-def write_div_display_error(lang:str)->str:
-	html_text=(
-		"""<div class="display-error">""" "\n"
-	)
+def write_div_display_error(lang:str,data:Optional[Any]=None)->str:
 
-	html_text=f"{html_text}"+{
+	tl={
 		_LANG_EN:"Display error",
 		_LANG_ES:"Error al mostrar"
 	}[lang]
+	html_text=(
+		"<div>\n"
+			f"<div>{tl}:</div>"
+	)
+	if data is not None:
+		html_text=(
+			f"{html_text}\n"
+			f"<pre>{data}</pre>"
+		)
 
 	return (
 			f"{html_text}\n"
 		"</div>"
 	)
-

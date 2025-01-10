@@ -15,29 +15,40 @@ from motor.motor_asyncio import (
 # from pymongo.results import InsertOneResult
 from pymongo.results import UpdateResult
 
-from symbols_Any import _ERR
+# from dbi_accounts import (
+# 	util_userid_to_backend,
+# 	util_userid_from_backend,
+# )
 
 from internals import (
 	util_rnow,
 	util_valid_int,
 	util_valid_str,
-	util_valid_date
+	# util_valid_date
 )
 
-_COL_ASSETS="assets"
+from symbols_Any import (
 
-_KEY_ASSET="asset_id"
-_KEY_NAME="name"
-_KEY_TAG="tag"
-_KEY_SIGN="sign"
-_KEY_COMMENT="comment"
-_KEY_VALUE="value"
-_KEY_TOTAL="total"
+	_ERR,
+	_KEY_TAG,
+	_KEY_SIGN,
+	_KEY_DATE,
+	_KEY_COMMENT,
+)
 
-_KEY_HISTORY="history"
-_KEY_RECORD_UID="record_id"
-_KEY_RECORD_MOD="mod"
-_KEY_DATE="date"
+from symbols_assets import (
+
+	_COL_ASSETS,
+
+	_KEY_ASSET,
+	_KEY_NAME,
+	_KEY_VALUE,
+	_KEY_TOTAL,
+
+	_KEY_HISTORY,
+	_KEY_RECORD_UID,
+	_KEY_RECORD_MOD,
+)
 
 def util_get_total_from_history(history:Mapping)->Mapping:
 	if len(history)==0:
@@ -82,11 +93,11 @@ async def dbi_assets_CreateAsset(
 		asset_comment:Optional[str]=None,
 		asset_tag:Optional[str]=None,
 		asset_value:int=0,
-		outverb:int=2,
+		verblvl:int=2,
 	)->Mapping:
 
-	v=outverb
-	if outverb not in range(0,3):
+	v=verblvl
+	if verblvl not in range(0,3):
 		v=2
 
 	new_asset={
@@ -114,10 +125,12 @@ async def dbi_assets_CreateAsset(
 		return {}
 
 	if v==1:
-		return {"id":asset_id}
+		return {_KEY_ASSET:asset_id}
 
 	new_asset.pop("_id")
-	new_asset.update({"id":asset_id})
+	new_asset.update({
+		_KEY_ASSET:asset_id,
+	})
 	return new_asset
 
 async def dbi_assets_ChangeAssetMetadata(
@@ -127,7 +140,7 @@ async def dbi_assets_ChangeAssetMetadata(
 		name_db:str,
 		asset_id:str,
 
-		asset_name:Optional[str],
+		asset_name:Optional[str]=None,
 		asset_tag:Optional[str]=None,
 		asset_comment:Optional[str]=None,
 		asset_value:Optional[int]=None,
@@ -213,16 +226,20 @@ async def dbi_assets_ChangeAssetMetadata(
 	return {}
 
 async def dbi_assets_AssetQuery(
+
 		rdbc:AsyncIOMotorClient,name_db:str,
+
 		asset_id:Optional[str]=None,
 		asset_sign:Optional[str]=None,
 		asset_tag:Optional[str]=None,
+
 		get_sign:bool=False,
 		get_tag:bool=False,
 		get_comment:bool=False,
 		get_total:bool=False,
 		get_history:bool=False,
 		get_value:bool=False,
+
 	)->Union[Mapping,list]:
 
 	only_one=isinstance(asset_id,str)
@@ -258,7 +275,7 @@ async def dbi_assets_AssetQuery(
 		cursor:AsyncIOMotorCursor=tgtcol.aggregate([
 			{"$match":find_match},
 			{"$project":projection},
-			{"$set":{"id":"$_id","_id":"$$REMOVE"}}
+			{"$set":{_KEY_ASSET:"$_id","_id":"$$REMOVE"}}
 		])
 		async for asset in cursor:
 			list_of_assets.append(asset)
@@ -303,7 +320,7 @@ async def dbi_assets_DropAsset(
 		return {}
 
 	if v==1:
-		return {"id":asset_id}
+		return {_KEY_ASSET:asset_id}
 
 	return result
 
@@ -316,11 +333,11 @@ async def dbi_assets_History_AddRecord(
 		record_mod:int,
 		record_tag:Optional[str]=None,
 		record_comment:Optional[str]=None,
-		outverb:int=2
+		vlevel:int=2
 	)->Mapping:
 
-	v=outverb
-	if outverb not in range(0,3):
+	v=vlevel
+	if vlevel not in range(0,3):
 		v=2
 
 	record_date=util_rnow()
@@ -344,8 +361,9 @@ async def dbi_assets_History_AddRecord(
 		col:AsyncIOMotorCollection=rdbc[name_db][_COL_ASSETS]
 		res=await col.update_one(
 			{ "_id" : asset_id } ,
-			{
-				"$set":{ f"{_KEY_HISTORY}.{record_uid}": record_object }
+			{"$set":{
+					f"{_KEY_HISTORY}.{record_uid}": record_object
+				}
 			}
 		)
 
@@ -361,10 +379,11 @@ async def dbi_assets_History_AddRecord(
 	if v==1:
 		return {
 			_KEY_RECORD_UID:record_uid,
-			_KEY_DATE:record_date
 		}
 
-	record_object.update({_KEY_RECORD_UID:record_uid})
+	record_object.update({
+		_KEY_RECORD_UID:record_uid,
+	})
 
 	return record_object
 
@@ -386,7 +405,7 @@ async def dbi_assets_History_GetSingleRecord(
 		},
 		{
 			"$set":{
-				"id":"$_id",
+				_KEY_ASSET:"$_id",
 				"_id":"$$REMOVE"
 			}
 		}
@@ -419,112 +438,112 @@ async def dbi_assets_History_GetSingleRecord(
 
 	return the_record
 
-if __name__=="__main__":
+# if __name__=="__main__":
 
-	import asyncio
+# 	import asyncio
 
-	from motor.motor_asyncio import AsyncIOMotorClient
-	from openpyxl import Workbook
-	from openpyxl.cell.cell import Cell
-	from openpyxl.comments import Comment
-	from openpyxl.worksheet.worksheet import Worksheet
-	from pathlib import Path
+# 	from motor.motor_asyncio import AsyncIOMotorClient
+# 	from openpyxl import Workbook
+# 	from openpyxl.cell.cell import Cell
+# 	from openpyxl.comments import Comment
+# 	from openpyxl.worksheet.worksheet import Worksheet
+# 	from pathlib import Path
 
-	from internals import util_excel_dectocol
+# 	from internals import util_excel_dectocol
 
-	rdbc=AsyncIOMotorClient()
+# 	rdbc=AsyncIOMotorClient()
 
-	all_assets=asyncio.run(
-		dbi_assets_AssetQuery(
-			rdbc,"my-inventory",
-			get_history=True
-		)
-	)
+# 	all_assets=asyncio.run(
+# 		dbi_assets_AssetQuery(
+# 			rdbc,"my-inventory",
+# 			get_history=True
+# 		)
+# 	)
 
-	print(all_assets)
+# 	print(all_assets)
 
-	test_file=Path("TEST.xlsx")
-	if test_file.is_file():
-		test_file.unlink()
+# 	test_file=Path("TEST.xlsx")
+# 	if test_file.is_file():
+# 		test_file.unlink()
 
-	wb:Workbook=Workbook()
-	ws:Worksheet=wb.active
-	ws.title="Assets"
-	ws.append(["ID",_KEY_NAME,_KEY_TOTAL])
-	row=1
-	for asset in all_assets:
-		row=row+1
+# 	wb:Workbook=Workbook()
+# 	ws:Worksheet=wb.active
+# 	ws.title="Assets"
+# 	ws.append(["ID",_KEY_NAME,_KEY_TOTAL])
+# 	row=1
+# 	for asset in all_assets:
+# 		row=row+1
 
-		asset_name=asset.get(_KEY_NAME)
-		asset_id=asset.get("id")
+# 		asset_name=asset.get(_KEY_NAME)
+# 		asset_id=asset.get("id")
 
-		ws[f"A{row}"]=asset_id
-		ws[f"B{row}"]=asset_name
+# 		ws[f"A{row}"]=asset_id
+# 		ws[f"B{row}"]=asset_name
 
-		has_history=isinstance(asset.get(_KEY_HISTORY),Mapping)
-		if not has_history:
-			ws[f"C{row}"]=0
-			continue
+# 		has_history=isinstance(asset.get(_KEY_HISTORY),Mapping)
+# 		if not has_history:
+# 			ws[f"C{row}"]=0
+# 			continue
 
-		history_len=len(asset[_KEY_HISTORY])
-		if history_len==0:
-			ws[f"C{row}"]=0
-			continue
+# 		history_len=len(asset[_KEY_HISTORY])
+# 		if history_len==0:
+# 			ws[f"C{row}"]=0
+# 			continue
 
-		col_start=4
-		col_end=col_start+history_len-1
+# 		col_start=4
+# 		col_end=col_start+history_len-1
 
-		ef=f"=SUM({util_excel_dectocol(col_start)}{row}:{util_excel_dectocol(col_end)}{row})"
+# 		ef=f"=SUM({util_excel_dectocol(col_start)}{row}:{util_excel_dectocol(col_end)}{row})"
 
-		ws[f"C{row}"]=ef
+# 		ws[f"C{row}"]=ef
 
-		col_idx=-1
+# 		col_idx=-1
 
-		for uid in asset[_KEY_HISTORY]:
+# 		for uid in asset[_KEY_HISTORY]:
 
-			col_idx=col_idx+1
+# 			col_idx=col_idx+1
 
-			record_mod=util_valid_int(
-				asset[_KEY_HISTORY][uid].get(_KEY_RECORD_MOD)
-			)
+# 			record_mod=util_valid_int(
+# 				asset[_KEY_HISTORY][uid].get(_KEY_RECORD_MOD)
+# 			)
 
-			record_comment=util_valid_str(
-				asset[_KEY_HISTORY][uid].get(_KEY_COMMENT)
-			)
+# 			record_comment=util_valid_str(
+# 				asset[_KEY_HISTORY][uid].get(_KEY_COMMENT)
+# 			)
 
-			record_date=util_valid_date(
-				asset[_KEY_HISTORY][uid].get(_KEY_DATE)
-			)
+# 			record_date=util_valid_date(
+# 				asset[_KEY_HISTORY][uid].get(_KEY_DATE)
+# 			)
 
-			cell_comment=(
-				f"UID:\n"
-				f"{uid}"
-			)
+# 			cell_comment=(
+# 				f"UID:\n"
+# 				f"{uid}"
+# 			)
 
-			if record_date is not None:
-				cell_comment=(
-					f"{cell_comment}\n"
-					f"DATE:\n"
-					f"{record_date}"
-				)
+# 			if record_date is not None:
+# 				cell_comment=(
+# 					f"{cell_comment}\n"
+# 					f"DATE:\n"
+# 					f"{record_date}"
+# 				)
 
-			if record_comment is not None:
-				cell_comment=(
-					f"{cell_comment}" "\n\n"
-					f"{record_comment}"
-				)
+# 			if record_comment is not None:
+# 				cell_comment=(
+# 					f"{cell_comment}" "\n\n"
+# 					f"{record_comment}"
+# 				)
 
-			if record_mod is None:
-				cell_comment=(
-					f"{cell_comment}\n\n(WARNING)"
-				)
+# 			if record_mod is None:
+# 				cell_comment=(
+# 					f"{cell_comment}\n\n(WARNING)"
+# 				)
 
-			tgt_cell:Cell=ws[f"{util_excel_dectocol(col_start+col_idx)}{row}"]
-			tgt_cell.value=record_mod
-			tgt_cell.comment=Comment(
-				cell_comment,
-				"?",
-				height=160,width=160
-			)
+# 			tgt_cell:Cell=ws[f"{util_excel_dectocol(col_start+col_idx)}{row}"]
+# 			tgt_cell.value=record_mod
+# 			tgt_cell.comment=Comment(
+# 				cell_comment,
+# 				"?",
+# 				height=160,width=160
+# 			)
 
-	wb.save(test_file.name)
+# 	wb.save(test_file.name)

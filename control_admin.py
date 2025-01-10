@@ -10,20 +10,25 @@ from aiohttp.web import (
 from symbols_Any import (
 	# _ROOT_USER,
 	_APP_LANG,_LANG_EN,_LANG_ES,
-	_APP_PROGRAMDIR,_APP_ROOT_USERID,
+	_APP_PROGRAMDIR,
 	_MIMETYPE_HTML,
 	_TYPE_CUSTOM,
 	_CFG_LANG,_CFG_PORT,
 	_REQ_LANGUAGE,_REQ_USERID,
 	_CFG_PORT_MIN,_CFG_PORT_MAX,
 
+	_ROOT_USER_ID,
 	# _CFG_FLAGS,
 	# _CFG_FLAG_ROOT_LOCAL_AUTOLOGIN
 )
 
 from frontend_Any import (
+
+	_ID_NAVIGATION,_ID_MAIN,_ID_MESSAGES,
+
 	_STYLE_CUSTOM,_STYLE_POPUP,
 	_SCRIPT_HTMX,
+
 	write_fullpage,
 	write_popupmsg,
 	write_link_homepage,
@@ -91,11 +96,11 @@ async def route_fgmt_section_users(
 
 	return Response(
 		body=(
-			"""<section hx-swap-oob="innerHTML:#navigation">""" "\n"
+			f"""<section hx-swap-oob="innerHTML:#{_ID_NAVIGATION}">""" "\n"
 				f"{write_ul([write_button_nav_misc_settings(lang)])}\n"
 			"</section>\n"
 
-			"""<section hx-swap-oob="innerHTML:#main">""" "\n"
+			f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
 				"<!-- USER SETTINGS -->\n"
 				""
 				f"{write_form_create_user(lang)}\n"
@@ -121,11 +126,11 @@ async def route_fgmt_section_misc(
 
 	return Response(
 		body=(
-			"""<section hx-swap-oob="innerHTML:#navigation">""" "\n"
+			f"""<section hx-swap-oob="innerHTML:#{_ID_NAVIGATION}">""" "\n"
 				f"{write_ul([write_button_nav_users(lang)])}\n"
 			"</section>\n"
 
-			"""<section hx-swap-oob="innerHTML:#main">""" "\n"
+			f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
 				f"{write_form_update_config(lang)}\n"
 				f"{write_button_update_known_asset_names(lang)}\n"
 			"</section>"
@@ -363,7 +368,7 @@ async def route_main(
 
 	userid:Optional[str]=request[_REQ_USERID]
 	has_session=isinstance(userid,str)
-	is_admin=(userid==request.app[_APP_ROOT_USERID])
+	is_admin=(userid==_ROOT_USER_ID)
 
 	lang=request[_REQ_LANGUAGE]
 
@@ -419,11 +424,11 @@ async def route_main(
 		html_text=(
 			f"{html_text}\n"
 
-			"""<section id="navigation">""" "\n"
+			f"""<section id="{_ID_NAVIGATION}">""" "\n"
 				f"{write_ul([write_button_nav_users(lang),write_button_nav_misc_settings(lang)])}\n"
 			"</section>\n"
 
-			"""<section id="main">""" "\n"
+			f"""<section id="{_ID_MAIN}">""" "\n"
 				"<!-- ADMIN PAGE -->\n"
 			"</section>"
 		)
@@ -431,7 +436,7 @@ async def route_main(
 	html_text=(
 		f"{html_text}\n"
 
-		"""<section id="messages">""" "\n"
+		f"""<section id="{_ID_MESSAGES}">""" "\n"
 			"<!-- MESSAGES GO HERE -->\n"
 		"</section>"
 	)

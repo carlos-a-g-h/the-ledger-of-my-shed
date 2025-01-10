@@ -1,25 +1,71 @@
 #!/usr/bin/python3.9
 
-from typing import Mapping,Union
+from typing import (
+		Mapping,
+		# Union,
+		Optional
+	)
 
-from symbols_Any import _LANG_EN,_LANG_ES
+from symbols_Any import (
 
-from dbi_assets import (
-	_KEY_ASSET,
-	_KEY_SIGN,_KEY_TAG,_KEY_COMMENT,
-	_KEY_RECORD_MOD,
+	_LANG_EN,_LANG_ES,
+	_SECTION,
+
+	_KEY_SIGN,_KEY_SIGN_UNAME,
+	_KEY_TAG,_KEY_COMMENT,
 	_KEY_DATE,
+	_KEY_DELETE_ITEM,
 )
 
-from dbi_orders import _KEY_ORDER
+from symbols_assets import (
+	_COL_ASSETS,
+	_KEY_ASSET,
+	_KEY_NAME,
+	_KEY_RECORD_MOD,
+	_KEY_VALUE
+)
+
+from symbols_orders import (
+
+	_KEY_ORDER,
+	_KEY_ORDER_VALUE,
+	_KEY_LOCKED_BY,
+
+	_KEY_ORDER_KEEP,
+	_KEY_ALGSUM,
+	_KEY_COPY_VALUE,
+
+	_ID_FORM_NEW_ORDER,
+	_ID_RESULT_NEW_ORDER,
+
+	_ID_FORM_RUN_ORDER,
+
+	html_id_order,
+	html_id_order_asset
+)
 
 from frontend_Any import (
-	_CSS_CLASS_COMMON,_CSS_CLASS_CONTROLS,
-	_CSS_CLASS_HORIZONTAL,_CSS_CLASS_DANGER,
+
+	_ID_MESSAGES,
+	_ID_MAIN2,
+
+	_CSS_CLASS_COMMON,
+	_CSS_CLASS_HORIZONTAL,
+	_CSS_CLASS_FOCUSED,
+	_CSS_CLASS_DANGER,
+	_CSS_CLASS_CONTROLS,
+
+	# _STYLE_TALIGN_R,
+
 	write_div_display_error,
 )
 
-from internals import util_valid_str
+from internals import (
+	util_valid_int,
+	util_valid_str,
+	util_valid_date,
+	util_rnow,
+)
 
 def write_button_nav_new_order(lang:str)->str:
 
@@ -32,7 +78,7 @@ def write_button_nav_new_order(lang:str)->str:
 		f"""<button class="{_CSS_CLASS_COMMON}" """
 			"""hx-get="/fgmt/orders/new" """
 			"""hx-swap="innerHTML" """
-			"""hx-target="#messages" """
+			f"""hx-target="#{_ID_MESSAGES}" """
 			">"
 			f"{tl}"
 		"</button>"
@@ -41,283 +87,45 @@ def write_button_nav_new_order(lang:str)->str:
 def write_button_nav_list_orders(lang:str)->str:
 
 	tl={
-		_LANG_EN:"Select an existing order",
-		_LANG_ES:"Seleccionar una orden existente"
+		_LANG_EN:"List of orders",
+		_LANG_ES:"Lista de órdenes"
 	}[lang]
 
 	return (
 		f"""<button class="{_CSS_CLASS_COMMON}" """
-			"""hx-get="/fgmt/orders/current" """
+			"""hx-get="/fgmt/orders/list-orders" """
 			"""hx-swap="innerHTML" """
-			"""hx-target="#messages" """
+			f"""hx-target="#{_ID_MESSAGES}" """
 			">"
 			f"{tl}"
 		"</button>"
 	)
 
-def write_button_add_asset_to_order(
-		lang:str,order_id:str,asset_id:str
-	)->str:
+def write_form_new_order(lang:str,full:bool=True)->str:
 
-	tl={
-		_LANG_EN:"Add to order",
-		_LANG_ES:"Agregar a la orden"
-	}[lang]
-	return (
-		f"""<form hx-post="/api/orders/current/{order_id}/update" """
-			"""hx-target="#messages" """
+	html_text=(
+		"""<form hx-post="/api/orders/new" """
+			"""hx-trigger=submit """
+			f"""hx-target="#{_ID_MESSAGES}" """
 			"""hx-swap="innerHTML" """
 			">\n"
-
-			f"""<input type="hidden" name="{_KEY_ASSET}" value="{asset_id}">""" "\n"
-			"""<input type="hidden" name="justbool" value="true">""" "\n"
-
-			f"""<button class="{_CSS_CLASS_COMMON}" type="submit">""" "\n"
-				f"{tl}\n"
-			"</button>\n"
-
-		"</form>"
-	)
-
-def write_button_run_order(
-		lang:str,order_id:str
-	)->str:
-
-	tl={
-		_LANG_EN:"Are you sure?",
-		_LANG_ES:"¿Está seguro?"
-	}[lang]
-	html_text=(
-		"<button "
-			f"""class="{_CSS_CLASS_COMMON}" """
-			f"""hx-post="/api/orders/current/{order_id}/run" """
-			"""hx-target="#messages" """
-			"""hx-swap="innerHTML" """
-			f"""hx-confirm="{tl}" """
-			">\n"
-	)
-
-	tl={
-		_LANG_EN:"Run order",
-		_LANG_ES:"Ejecutar orden"
-	}[lang]
-	return (
-			f"{html_text}\n"
-			f"{tl}\n"
-		"</button>"
-	)
-
-def write_form_remove_asset_from_order(
-		lang:str,
-		order_id:str,asset_id:str
-	)->str:
-
-	tl={
-		_LANG_EN:"Remove",
-		_LANG_ES:"Quitar"
-	}[lang]
-
-	return (
-		"<form "
-			"""class="controls" """
-			f"""hx-delete="/api/orders/current/{order_id}/update" """
-			"""hx-target="#messages" """
-			"""hx-swap="innerHTML">"""
-			"\n"
-
-			f"""<input type="hidden" name="{_KEY_ASSET}" value="{asset_id}">""" "\n"
-
-			"""<button type="submit" """
-				f"""class="{_CSS_CLASS_COMMON} {_CSS_CLASS_DANGER}">"""
-				f"{tl}"
-			"</button>\n"
-
-		"</form>"
-	)
-
-def write_form_update_asset_in_order(
-		lang:str,
-		order_id:str,asset_id:str,
-		currmod:Union[int,str]="???",
-		inner:bool=False
-	)->str:
-
-	tl={
-		_LANG_EN:"Algebraic sum",
-		_LANG_ES:"Suma algebraica"
-	}[lang]
-
-	html_text=(
-		f"""<form hx-post="/api/orders/current/{order_id}/update" """
-			"""hx-target="#messages" """
-			"""hx-swap="innerHTML" """
-			">\n"
-
-			"<div>\n\n"
-
-				f"""<div class="{_CSS_CLASS_HORIZONTAL}">"""
-					f"""<div class="{_CSS_CLASS_COMMON}">"""
-						f"<strong>{currmod}</strong>"
-					"</div>\n"
-				"</div>\n"
-
-				"\n"
-
-				f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-					f"""<input type="hidden" name="{_KEY_ASSET}" value="{asset_id}">""" "\n"
-					f"""<input type="number" name="{_KEY_RECORD_MOD}" value=0 class="{_CSS_CLASS_COMMON}">""" "\n"
-				"</div>\n"
-
-				"\n"
-
-				f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-					"""<input type=checkbox name="algsum">""" "\n"
-					f"""<label for="algsum">{tl}</label>"""
-				"</div>"
-
-				"\n"
-	)
-
-
-	tl={
-		_LANG_EN:"Update",
-		_LANG_ES:"Actualizar"
-	}[lang]
-
-	html_text=(
-		f"{html_text}\n"
-
-				f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-					f"""<button type="submit" class="{_CSS_CLASS_COMMON}">""" "\n"
-						f"{tl}\n"
-					"</button>\n"
-				"</div>\n"
-
-			"</div>\n"
-
-		"</form>"
-	)
-
-	if not inner:
-		html_text=(
-			f"""<div id="asset-{asset_id}-in-{order_id}-updater">""" "\n"
-				f"{html_text}\n"
-			"</div>"
-		)
-
-	return html_text
-
-
-def write_button_goto_order_editor(lang:str,order_id:str)->str:
-	tl={
-		_LANG_EN:"View or edit",
-		_LANG_ES:"Ver o editar"
-	}[lang]
-	return (
-		f"""<button class="{_CSS_CLASS_COMMON}" """
-			f"""hx-get="/fgmt/orders/current/{order_id}/editor" """
-			"""hx-swap="innerHTML" """
-			"""hx-target="#messages" """
-			">"
-			f"{tl}"
-		"</button>"
-	)
-
-def write_button_goto_order_asset_search(lang:str,order_id:str)->str:
-	tl={
-		_LANG_EN:"Search for assets",
-		_LANG_ES:"Búsqueda de activos"
-	}[lang]
-	return (
-		f"""<button class="{_CSS_CLASS_COMMON}" """
-			f"""hx-get="/fgmt/orders/current/{order_id}/search-assets" """
-			"""hx-swap="innerHTML" """
-			"""hx-target="#messages" """
-			">"
-			f"{tl}"
-		"</button>"
-	)
-
-def write_button_delete_order(
-		lang:str,
-		order_id:str,
-		fol:bool=False
-	)->str:
-
-	route=f"/api/orders/current/{order_id}/drop"
-	if fol:
-		route=f"{route}-fol"
-
-	tl={
-		_LANG_EN:"Are you sure you want to delete this order?",
-		_LANG_ES:"¿Está seguro que quiere eliminar la orden?"
-	}[lang]
-	html_text=(
-		"<button "
-			f"""class="{_CSS_CLASS_COMMON} {_CSS_CLASS_DANGER}" """
-			f"""hx-delete="{route}" """
-			"""hx-target="#messages" """
-			"""hx-swap="innerHTML" """
-			f"""hx-confirm="{tl}" """
-			">"
-	)
-
-	tl={
-		_LANG_EN:"Delete",
-		_LANG_ES:"Eliminar"
-	}[lang]
-	html_text=(
-			f"{html_text}\n"
-			f"{tl}"
-		"</button>"
-	)
-
-	return html_text
-
-def write_form_new_order(lang:str,username:str="")->str:
-
-	html_text=(
-		f"""<div class="{_CSS_CLASS_COMMON}">"""
-			"<form "
-				"""hx-post="/api/orders/new" """
-				"""hx-trigger=submit """
-				"""hx-target=#messages """
-				"""hx-swap="innerHTML" """
-				">\n"
-
-				"<div>"
-	)
-
-	tl={
-		_LANG_EN:"Sign",
-		_LANG_ES:"Firma"
-	}[lang]
-	html_text=(
-		f"{html_text}\n"
-		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-				f"""<label class="{_CSS_CLASS_COMMON}" for="{_KEY_SIGN}">{tl}</label>""" "\n"
-				f"""<input class="{_CSS_CLASS_COMMON}" """
-					f""" name="{_KEY_SIGN}" """
-					"""type="text" """
-					"""max-length=32 """
-					f"""value="{username}" """
-					"required>\n"
-		"</div>"
 	)
 
 	tl={
 		_LANG_EN:"Tag",
 		_LANG_ES:"Etiqueta"
 	}[lang]
+
 	html_text=(
 		f"{html_text}\n"
-		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-				f"""<label class="{_CSS_CLASS_COMMON}" for="{_KEY_TAG}">{tl}</label>""" "\n"
-				f"""<input class="{_CSS_CLASS_COMMON}" """
-					f""" name="{_KEY_TAG}" """
-					"""type="text" """
-					"""max-length=32 """
-					"required>\n"
+		"<div>"
+			f"""<label class="{_CSS_CLASS_COMMON}" for="{_KEY_TAG}">{tl}</label>""" "\n"
+			f"""<input class="{_CSS_CLASS_COMMON}" """
+				f""" name="{_KEY_TAG}" """
+				"""type="text" """
+				"""max-length=32 """
+				f"""value="ord-{util_rnow()}" """
+				"required>\n"
 		"</div>"
 	)
 
@@ -326,8 +134,7 @@ def write_form_new_order(lang:str,username:str="")->str:
 		_LANG_ES:"Comentario"
 	}[lang]
 	html_text=(
-			f"{html_text}\n"
-		"</div>\n"
+		f"{html_text}\n"
 		"<div>\n"
 			f"""<label class="{_CSS_CLASS_COMMON}" for="{_KEY_COMMENT}">{tl}</label>""" "\n"
 			f"""<textarea class="{_CSS_CLASS_COMMON}" """
@@ -342,138 +149,629 @@ def write_form_new_order(lang:str,username:str="")->str:
 		_LANG_EN:"Create order",
 		_LANG_ES:"Crear orden"
 	}[lang]
-	return (
-				f"{html_text}\n"
-
-				"""<button """
-					f"""class="{_CSS_CLASS_COMMON}" """
-					"""type="submit" """
-					">"
-					f"{tl}"
-				"</button>\n"
-
-			"</form>\n"
-		"</div>"
+	html_text=(
+			f"{html_text}\n"
+			"""<button """
+				f"""class="{_CSS_CLASS_COMMON}" """
+				"""type="submit" """
+				">"
+				f"{tl}"
+			"</button>\n"
+		"</form>"
 	)
 
-def write_html_order_assets(
+	if full:
+		html_text=(
+			f"""<div id="{_ID_FORM_NEW_ORDER}">""" "\n"
+				f"{html_text}\n"
+			"</div>\n"
+			f"""<div id="{_ID_RESULT_NEW_ORDER}">""" "\n"
+				f"<!-- NEW ORDER(s) GO HERE -->\n"
+			"</div>\n"
+		)
+
+	return html_text
+
+def write_button_order_details(lang:str,order_id:str,refresh:bool=False)->str:
+	tl={
+		True:{
+			_LANG_EN:"Refresh",
+			_LANG_ES:"Actualizar"
+		},
+		False:{
+			_LANG_EN:"View or edit",
+			_LANG_ES:"Ver o editar"
+		}
+	}[refresh][lang]
+
+	url_path=f"/fgmt/orders/current/{order_id}/details"
+
+	if refresh:
+		url_path=f"{url_path}?{_SECTION}={_ID_MAIN2}"
+
+	return (
+		f"""<button class="{_CSS_CLASS_COMMON}" """
+			f"""hx-get="{url_path}" """
+			"""hx-swap="innerHTML" """
+			f"""hx-target="#{_ID_MESSAGES}" """
+			">"
+			f"{tl}"
+		"</button>"
+	)
+
+def write_form_run_order(
 		lang:str,
 		order_id:str,
-		assets:Mapping,
-		assets_names:Mapping,
+		full:bool=True
 	)->str:
 
-	html_text=""
+	tl={
+		_LANG_EN:"Are you sure?",
+		_LANG_ES:"¿Está seguro?"
+	}[lang]
+	html_text=(
+		f"""<form hx-post="/api/orders/current/{order_id}/run" """
+			f"""hx-target="#{_ID_MESSAGES}" """
+			"""hx-swap="innerHTML" """
+			f"""hx-confirm="{tl}" """
+			">\n"
+			# f"""<input type="hidden" name="{_KEY_ORDER}">"""
+	)
 
-	for asset_id in assets:
+	tl={
+		_LANG_EN:"Keep after running",
+		_LANG_ES:"Conservar tras ejecutar"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		"<div>"
+			f"""<input type=checkbox name="{_KEY_ORDER_KEEP}" checked>""" "\n"
+			f"""<label for="{_KEY_ORDER_KEEP}">{tl}</label>"""
+		"<div>"
+	)
+
+	tl={
+		_LANG_EN:"Run order",
+		_LANG_ES:"Ejecutar orden"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		f"""<button class="{_CSS_CLASS_COMMON}">"""
+			f"{tl}"
+		"</button>"
+	)
+
+	if full:
 		html_text=(
-			f"{html_text}\n"
-			f"""<div id="asset-{asset_id}-in-{order_id}">""" "\n"
-				f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
-					f"<div>{asset_id} - {assets_names[asset_id]}</div>\n"
-					f"{write_form_update_asset_in_order(lang,order_id,asset_id,assets[asset_id])}\n"
-					f"{write_form_remove_asset_from_order(lang,order_id,asset_id)}\n"
-				"</div>\n"
+			f"""<div id="{_ID_FORM_RUN_ORDER}" """
+				f"""class="{_CSS_CLASS_COMMON}" """
+				">\n"
+				f"{html_text}\n"
 			"</div>"
 		)
 
 	return html_text
 
-def write_html_order(
-		lang:str,data:Mapping,
-		edit_mode:bool=False
+def write_button_add_asset_to_order(
+		lang:str,
+		order_id:str,
+		asset_id:str
 	)->str:
 
-	order_id=util_valid_str(
-		data.get(_KEY_ORDER)
-	)
-	if not isinstance(order_id,str):
-		return write_div_display_error(lang)
-
-	order_sign=util_valid_str(
-		data.get(_KEY_SIGN)
-	)
-	if not isinstance(order_sign,str):
-		return write_div_display_error(lang)
-
-	order_date=util_valid_str(
-		data.get(_KEY_DATE)
-	)
-	if not isinstance(order_date,str):
-		return write_div_display_error(lang)
-
-	order_tag=util_valid_str(
-		data.get(_KEY_TAG)
-	)
-	if not isinstance(order_tag,str):
-		return write_div_display_error(lang)
-
+	tl={
+		_LANG_EN:"Copy the value",
+		_LANG_ES:"Copiar el valor"
+	}[lang]
 	html_text=(
+		f"""<div>""" "\n"
+			f"""<form hx-post="/api/orders/current/{order_id}/add-asset" """
+				f"""hx-target="#{_ID_MESSAGES}" """
+				"""hx-swap="innerHTML" """
+				">\n"
 
-		f"""<div id="order-{order_id}">""" "\n"
+				f"""<input type="hidden" name="{_KEY_ASSET}" value="{asset_id}">""" "\n"
 
-			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
+				f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
+					f"""<input type="number" name="{_KEY_RECORD_MOD}" value=0 class="{_CSS_CLASS_COMMON}">""" "\n"
+				"</div>\n"
 
-				"<div>\n"
-
-					"""<!-- ID, SIGN, AND TAG, (NO COMMENT, AND NO ASSETS) -->""" "\n"
-
-					f"<div><strong>ID: {order_id}</strong></div>"
+				f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
+					f"""<input type="checkbox" name="{_KEY_COPY_VALUE}" checked>""" "\n"
+					f"""<label for="{_KEY_COPY_VALUE}">{tl}</label>"""
+				"</div>"
 	)
 
 	tl={
-		_LANG_EN:"Sign",
-		_LANG_ES:"Firma"
+		_LANG_EN:"Add to order",
+		_LANG_ES:"Agregar a la orden"
 	}[lang]
 	html_text=(
-		f"{html_text}\n"
-		f"""<div>{tl}: {order_sign}</div>"""
-	)
+				f"{html_text}\n"
+				"""<button type="submit" """
+					f"""class="{_CSS_CLASS_COMMON} {_CSS_CLASS_HORIZONTAL}" """
+					">\n"
+					f"{tl}\n"
+				"</button>\n"
 
-	tl={
-		_LANG_EN:"Date",
-		_LANG_ES:"Fecha"
-	}[lang]
-	html_text=(
-		f"{html_text}\n"
-		f"""<div>{tl}: {order_date}</div>"""
-	)
-
-	tl={
-		_LANG_EN:"Tag",
-		_LANG_ES:"Etiqueta"
-	}[lang]
-	html_text=(
-			f"{html_text}\n"
-			f"""<div>{tl}: {order_tag}</div>""" "\n"
+			"</form>"
 		"</div>"
 	)
 
-	# End of all 'horizontal' content, and goto buttons
+	return html_text
 
-	if not edit_mode:
+def write_form_update_asset_in_order(
+		lang:str,
+		order_id:str,asset_id:str,
+		# asset_mod:Optional[Union[int,str]]=None,
+		full:bool=True
+	)->str:
+
+	tl={
+		_LANG_EN:"Edit",
+		_LANG_ES:"Editar"
+	}[lang]
+	html_text=(
+		f"<summary>{tl}</summary>\n"
+
+		# f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
+		"<div>\n"
+			f"""<form hx-post="/api/orders/current/{order_id}/update-asset" """
+				f"""hx-target="#{_ID_MESSAGES}" """
+				"""hx-swap="innerHTML" """
+				">"
+	)
+
+	tl={
+		_LANG_EN:"Algebraic sum",
+		_LANG_ES:"Suma algebraica"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+			"<div>"
+				f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
+					f"""<input type="hidden" name="{_KEY_ASSET}" value="{asset_id}">""" "\n"
+					f"""<input type="number" name="{_KEY_RECORD_MOD}" value=0 class="{_CSS_CLASS_COMMON}">""" "\n"
+				"</div>\n"
+				f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
+					f"""<input type=checkbox name="{_KEY_ALGSUM}">""" "\n"
+					f"""<label for="{_KEY_ALGSUM}">{tl}</label>""" "\n"
+				"</div>"
+	)
+
+
+	tl={
+		_LANG_EN:"Update",
+		_LANG_ES:"Actualizar"
+	}[lang]
+
+	html_text=(
+					f"{html_text}\n"
+					f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
+						f"""<button type="submit" class="{_CSS_CLASS_COMMON}">"""
+							f"{tl}"
+						"</button>\n"
+					"</div>\n"
+				"</div>\n"
+			"</form>\n"
+		"</div>"
+
+		# f"""<div class="{_CSS_CLASS_HORIZONTAL}" style="{_STYLE_TALIGN_R}">""" "\n"
+		"<div>\n"
+			f"{write_button_remove_asset_from_order(lang,order_id,asset_id)}\n"
+		"</div>\n"
+
+	)
+
+	if full:
 		html_text=(
-			f"{html_text}\n"
-			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
-				f"{write_button_goto_order_editor(lang,order_id)}\n"
-				f"{write_button_delete_order(lang,order_id,True)}\n"
-			"</div>"
+			"<details>\n"
+				f"{html_text}\n"
+			"</details>"
 		)
 
-	if edit_mode:
-		html_text=(
-			f"{html_text}\n"
-			f"{write_button_goto_order_asset_search(lang,order_id)}\n"
-			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
-				f"{write_button_run_order(lang,order_id)}\n"
-				f"{write_button_delete_order(lang,order_id)}\n"
-			"</div>"
-		)
+	return html_text
 
-	# end of both divs
+def write_button_remove_asset_from_order(
+		lang:str,order_id:str,asset_id:str
+	)->str:
 
+	tl={
+		_LANG_EN:"Remove from order",
+		_LANG_ES:"Quitar de la orden"
+	}[lang]
 	return (
+		f"""<form hx-delete="/api/orders/current/{order_id}/remove-asset" """
+			f"""hx-target="#{_ID_MESSAGES}" """
+			"""hx-swap="innerHTML">"""
+
+			f"""<input type="hidden" name="{_KEY_ASSET}" value="{asset_id}">""" "\n"
+
+			"""<button type="submit" """
+				f"""class="{_CSS_CLASS_COMMON} {_CSS_CLASS_DANGER}">"""
+				f"{tl}"
+			"</button>\n"
+
+		"</form>"
+	)
+
+def write_button_delete_order(
+		lang:str,
+		order_id:str,
+		delete_item:bool=False
+	)->str:
+
+	tl={
+		_LANG_EN:"Are you sure you want to delete this order?",
+		_LANG_ES:"¿Está seguro que quiere eliminar la orden?"
+	}[lang]
+	html_text=(
+		f"""<form hx-delete="/api/orders/current/{order_id}/drop" """
+			f"""hx-target="#{_ID_MESSAGES}" """
+			"""hx-swap="innerHTML" """
+			f"""hx-confirm="{tl}" """
+			">\n"
+	)
+
+	if delete_item:
+		html_text=(
+			f"{html_text}\n"
+			f"""<input type="hidden" name="{_KEY_DELETE_ITEM}" value=true>""" "\n"
+		)
+
+	tl={
+		_LANG_EN:"Delete",
+		_LANG_ES:"Eliminar"
+	}[lang]
+	html_text=(
+			f"{html_text}\n"
+			"""<button type="submit" """
+				f"""class="{_CSS_CLASS_COMMON} {_CSS_CLASS_DANGER}" """
+				">"
+				f"{tl}"
+			"</button>\n"
+		"</form>"
+	)
+
+	return html_text
+
+
+def write_html_asset_in_order(
+		lang,order_id:str,
+		data:Mapping,
+		asset_id:Optional[str]=None,
+		full:bool=True,
+		authorized=True,
+		focus:bool=False
+	)->str:
+
+	asset_id_ok=asset_id
+	if asset_id_ok is None:
+		asset_id_ok=data.get(_KEY_ASSET)
+
+	if asset_id_ok is None:
+		return write_div_display_error(lang,data)
+
+	asset_name=data.get(_KEY_NAME)
+	if asset_name is None:
+		return write_div_display_error(lang,data)
+
+	# The info: name, value
+
+	html_text=(
+		"<div>"
+			f"""<strong>{asset_name}</strong> """
+			f"( <code>{asset_id_ok}</code> )"
+		"</div>"
+	)
+
+	asset_value=data.get(_KEY_VALUE)
+	has_value=isinstance(asset_value,int)
+	if has_value:
+		tl={
+			_LANG_EN:"Value",
+			_LANG_ES:"Valor"
+		}[lang]
+		html_text=(
+			f"{html_text}\n"
+			f"<div>{tl}: <code>{asset_value}</code></div>"
+		)
+
+	asset_mod=data.get(_KEY_RECORD_MOD)
+	has_mod=isinstance(asset_mod,int)
+	if has_mod:
+
+		tl=asset_mod
+		if has_value and (not asset_value==0):
+			tl=f"{tl} ( {asset_mod*asset_value} )"
+
+		html_text=(
+			f"{html_text}\n"
+			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
+				f"<strong>{tl}</strong>\n"
+			"</div>"
+		)
+
+	# Wrapping around all the info
+
+	html_text=(
+		f"""<div id="{html_id_order_asset(asset_id,True)}">""" "\n"
+			f"{html_text}\n"
+		"</div>\n"
+	)
+
+	# Delete button and editor form
+
+	if authorized:
+
+		html_text=(
+			f"{html_text}\n"
+			f"{write_form_update_asset_in_order(lang,order_id,asset_id)}"
+		)
+
+	if full:
+
+		classes=f"{_CSS_CLASS_COMMON}"
+		if focus:
+			classes=f"{classes} {_CSS_CLASS_FOCUSED}"
+
+		html_text=(
+			f"""<div id="{html_id_order_asset(asset_id)}" class="{classes}">""" "\n"
+				f"{html_text}\n"
+			"</div>"
+		)
+
+	return html_text
+
+def write_html_order_assets(
+		lang:str,
+		order_id:str,
+		obj_order:Mapping,
+		focus:Optional[str]=None,
+		authorized:bool=True,
+	)->str:
+
+	html_text=f"""<div id="{html_id_order(order_id,assets=True)}">"""
+
+	focus_asset=isinstance(focus,str)
+
+	if isinstance(obj_order.get(_COL_ASSETS),Mapping):
+
+		for asset_id in obj_order[_COL_ASSETS]:
+
+			focus_on_this=False
+			if focus_asset:
+				focus_on_this=(focus==asset_id)
+
+			html_text=write_html_asset_in_order(
+				lang,order_id,obj_order[_COL_ASSETS][asset_id],
+				asset_id=asset_id,authorized=authorized,
+				focus=focus_on_this
+			)+f"\n{html_text}"
+
+	html_text=(
+			f"{html_text}\n"
+		"</div>\n"
+		f"""<div id="{html_id_order(order_id,value=True)}">"""
+	)
+
+	order_value=util_valid_int(
+		obj_order.get(_KEY_ORDER_VALUE)
+	)
+	if (order_value is not None):
+		if not order_value==0:
+			tl={
+				_LANG_EN:"TOTAL VALUE",
+				_LANG_ES:"VALOR TOTAL"
+			}[lang]
+			html_text=(
+				f"{html_text}\n"
+				f"""<div class="{_CSS_CLASS_COMMON}">"""
+					f"{tl}: <strong>{order_value}</strong>"
+				"</div>"
+			)
+
+	html_text=(
+			f"{html_text}\n"
+		"</div>"
+	)
+
+	return html_text
+
+def write_html_order_info(
+		lang:str,
+		data:Mapping,
+		authorized:bool,
+		full:bool=True,
+	)->str:
+
+	order_id:Optional[str]=util_valid_str(
+		data.get(_KEY_ORDER),True
+	)
+	order_tag:Optional[str]=util_valid_str(
+		data.get(_KEY_TAG),True
+	)
+	order_date:Optional[str]=util_valid_date(
+		data.get(_KEY_DATE)
+	)
+	if (
+		(order_id is None) or
+		(order_tag is None) or
+		(order_date) is None
+	):
+		return write_div_display_error(lang,data)
+
+	html_text=(
+		f"<div><strong>{order_id}</strong></div>\n"
+		f"<div>{order_date} / {order_tag}</div>"
+	)
+
+	if authorized:
+
+		order_sign:Optional[str]=util_valid_str(
+			data.get(_KEY_SIGN),True
+		)
+		order_sign_uname:Optional[str]=util_valid_str(
+			data.get(_KEY_SIGN_UNAME),True
+		)
+
+		signed=isinstance(order_sign,str)
+		signed_uname=isinstance(order_sign_uname,str)
+		if signed or signed_uname:
+
+			tl={
+				_LANG_EN:"Signed by",
+				_LANG_ES:"Firmado por"
+			}[lang]
+			if signed_uname:
+				tl=f"{tl}: [ <code>{order_sign_uname}</code> ]"
+			if signed:
+				tl=f"{tl}: [ <code>{order_sign}</code> ]"
+
+			html_text=(
+				f"{html_text}\n"
+				f"<div>{tl}</div>"
+			)
+
+		locked_by=data.get(_KEY_LOCKED_BY)
+		if locked_by is not None:
+			# if full:
+			# 	tl={
+			# 		_LANG_EN:"LOCKED",
+			# 		_LANG_ES:"BLOQUEADA"
+			# 	}[lang]
+			# 	html_text=(
+			# 		f"{html_text}\n"
+			# 		f"<div>{tl}</div>"
+			# 	)
+
+			# if not full:
+			tl={
+				_LANG_EN:"Locked by",
+				_LANG_ES:"Bloqueada por"
+			}[lang]
+			html_text=(
+				f"{html_text}\n"
+				f"<div>{tl} <code>{locked_by}</code></div>"
+			)
+
+	order_comment:Optional[str]=util_valid_str(
+		data.get(_KEY_COMMENT)
+	)
+	if order_comment is not None:
+		html_text=(
+			f"{html_text}\n"
+			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
+				f"{order_comment}\n"
+			"</div>"
+		)
+
+	if full:
+		html_text=(
+			f"""<div id="{html_id_order(order_id,info=True)}">""" "\n"
+				f"{html_text}\n"
+			"</div>"
+		)
+
+	return html_text
+
+def write_html_order_as_item(
+		lang:str,
+		data:Mapping,
+		full:bool
+	)->str:
+
+	print("Data to render:",data)
+
+	order_id:Optional[str]=util_valid_str(
+		data.get(_KEY_ORDER),True
+	)
+	if order_id is None:
+		return write_div_display_error(lang,data)
+
+	# html_text=write_html_order_as_item(lang,data,False)
+
+	html_text=(
+		f"{write_html_order_info(lang,data,False)}\n"
+
+		f"""<div class={_CSS_CLASS_CONTROLS}>""" "\n"
+
+			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
+				f"{write_button_order_details(lang,order_id)}\n"
+			"</div>\n"
+			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
+				f"{write_button_delete_order(lang,order_id,True)}\n"
+			"</div>\n"
+
+		"</div>"
+	)
+
+	if full:
+		html_text=(
+			f"""<div id="{html_id_order(order_id)}" """
+				f"""class="{_CSS_CLASS_COMMON}" """
+				">\n"
+				f"{html_text}\n"
+			"</div>"
+		)
+
+	return html_text
+
+
+def write_html_order_details(
+		lang:str,data:Mapping,
+		authorized:bool,
+		focus:Optional[str]=None
+	)->str:
+
+	order_id:Optional[str]=util_valid_str(
+		data.get(_KEY_ORDER),True
+	)
+	if not isinstance(order_id,str):
+		return write_div_display_error(lang,data)
+
+	# Info + delete button
+
+	tl={
+		_LANG_EN:"Order assets",
+		_LANG_ES:"Activos de la orden"
+	}[lang]
+	html_text=(
+		f"""<div id={html_id_order(order_id,info=True)}>""" "\n"
+			f"<h3>{tl}</h3>\n"
+			f"{write_html_order_info(lang,data,False)}\n"
+			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
+				f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
+					f"{write_button_order_details(lang,order_id,True)}\n"
+				"</div>"
+	)
+	if authorized:
+		html_text=(
+			f"{html_text}\n"
+			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
+				f"{write_button_delete_order(lang,order_id)}\n"
+			"</div>\n"
+		)
+
+	html_text=(
 				f"{html_text}\n"
 			"</div>\n"
 		"</div>"
 	)
+
+	# Assets inside the order
+
+	html_text=(
+		f"{html_text}\n"
+		f"{write_html_order_assets(lang,order_id,data,focus)}\n"
+	)
+
+	# Run order form
+
+	if authorized:
+
+		html_text=(
+			f"{html_text}\n"
+			f"{write_form_run_order(lang,order_id)}"
+		)
+
+	return html_text

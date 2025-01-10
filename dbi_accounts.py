@@ -15,7 +15,10 @@ from motor.motor_asyncio import (
 	AsyncIOMotorCollection
 )
 
-from symbols_Any import _ERR,_ROOT_USER
+from symbols_Any import (
+	_ERR,
+	_ROOT_USER,_ROOT_USER_ID
+)
 
 from internals import (
 	util_hash_sha256,util_rnow
@@ -50,6 +53,19 @@ _SQL_COL_AKEY="AccessKey"
 _SQL_COL_SID="SessionID"
 
 # UserID + Username caching
+
+# def util_userid_to_backend(userid:str)->str:
+
+# 	if userid.startswith("0x"):
+# 		return _ROOT_USER_ID
+
+# 	return userid
+
+# def util_userid_from_backend(userid:str,userid_root:str)->str:
+# 	if userid.startswith("0x"):
+# 		return userid_root
+
+# 	return userid
 
 def ldbi_print_table(basedir:Path,table:str):
 	try:
@@ -96,7 +112,7 @@ def ldbi_init_users(basedir:Path,root_id:str)->Optional[str]:
 			");\n"
 
 			f"INSERT INTO {_SQL_TABLE_USERS} "
-				f"""VALUES ("{root_id}","{_ROOT_USER}");"""
+				f"""VALUES ("{_ROOT_USER_ID}","{_ROOT_USER}");"""
 		)
 
 		con.commit()
@@ -192,16 +208,26 @@ def ldbi_get_userid(
 				f"FROM {_SQL_TABLE_USERS} "
 				f"""WHERE {_SQL_COL_USERNAME}="{username}";"""
 		)
-		result=cur.fetchone()[0]
+		result_row=cur.fetchone()
 		con.commit()
 		cur.close()
 		con.close()
+		if result_row is not None:
+			print(result_row,type(result_row))
+			result=result_row[0]
+
 	except Exception as exc:
 		return (_ERR,f"{exc}")
 
-	print(
-		username,"-->",result
-	)
+	if result is None:
+		return (
+			_ERR,
+			"The requested user does not exist"
+		)
+
+	# print(
+	# 	username,"-->",result
+	# )
 
 	return (_KEY_USERID,result)
 
@@ -224,15 +250,28 @@ def ldbi_get_username(
 				f"FROM {_SQL_TABLE_USERS} "
 				f"""WHERE {_SQL_COL_USERID}="{userid}";"""
 		)
-		result=cur.fetchone()[0]
+		result_row=cur.fetchone()
 		cur.close()
 		con.close()
+		if result_row is not None:
+			print(
+				"GetUsernameResult:",
+				result_row
+			)
+			result=result_row[0]
+
 	except Exception as exc:
 		return (_ERR,f"{exc}")
 
-	print(
-		userid,"<--",result
-	)
+	if result is None:
+		return (
+			_ERR,
+			"The requested user does not exist"
+		)
+
+	# print(
+	# 	userid,"<--",result
+	# )
 
 	return (_KEY_USERNAME,result)
 

@@ -16,8 +16,10 @@ from aiohttp.web import (
 from yarl import URL as yarl_URL
 
 from frontend_Any import (
+
 	_STYLE_CUSTOM,_STYLE_POPUP_CONTENTS,
 	_CSS_CLASS_TITLE_UNIQUE,
+
 	write_popupmsg,
 	write_fullpage,
 	write_button_anchor,
@@ -54,8 +56,10 @@ from symbols_Any import (
 	_REQ_USERID,_REQ_ACCESS_KEY,_REQ_CLIENT_TYPE,
 	_REQ_HAS_SESSION,_REQ_LANGUAGE,
 
-	_CFG_FLAGS,_CFG_FLAG_ROOT_LOCAL_AUTOLOGIN,
+	_CFG_FLAGS,
+	_CFG_FLAG_ROOT_LOCAL_AUTOLOGIN,
 
+	_KEY_SIGN,_KEY_SIGN_UNAME
 )
 
 from dbi_accounts import (
@@ -87,11 +91,63 @@ _ERR_DETAIL_DBI_FAIL={
 	_LANG_ES:"La operación falló o devolvió un resultado negativo"
 }
 
+# Utilities
+
 def get_lang(ct:str,request:Request)->str:
 	if ct==_TYPE_CUSTOM:
 		return _LANG_EN
 
 	return request.app[_APP_LANG]
+
+async def get_username(
+		request:Request,
+		explode:bool=True,
+		userid:Optional[str]=None
+	)->Optional[str]:
+
+	userid_ok=userid
+	if userid_ok is None:
+		userid_ok=request[_REQ_USERID]
+
+	result=await async_run(
+		ldbi_get_username,
+		request.app[_APP_PROGRAMDIR],
+		userid_ok
+	)
+
+	if result[0]==_ERR:
+		err_msg=(
+			f"Failed to get username from ID {userid_ok}\n"
+			f"{result[1]}"
+		)
+		if explode:
+			raise HTTPNotAcceptable(body=err_msg)
+
+		if not explode:
+			print(err_msg)
+			return None
+
+	return result[1]
+
+async def util_patch_doc_with_username(
+		the_req:Request,
+		the_document:Mapping
+	)->bool:
+
+	doc_sign=the_document.get(_KEY_SIGN)
+	if not isinstance(doc_sign,str):
+		return False
+
+	doc_sign_uname=await get_username(
+		the_req,explode=False,
+		userid=doc_sign
+	)
+	if not isinstance(doc_sign_uname,str):
+		return False
+
+	the_document.update({_KEY_SIGN_UNAME:doc_sign_uname})
+
+	return True
 
 def get_client_type(request:Request)->Optional[str]:
 
@@ -147,32 +203,6 @@ def is_root_local_autologin_allowed(request:Request)->bool:
 
 	return True
 
-async def get_username(
-		request:Request,
-		explode:bool=True
-	)->Optional[str]:
-
-	userid=request[_REQ_USERID]
-	result=await async_run(
-		ldbi_get_username,
-		request.app[_APP_PROGRAMDIR],
-		userid
-	)
-
-	if result[0]==_ERR:
-		err_msg=(
-			f"Failed to get username from ID {userid}\n"
-			f"{result[1]}"
-		)
-		if explode:
-			raise HTTPNotAcceptable(body=err_msg)
-
-		if not explode:
-			print(err_msg)
-			return None
-
-	return result[1]
-
 async def get_request_body_dict(
 		client_type:str,
 		request:Request
@@ -207,6 +237,8 @@ async def get_request_body_dict(
 		return request_data
 
 	return None
+
+# Responses
 
 def response_generic(
 		client_type:str,
@@ -408,16 +440,23 @@ async def the_middleware_factory(app,handler):
 			request.path.startswith("/api/accounts/") or
 			request.path.startswith("/fgmt/accounts/")
 		)
+		url_is_assets=(
+			request.path.startswith("/api/assets/") or
+			request.path.startswith("/fgmt/assets/")
+		)
+		url_is_orders=(
+			request.path.startswith("/api/orders/") or
+			request.path.startswith("/fgmt/orders/")
+		)
 
 		# The following routes will require user authentication
 		needs_session_checkin=(
 			url_is_page or
 			url_is_admin or
 			url_is_account or
-			request.path=="/fgmt/assets/new" or
-			request.path=="/api/assets/new" or
-			# request.path=="/fgmt/assets/search-assets" or
-			# request.path=="/api/assets/search-assets" or
+			url_is_assets or
+			url_is_orders or
+
 			request.path=="/api/assets/change-metadata" or
 			request.path=="/api/assets/drop" or
 			request.path.startswith("/fgmt/assets/panel/") or
@@ -476,12 +515,15 @@ async def the_middleware_factory(app,handler):
 
 			# The following routes despite asking for a session will return
 			# "partial" content to unauthenticated users instead of denying it
-			lax_treatment=(
+
+			allowed=(
+				request.path.startswith("/fgmt/assets/search-assets") or
+				request.path.startswith("/api/assets/search-assets") or
 				request.path.startswith("/fgmt/assets/panel/") or
 				request.path.startswith("/fgmt/assets/history/")
 			)
 
-			if not lax_treatment:
+			if not allowed:
 
 				if not url_is_account:
 					if (not url_is_page) and (not has_session):

@@ -14,25 +14,6 @@ from aiohttp.web import (
 
 from motor.motor_asyncio import AsyncIOMotorClient
 
-from symbols_Any import (
-
-	# _ROOT_USER,
-
-	_APP_LANG,_LANG_EN,_LANG_ES,
-
-	_APP_CACHE_ASSETS,_APP_PROGRAMDIR,_APP_ROOT_USERID,
-	_APP_RDBC,_APP_RDBN,
-
-	_CFG_PORT,_CFG_LANG,_CFG_DB_NAME,_CFG_DB_URL,_CFG_FLAGS,
-
-	# _CFG_FLAG_ROOT_LOCAL_AUTOLOGIN,
-	# _CFG_FLAG_PUB_READ_ACCESS_TO_HISTORY,
-	# _CFG_FLAG_PUB_READ_ACCESS_TO_ORDERS,
-	# _CFG_FLAG_PVT_READ_ACCESS_TO_ASSETS,
-
-	_CFG_PORT_MIN,_CFG_PORT_MAX
-)
-
 from control_Any import (
 	the_middleware_factory,
 	route_src,
@@ -58,7 +39,6 @@ from control_admin import (
 )
 
 from control_assets import (
-	_ROUTE_PAGE as _ROUTE_PAGE_ASSETS,
 	route_main as route_Assets,
 	route_api_select_asset as route_Assets_api_GetAsset,
 	route_fgmt_asset_panel as route_Assets_fgmt_AssetPanel,
@@ -66,19 +46,19 @@ from control_assets import (
 	route_api_new_asset as route_Assets_api_NewAsset,
 	route_api_asset_change_metadata as route_Assets_api_ChangeMetadata,
 	route_fgmt_search_assets as route_Assets_fgmt_SearchAssets,
-	route_api_search_assets as route_Assets_api_SearchAssets,
 	route_api_drop_asset as route_Assets_api_DropAsset,
 	route_api_add_record as route_Assets_api_AddRecord,
 	route_api_get_record as route_Assets_api_GetRecord,
 	util_update_known_assets as init_assets_cache
 )
 
+from control_assets_search import route_api_search_assets as route_Assets_api_SearchAssets
+
 from control_orders import (
-	_ROUTE_PAGE as _ROUTE_PAGE_ORDERS,
 	route_main as route_Orders,
 	route_fgmt_new_order as route_Orders_fgmt_NewOrder,
 	route_fgmt_list_orders as route_Orders_fgmt_ListOrders,
-	route_fgmt_order_editor as route_Order_fgmt_Editor,
+	route_fgmt_order_details as route_Order_fgmt_Details,
 	route_api_new_order as route_Orders_api_NewOrder,
 	route_api_delete_order as route_Orders_api_DeleteOrder,
 	route_api_update_asset_in_order as route_Orders_api_UpdateAsset,
@@ -98,6 +78,29 @@ from internals import (
 	util_valid_int_inrange,
 	util_valid_str,
 	util_valid_list,
+)
+
+from symbols_assets import _ROUTE_PAGE as _ROUTE_PAGE_ASSETS
+
+from symbols_orders import _ROUTE_PAGE as _ROUTE_PAGE_ORDERS
+
+from symbols_Any import (
+
+	# _ROOT_USER,
+
+	_APP_LANG,_LANG_EN,_LANG_ES,
+
+	_APP_CACHE_ASSETS,_APP_PROGRAMDIR,_APP_ROOT_USERID,
+	_APP_RDBC,_APP_RDBN,
+
+	_CFG_PORT,_CFG_LANG,_CFG_DB_NAME,_CFG_DB_URL,_CFG_FLAGS,
+
+	# _CFG_FLAG_ROOT_LOCAL_AUTOLOGIN,
+	# _CFG_FLAG_PUB_READ_ACCESS_TO_HISTORY,
+	# _CFG_FLAG_PUB_READ_ACCESS_TO_ORDERS,
+	# _CFG_FLAG_PVT_READ_ACCESS_TO_ASSETS,
+
+	_CFG_PORT_MIN,_CFG_PORT_MAX
 )
 
 def read_config(path_config:Path)->dict:
@@ -350,7 +353,7 @@ def build_app(
 				route_Assets_api_AddRecord
 			),
 				web_GET(
-					"/api/assets/history/{asset_id}/records/{record_uid}",
+					"/api/assets/history/{asset_id}/records/{record_id}",
 					route_Assets_api_GetRecord
 				),
 
@@ -371,7 +374,7 @@ def build_app(
 				),
 
 			web_GET(
-				"/fgmt/orders/current",
+				"/fgmt/orders/list-orders",
 				route_Orders_fgmt_ListOrders
 			),
 
@@ -385,15 +388,19 @@ def build_app(
 				),
 
 			web_GET(
-				"/fgmt/orders/current/{order_id}/editor",
-				route_Order_fgmt_Editor
+				"/fgmt/orders/current/{order_id}/details",
+				route_Order_fgmt_Details
 			),
 			web_POST(
-				"/api/orders/current/{order_id}/update",
+				"/api/orders/current/{order_id}/add-asset",
+				route_Orders_api_UpdateAsset
+			),
+			web_POST(
+				"/api/orders/current/{order_id}/update-asset",
 				route_Orders_api_UpdateAsset
 			),
 			web_DELETE(
-				"/api/orders/current/{order_id}/update",
+				"/api/orders/current/{order_id}/remove-asset",
 				route_Orders_api_RemoveAsset
 			),
 			web_POST(
@@ -404,11 +411,6 @@ def build_app(
 				"/api/orders/current/{order_id}/drop",
 				route_Orders_api_DeleteOrder
 			),
-			web_DELETE(
-				"/api/orders/current/{order_id}/drop-fol",
-				route_Orders_api_DeleteOrder
-			),
-
 	])
 
 	app.on_startup.append(init_assets_cache)

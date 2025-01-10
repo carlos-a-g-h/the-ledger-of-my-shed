@@ -258,6 +258,34 @@ def util_valid_int(
 
 	return int(data)
 
+def util_valid_int_ext(
+		data:Optional[Union[str,int]],
+		fallback:Optional[int]=None,
+		minimum:Optional[bool]=None,
+		maximum:Optional[bool]=None,
+	)->Optional[int]:
+
+	value=util_valid_int(data)
+	if not isinstance(value,int):
+		return fallback
+
+	chk_min=isinstance(minimum,int)
+	chk_max=isinstance(maximum,int)
+
+	if chk_max and chk_min:
+		if value in range(chk_min,chk_max+1):
+			return value
+
+	if chk_max and (not chk_min):
+		if value<chk_max+1:
+			return value
+
+	if (not chk_max) and chk_min:
+		if value>chk_min:
+			return value
+
+	return fallback
+
 def util_valid_bool(
 		data:Union[Optional[str],bool],
 		dval:Optional[bool]=None

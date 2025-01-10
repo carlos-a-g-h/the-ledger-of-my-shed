@@ -1,3 +1,9 @@
+#section-user,#navigation,
+#main,#main-1,#main-2,
+#messages {
+  margin-top:16px;
+}
+
 a.common,
 button.common,
 button.popup-button,
@@ -104,6 +110,11 @@ div.common {border:1px solid black;}
 label.common,
 textarea.common {display:block;}
 
+div.focused {
+  border-color: #0074E8;
+  border-width: 4px
+}
+
 div.horizontal {
   display:inline-block;
   margin-right:16px;
@@ -114,8 +125,19 @@ div.popup-content {
   text-align:center;
 }
 
-@media screen and (orientation: portrait) and (max-width: 50vmin){
-  div.controls {
-    text-align:right
+div.content {flex-grow:1;width:100%;padding:8px}
+
+@media screen and (orientation: portrait) {
+  section.container {
+    display:flex;
+    flex-direction: column;
+  }
+  div.content {margin-bottom:16px;}
+}
+
+@media screen and (orientation: landscape) {
+  section.container {
+    display:flex;
+    flex-direction: row;
   }
 }

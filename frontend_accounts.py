@@ -14,6 +14,9 @@ from frontend_Any import (
 	write_button_anchor
 )
 
+_ID_FORM_LOGIN="form-login"
+_ID_USER_SECTION="section-user"
+
 def write_link_account(lang:str,return_there:bool=False)->str:
 
 	return write_button_anchor(
@@ -61,17 +64,20 @@ def write_form_login(lang:str,full:bool=True)->str:
 	html_text=(
 		f"{html_text}\n"
 		f"<div>{tl}</div>\n"
+
 		"<div>\n"
-			f"""<input id=vm-email name="{_KEY_VM}" type=radio value="{_KEY_EMAIL}" checked>""" "\n"
-			"""<label for="vm-email">E-Mail</label>""" "\n"
-		"</div>"
-		"<div>\n"
-			f"""<input id=vm-telegram name="{_KEY_VM}" type=radio value="{_KEY_TELEGRAM}">""" "\n"
-			"""<label for="vm-telegram">Telegram</label>""" "\n"
-		"</div>\n"
-		"<div>\n"
-			f"""<input id=vm-none name="{_KEY_VM}" type=radio value="">""" "\n"
-			"""<label for="vm-none">Backend/Local</label>""" "\n"
+			"<div>\n"
+				f"""<input id=vm-email name="{_KEY_VM}" type=radio value="{_KEY_EMAIL}" checked>""" "\n"
+				"""<label for="vm-email">E-Mail</label>""" "\n"
+			"</div>"
+			"<div>\n"
+				f"""<input id=vm-telegram name="{_KEY_VM}" type=radio value="{_KEY_TELEGRAM}">""" "\n"
+				"""<label for="vm-telegram">Telegram</label>""" "\n"
+			"</div>\n"
+			"<div>\n"
+				f"""<input id=vm-none name="{_KEY_VM}" type=radio value="">""" "\n"
+				"""<label for="vm-none">Backend/Local</label>""" "\n"
+			"</div>"
 		"</div>"
 	)
 
@@ -92,30 +98,12 @@ def write_form_login(lang:str,full:bool=True)->str:
 		}[lang]
 		html_text=(
 			f"<h3>{tl}</h3>\n"
-			f"""<div id="session-login">""" "\n"
+			f"""<div id="{_ID_FORM_LOGIN}">""" "\n"
 				f"{html_text}\n"
 			"</div>"
 		)
 
 	return html_text
-
-def write_button_login_magical(
-		lang:str,
-	)->str:
-
-	tl={
-		_LANG_EN:"Local login",
-		_LANG_ES:"Inicio de sesión local"
-	}[lang]
-
-	return (
-		"""<form method="POST" """
-			"""action="/api/accounts/login-magical" """
-			">"
-			f"""<button class="{_CSS_CLASS_COMMON}" type=submit>{tl}</button>"""
-		"</form>"
-	)
-
 
 def write_form_otp(
 		lang:str,
@@ -211,17 +199,24 @@ def write_form_otp(
 
 	return html_text
 
-# def write_button_session_test(lang:str)->str:
+def write_button_login_magical(lang:str)->str:
 
-# 	# Sends: GET /api/accounts/debug
+	# WARNING: This is dangerous
+	# NOTE: Available only at the server machine and by enabling the local root autologin flag
 
-# 	tl={
-# 		_LANG_EN:"",
-# 		_LANG_ES:""
-# 	}[lang]
+	tl={
+		_LANG_EN:"Start local session",
+		_LANG_ES:"Iniciar sesión local"
+	}[lang]
 
+	return (
+		"""<form method="POST" """
+			"""action="/api/accounts/login-magical" """
+			">\n"
+			f"""<button class="{_CSS_CLASS_COMMON}" type=submit>{tl}</button>""" "\n"
+		"</form>"
+	)
 
-# def write_button_logout(lang:str,username:str)->str:
 def write_button_logout(lang:str)->str:
 
 	# Sends: DELETE /api/accounts/logout {username:String}
@@ -253,7 +248,8 @@ def write_button_logout(lang:str)->str:
 	return html_text
 
 def write_html_user_section(
-		lang:str,username:Optional[str]=None,
+		lang:str,
+		username:Optional[str]=None,
 		full:bool=True
 	)->str:
 
@@ -286,7 +282,7 @@ def write_html_user_section(
 
 	if full:
 		html_text=(
-			"""<section id="user-section">""" "\n"
+			f"""<section id="{_ID_USER_SECTION}">""" "\n"
 				f"{html_text}\n"
 			"""</section>"""
 		)
