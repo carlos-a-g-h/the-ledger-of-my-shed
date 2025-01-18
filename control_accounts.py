@@ -11,6 +11,7 @@ from aiohttp.web import (
 	Response,json_response,
 	HTTPFound
 )
+from yarl import URL as Yurl
 
 from control_Any import (
 
@@ -18,7 +19,7 @@ from control_Any import (
 
 	assert_referer,
 	get_client_type,
-	get_username,
+	# get_username,
 	get_request_body_dict,
 	response_errormsg,
 	response_popupmsg,
@@ -43,27 +44,35 @@ from dbi_accounts import (
 
 from frontend_Any import (
 
-	_ID_MAIN,_ID_MESSAGES,
+	_ID_MESSAGES,
+	_ID_MAIN,
+	_ID_NAV_ONE,
+	_ID_NAV_TWO,
+	# _CSS_CLASS_NAV,
 	# _ID_NAVIGATION,
 
 	_CSS_CLASS_COMMON,
 	_SCRIPT_HTMX,_STYLE_CUSTOM,_STYLE_POPUP,
 
+	write_ul,
+	write_button_anchor,
+	write_html_nav_pages,
 	write_fullpage,
 	write_popupmsg,
-	write_link_homepage
 )
 
 from frontend_accounts import (
 
 	# _ID_FORM_LOGIN,
-	_ID_USER_SECTION,
+	_ID_USER_ACCOUNT,
 
 	write_form_login,
 	write_form_otp,
-	write_link_account,
-	write_button_login_magical,
-	write_html_user_section,
+	# write_link_account,
+	# write_button_anchor,
+	# write_button_login_magical,
+	write_button_login,
+	render_html_user_section,
 )
 
 from internals import (
@@ -78,6 +87,8 @@ from symbols_Any import (
 
 	_COOKIE_AKEY,_COOKIE_USER,
 	_REQ_LANGUAGE,_LANG_EN,_LANG_ES,
+
+	_HEADER_REFERER,
 
 	_REQ_CLIENT_TYPE,_TYPE_CUSTOM,_TYPE_BROWSER,
 	_REQ_USERID,
@@ -106,18 +117,51 @@ _ERR_TITLE_LOGOUT={
 	_LANG_ES:"Error al cerrar sesión"
 }
 
+def util_get_correct_referer(request:Request)->str:
+
+	the_referer_raw=request.headers.get(_HEADER_REFERER)
+	the_referer:Optional[Yurl]=None
+	try:
+		the_referer=Yurl(the_referer_raw).path
+	except Exception as exc:
+		print(f"{exc}")
+		return _ROUTE_PAGE
+
+	if not isinstance(the_referer,str):
+		return _ROUTE_PAGE
+
+	if not the_referer.startswith("/page/"):
+		return _ROUTE_PAGE
+
+	return the_referer
+
+def util_write_return(
+		lang:str,
+		prev_page:str
+	)->str:
+
+	return write_button_anchor(
+		{
+			_LANG_EN:"Return",
+			_LANG_ES:"Volver"
+		}[lang],
+		prev_page
+	)
+
 async def route_fgmt_login(request:Request)->Union[json_response,Response]:
 
 	# GET /fgmt/accounts/login
 
+	if not request[_REQ_CLIENT_TYPE]==_TYPE_BROWSER:
+		return Response(406)
+
 	lang=request[_REQ_LANGUAGE]
 
 	if request[_REQ_HAS_SESSION]:
-		return response_popupmsg(
-			"<h2>"+{
-				_LANG_EN:"You are already logged in",
-				_LANG_ES:"Ya estás conectado"
-			}[lang]+"</h2>"
+		return response_errormsg(
+			_ERR_TITLE_LOGIN[lang],
+			_ERR_DETAIL_ALREADY_LOGGED_IN[lang],
+			_TYPE_BROWSER
 		)
 
 	return Response(
@@ -134,6 +178,8 @@ async def route_api_login(request:Request)->Union[json_response,Response]:
 	# POST /api/accounts/login {username:String,vmethod:String}
 
 	ct=request[_REQ_CLIENT_TYPE]
+	if not ct==_TYPE_BROWSER:
+		return Response(status=406)
 
 	lang=request[_REQ_LANGUAGE]
 
@@ -332,12 +378,12 @@ async def route_api_login_otp(request:Request)->Union[json_response,Response]:
 	# NOTE: The response is an entire page (cookie must be delivered)
 
 	ct=request[_REQ_CLIENT_TYPE]
-	if not assert_referer(ct,request,_ROUTE_PAGE):
+	if not ct==_TYPE_BROWSER:
 		return Response(status=406)
-	if ct==_TYPE_CUSTOM:
-		return json_response(data={})
 
 	lang=request[_REQ_LANGUAGE]
+
+	the_referer=util_get_correct_referer(request)
 
 	if request[_REQ_HAS_SESSION]:
 		return response_fullpage(
@@ -345,7 +391,7 @@ async def route_api_login_otp(request:Request)->Union[json_response,Response]:
 			_ERR_TITLE_LOGIN[lang],
 			(
 				f"<p>{_ERR_DETAIL_ALREADY_LOGGED_IN[lang]}</p>\n"
-				f"<p>{write_link_account(lang,True)}</p>"
+				f"<p>{util_write_return(lang,the_referer)}</p>"
 			)
 		)
 
@@ -356,7 +402,7 @@ async def route_api_login_otp(request:Request)->Union[json_response,Response]:
 			_ERR_TITLE_LOGIN[lang],
 			(
 				f"<p>{_ERR_DETAIL_DATA_NOT_VALID[lang]}</p>\n"
-				f"<p>{write_link_account(lang,True)}</p>"
+				f"<p>{util_write_return(lang,the_referer)}</p>"
 			)
 		)
 
@@ -375,7 +421,7 @@ async def route_api_login_otp(request:Request)->Union[json_response,Response]:
 			_ERR_TITLE_LOGIN[lang],
 			(
 				f"<p>{tl}</p>\n"
-				f"<p>{write_link_account(lang,True)}</p>"
+				f"<p>{util_write_return(lang,the_referer)}</p>"
 			)
 		)
 
@@ -393,7 +439,7 @@ async def route_api_login_otp(request:Request)->Union[json_response,Response]:
 			_ERR_TITLE_LOGIN[lang],
 			(
 				f"<p>{tl}</p>\n"
-				f"<p>{write_link_account(lang,True)}</p>"
+				f"<p>{util_write_return(lang,the_referer)}</p>"
 			)
 		)
 
@@ -416,7 +462,7 @@ async def route_api_login_otp(request:Request)->Union[json_response,Response]:
 			_ERR_TITLE_LOGIN[lang],
 			(
 				f"<p>{tl}<br>{res_get_userid[1]}</p>\n"
-				f"<p>{write_link_account(lang,True)}</p>"
+				f"<p>{util_write_return(lang,the_referer)}</p>"
 			)
 		)
 
@@ -437,7 +483,7 @@ async def route_api_login_otp(request:Request)->Union[json_response,Response]:
 			_ERR_TITLE_LOGIN[lang],
 			(
 				f"<p>{tl}: {session_candidate[1]}</p>\n"
-				f"<p>{write_link_account(lang,True)}</p>"
+				f"<p>{util_write_return(lang,the_referer)}</p>"
 			)
 		)
 
@@ -459,7 +505,7 @@ async def route_api_login_otp(request:Request)->Union[json_response,Response]:
 			_ERR_TITLE_LOGIN[lang],
 			(
 				f"<p>{tl}</p>\n"
-				f"<p>{write_link_account(lang,True)}</p>"
+				f"<p>{util_write_return(lang,the_referer)}</p>"
 			)
 		)
 
@@ -474,7 +520,7 @@ async def route_api_login_otp(request:Request)->Union[json_response,Response]:
 			_ERR_TITLE_LOGIN[lang],
 			(
 				f"<p>{tl}</p>\n"
-				f"<p>{write_link_account(lang,True)}</p>"
+				f"<p>{util_write_return(lang,the_referer)}</p>"
 			)
 		)
 
@@ -497,13 +543,13 @@ async def route_api_login_otp(request:Request)->Union[json_response,Response]:
 			_ERR_TITLE_LOGIN[lang],
 			(
 				f"<p>{tl}: {error_msg}<br>UID: {userid}</p>"
-				f"<p>{write_link_account(lang,True)}</p>"
+				f"<p>{util_write_return(lang,the_referer)}</p>"
 			)
 		)
 
-	the_redirect=HTTPFound(location=_ROUTE_PAGE)
-
 	# TODO: improve cookie security
+
+	the_redirect=HTTPFound(location=the_referer)
 	the_redirect.set_cookie(_COOKIE_AKEY,access_key)
 	the_redirect.set_cookie(_COOKIE_USER,userid)
 
@@ -514,16 +560,18 @@ async def route_api_login_magical(request:Request)->Union[json_response,Response
 	# POST: /api/accounts/login-magical
 	# NOTE: The response is an entire page (cookie must be delivered)
 
-	if get_client_type(request)==_TYPE_CUSTOM:
-		return json_response(data={})
+	# if not request[_REQ_CLIENT_TYPE]==_TYPE_BROWSER:
+	# 	return Response(status=406)
 
 	ct=request[_REQ_CLIENT_TYPE]
-	if not assert_referer(ct,request,_ROUTE_PAGE):
-		return Response(status=406)
+	# if not assert_referer(ct,request,_ROUTE_PAGE):
+	# 	return Response(status=406)
 	if ct==_TYPE_CUSTOM:
 		return json_response(data={})
 
 	lang=request[_REQ_LANGUAGE]
+
+	the_referer=util_get_correct_referer(request)
 
 	if request[_REQ_HAS_SESSION]:
 		tl={
@@ -535,7 +583,7 @@ async def route_api_login_magical(request:Request)->Union[json_response,Response
 			_ERR_TITLE_LOGIN[lang],
 			(
 				f"<p>{tl}</p>\n"
-				f"<p>{write_link_account(lang,True)}</p>"
+				f"<p>{util_write_return(lang,the_referer)}</p>"
 			)
 		)
 
@@ -549,7 +597,7 @@ async def route_api_login_magical(request:Request)->Union[json_response,Response
 			_ERR_TITLE_LOGIN[lang],
 			(
 				f"<p>{tl}</p>\n"
-				f"<p>{write_link_account(lang,True)}</p>"
+				f"<p>{util_write_return(lang,the_referer)}</p>"
 			)
 		)
 
@@ -563,7 +611,7 @@ async def route_api_login_magical(request:Request)->Union[json_response,Response
 			_ERR_TITLE_LOGIN[lang],
 			(
 				f"<p>{tl}</p>\n"
-				f"<p>{write_link_account(lang,True)}</p>"
+				f"<p>{util_write_return(lang,the_referer)}</p>"
 			)
 		)
 
@@ -590,13 +638,16 @@ async def route_api_login_magical(request:Request)->Union[json_response,Response
 			_ERR_TITLE_LOGIN[lang],
 			(
 				f"<p>{tl}<br>{error_msg}</p>\n"
-				f"<p>{write_link_account(lang,True)}</p>"
+				f"<p>{util_write_return(lang,the_referer)}</p>"
 			)
 		)
 
-	print("ROOT AUTOLOGIN PERFORMED")
+	print(
+		"ROOT AUTOLOGIN PERFORMED, returning to",
+		the_referer
+	)
 
-	the_redirect=HTTPFound(location=_ROUTE_PAGE)
+	the_redirect=HTTPFound(location=the_referer)
 	the_redirect.set_cookie(_COOKIE_AKEY,access_key)
 	the_redirect.set_cookie(_COOKIE_USER,_ROOT_USER_ID)
 
@@ -616,6 +667,8 @@ async def route_api_logout(request:Request)->Union[json_response,Response]:
 	has_session=request[_REQ_HAS_SESSION]
 
 	if (not has_session) or (userid is None):
+		print("userid",userid)
+		print("has session?",has_session)
 		return response_errormsg(
 			_ERR_TITLE_LOGOUT[lang],
 			{
@@ -644,29 +697,11 @@ async def route_api_logout(request:Request)->Union[json_response,Response]:
 			_TYPE_BROWSER
 		)
 
-	res_get_uname=await async_run(
-		ldbi_get_username,
-		path_program,userid
-	)
-	if res_get_uname[0]==_ERR:
-		return response_errormsg(
-			_ERR_TITLE_LOGOUT[lang],
-			{
-				_LANG_EN:"Details",
-				_LANG_ES:"Detalles"
-			}[lang]+f": {res_get_uname[1]}",
-			_TYPE_BROWSER
-		)
-
-	tl={
-		_LANG_EN:f"{res_get_uname[1]} was here...",
-		_LANG_ES:f"{res_get_uname[1]} estuvo aquí..."
-	}[lang]
-
 	html_text=(
-		f"""<section hx-swap-oob="innerHTML:#{_ID_USER_SECTION}">""" "\n"
-			f"""<div class="{_CSS_CLASS_COMMON}"><strong>{tl}</strong></div>""" "\n"
-		"</section>"
+		f"""<div hx-swap-oob="innerHTML:#{_ID_USER_ACCOUNT}">""" "\n"
+			f"{write_button_login(lang)}\n"
+			# f"""<div class="{_CSS_CLASS_COMMON}"><strong>{tl}</strong></div>""" "\n"
+		"</div>"
 	)
 
 	html_text=f"{html_text}\n\n"+write_popupmsg(
@@ -684,67 +719,33 @@ async def route_api_logout(request:Request)->Union[json_response,Response]:
 async def route_main(request:Request)->Union[json_response,Response]:
 
 	lang=request[_REQ_LANGUAGE]
-	username=await get_username(request,False)
-
-	print("USERNAME??:",username)
+	userid=request[_REQ_USERID]
 
 	tl_title={
 		_LANG_EN:"User account",
 		_LANG_ES:"Cuenta de usuario"
 	}[lang]
 
-	tl={
-		_LANG_EN:"Log in, log out, etc...",
-		_LANG_ES:"Iniciar sesión, cerrar sesión, etc..."
-	}[lang]
+	tl=await render_html_user_section(request,lang,userid)
 
 	html_text=(
-		f"<h1>{tl_title}</h1>\n"
-		f"<h3>{tl}</h3>"
-		f"{write_link_homepage(lang)}\n"
-		f"{write_html_user_section(lang,username=username)}"
-	)
-
-	# main section start
-	html_text=(
-		f"{html_text}\n"
-		f"""<section id="{_ID_MAIN}">"""
-	)
-
-	# Show login form
-
-	if username is None:
-
-		magical_login=is_root_local_autologin_allowed(request)
-
-		# Standard login form
-
-		if not magical_login:
-			html_text=(
-				f"{html_text}\n"
-				f"{write_form_login(lang)}"
-			)
-
-		# "Magical" login button
-
-		if magical_login:
-			html_text=(
-				f"{html_text}\n"
-				f"{write_button_login_magical(lang)}"
-			)
-
-	# main section end
-	html_text=(
-			f"{html_text}\n"
-		"""</section>"""
-	)
-
-	# messages section
-	html_text=(
-		f"{html_text}\n"
 		f"""<section id="{_ID_MESSAGES}">""" "\n"
 			"<!-- MESSAGES GO HERE -->\n"
+		"</section>\n"
+
+		f"""<section id="{_ID_NAV_ONE}">""" "\n"
+			f"<div>SHLED / {tl_title}</div>\n"
+			f"{write_html_nav_pages(lang,2)}\n"
+		"</section>\n"
+
+		f"""<section id="{_ID_NAV_TWO}">""" "\n"
+			f"{tl}\n"
+		"</section>\n"
+
+		f"""<section id="{_ID_MAIN}">""" "\n"
+			"<!-- EMPTY AT THE MOMENT -->\n"
 		"</section>"
+
 	)
 
 	return Response(

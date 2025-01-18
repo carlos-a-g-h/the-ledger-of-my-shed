@@ -46,16 +46,28 @@ from dbi_assets import (
 
 from frontend_Any import (
 
-	_ID_NAVIGATION,_ID_MAIN,_ID_MESSAGES,
+	# _ID_NAVIGATION,
+	_ID_NAV_ONE,_ID_NAV_TWO,
+	_ID_MAIN,
+	_ID_MAIN_ONE,
+	_ID_MAIN_TWO,
+	_ID_MESSAGES,
 
-	_SCRIPT_HTMX,_STYLE_CUSTOM,_STYLE_POPUP,
+	_ID_NAV_TWO_OPTS,
+
+	_SCRIPT_HTMX,
+	_STYLE_CUSTOM,
+	_STYLE_POPUP,
+
 	# _CSS_CLASS_COMMON,
+	# _CSS_CLASS_CONTAINER,
+	# _CSS_CLASS_CONTENT,
+	_CSS_CLASS_NAV,
 
 	write_fullpage,write_popupmsg,
-	write_link_homepage,write_ul
+	write_ul,
+	write_html_nav_pages
 )
-
-from frontend_accounts import write_html_user_section
 
 from frontend_assets_search import write_form_search_assets
 
@@ -70,13 +82,16 @@ from frontend_assets import (
 	write_form_new_asset,
 	write_html_asset_info,
 	write_html_asset_as_item,
-	write_html_asset_as_panel,
+	write_html_asset_details,
+	write_html_asset_history,
 	write_form_edit_asset_metadata,
 
 	write_form_add_record,
 	write_html_record,
 	write_html_record_detailed,
 )
+
+from frontend_accounts import render_html_user_section
 
 from internals import (
 	util_valid_bool,
@@ -206,7 +221,7 @@ async def route_fgmt_new_asset(
 	)->Union[json_response,Response]:
 
 	# /fgmt/assets/new
-	# hx-target: #main
+	# hx-target: #messages
 
 	if not assert_referer(
 		_TYPE_BROWSER,request,
@@ -218,11 +233,15 @@ async def route_fgmt_new_asset(
 
 	return Response(
 		body=(
-			f"{write_form_new_asset(lang)}\n"
+			"<!-- ORDER CREATION FORM-->"
 
-			f"""<section hx-swap-oob="innerHTML:#{_ID_NAVIGATION}">""" "\n"
-				f"{write_ul([write_button_nav_search_assets(lang)])}\n"
-			"</section>"
+			f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
+				f"{write_form_new_asset(lang)}\n"
+			"</section>\n"
+
+			f"""<ul hx-swap-oob="innerHTML:#{_ID_NAV_TWO_OPTS}">""" "\n"
+				f"{write_ul([write_button_nav_search_assets(lang)],full=False)}\n"
+			"</ul>\n"
 		),
 		content_type=_MIMETYPE_HTML
 	)
@@ -373,21 +392,16 @@ async def route_api_new_asset(
 		body=(
 			f"{html_popup}\n"
 
-			f"""<section hx-swap-oob="innerHTML:#{_ID_NAVIGATION}">""" "\n"
-				f"{write_ul([write_button_nav_search_assets(lang)])}\n"
-			"</section>\n"
+			# f"""<section hx-swap-oob="innerHTML:#{_ID_NAVIGATION}">""" "\n"
+			# 	f"{write_ul([write_button_nav_search_assets(lang)])}\n"
+			# "</section>\n"
 
 			f"""<div hx-swap-oob="innerHTML:#{_ID_FORM_NEW_ASSET}">""" "\n"
 				f"{write_form_new_asset(lang,False)}\n"
 			"</div>\n"
 
-			f"""<div hx-swap-oob="innerHTML:#{_ID_RESULT_NEW_ASSET}">""" "\n"
+			f"""<div hx-swap-oob="afterbegin:#{_ID_RESULT_NEW_ASSET}">""" "\n"
 				f"{write_html_asset_as_item(lang,result,focused=True)}\n"
-				# f"""<div id="{html_id_asset(asset_id)}">""" "\n"
-				# 	f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
-				# 		f"{write_html_asset_as_item(lang,result,full=False)}\n"
-				# 	"</div>\n"
-				# "</div>\n"
 			"</div>"
 		),
 		content_type=_MIMETYPE_HTML
@@ -396,6 +410,9 @@ async def route_api_new_asset(
 async def route_fgmt_search_assets(
 		request:Request
 	)->Union[json_response,Response]:
+
+	# GET: /fgmt/assets/search-assets
+	# hx-target: #messages
 
 	ct=request[_REQ_LANGUAGE]
 
@@ -408,11 +425,17 @@ async def route_fgmt_search_assets(
 
 	return Response(
 		body=(
-			f"{write_form_search_assets(lang,authorized=logged_in)}\n\n"
 
-			f"""<section hx-swap-oob="innerHTML:#{_ID_NAVIGATION}">""" "\n"
-				f"{write_ul([write_button_nav_new_asset(lang)])}\n"
+			"<!-- ASSETS SEARCH FORM -->\n"
+
+			f"""<ul hx-swap-oob="innerHTML:#{_ID_NAV_TWO_OPTS}">""" "\n"
+				f"{write_ul([write_button_nav_new_asset(lang)],full=False)}\n"
+			"</ul>\n"
+
+			f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
+				f"{write_form_search_assets(lang,authorized=logged_in)}\n"
 			"</section>"
+
 		),
 		content_type=_MIMETYPE_HTML
 	)
@@ -422,6 +445,7 @@ async def route_fgmt_asset_panel(
 	)->Union[json_response,Response]:
 
 	# GET /fgmt/assets/panel/{asset_id}
+	# hx-target: #messages
 
 	ct=request[_REQ_CLIENT_TYPE]
 	if not assert_referer(ct,request,_ROUTE_PAGE):
@@ -474,34 +498,43 @@ async def route_fgmt_asset_panel(
 
 	await util_patch_doc_with_username(request,result_aq)
 
-	# username:Optional[str]=await get_username(
-	# 	request,
-	# 	explode=False,
-	# 	userid=result_aq[_KEY_SIGN]
-	# )
-	# if username is not None:
-		# result_aq.update({_KEY_SIGN_UNAME:username})
 
-	tl={
-		_LANG_EN:"Asset info",
-		_LANG_ES:"Información del activo"
-	}[lang]
+	tl=write_ul(
+		[
+			write_button_nav_search_assets(lang),
+			write_button_nav_new_asset(lang)
+		],
+		full=False
+	)
+	html_text=(
+		f"<!-- Selected the asset: {asset_id} -->\n"
+
+		f"""<section hx-swap-oob="innerHTML:#{_ID_NAV_TWO_OPTS}">""" "\n"
+			f"{tl}\n"
+		"</section>\n"
+	)
+
+	# tl={
+	# 	_LANG_EN:"Asset info",
+	# 	_LANG_ES:"Información del activo"
+	# }[lang]
+	html_text=(
+		f"{html_text}\n"
+
+		f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
+			# f"<h3>{tl}</h3>\n"
+			f"""<div id="{_ID_MAIN_ONE}">""" "\n"
+				f"{write_html_asset_details(lang,result_aq,authorized)}\n"
+			"</div>\n"
+			f"""<div id="{_ID_MAIN_TWO}">""" "\n"
+				f"{write_html_asset_history(lang,result_aq,authorized)}\n"
+			"</div>\n"
+		"</section>"
+
+	)
 
 	return Response(
-		body=(
-			f"<!-- Selected the asset: {asset_id} -->\n"
-
-			f"""<section hx-swap-oob="innerHTML:#{_ID_NAVIGATION}">""" "\n"
-				f"{write_ul([write_button_nav_search_assets(lang),write_button_nav_new_asset(lang)])}\n"
-			"</section>"
-
-			"\n\n"
-
-			f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
-				f"<h3>{tl}</h3>\n"
-				f"{write_html_asset_as_panel(lang,result_aq,authorized)}\n"
-			"</section>"
-		),
+		body=html_text,
 		content_type=_MIMETYPE_HTML
 	)
 
@@ -672,13 +705,6 @@ async def route_api_asset_change_metadata(
 
 	await util_patch_doc_with_username(request,result_nv)
 
-	# username=await get_username(
-	# 	request,explode=False,
-	# 	userid=result_nv[_KEY_NAME]
-	# )
-	# if username is not None:
-	# 	result_nv.update({_KEY_SIGN_UNAME:username})
-
 	return Response(
 		body=(
 
@@ -786,9 +812,9 @@ async def route_api_drop_asset(
 		html_text=(
 			f"{html_text}\n"
 
-			f"""<section hx-swap-oob="innerHTML:#{_ID_NAVIGATION}">""" "\n"
-				f"{write_ul([write_button_nav_new_asset(lang),write_button_nav_search_assets(lang)])}\n"
-			"</section>"
+			f"""<section hx-swap-oob="innerHTML:#{_ID_NAV_TWO_OPTS}">""" "\n"
+				f"{write_ul([write_button_nav_new_asset(lang)],full=False)}\n"
+			"</section>\n"
 
 			f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
 				"<!-- BACK TO THE SEARCH FORM -->\n"
@@ -1025,38 +1051,53 @@ async def route_main(
 	)->Union[json_response,Response]:
 
 	lang=request[_REQ_LANGUAGE]
+	userid=request[_REQ_USERID]
 
-	username=await get_username(request,False)
-
-	page_title={
+	tl_title={
 		_LANG_EN:"Basic asset manager",
 		_LANG_ES:"Gestor básico de activos"
 	}[lang]
 
-	tl={
-		_LANG_EN:"Create and manage each asset",
-		_LANG_ES:"Crea y gestiona sus activos"
-	}[lang]
+	tl=await render_html_user_section(request,lang,userid)
+
+	html_text=(
+		f"""<section id="{_ID_MESSAGES}">""" "\n"
+			"<!-- MESSAGES GO HERE -->\n"
+		"</section>\n"
+
+		f"""<section id="{_ID_NAV_ONE}">""" "\n"
+			f"<div>SHLED / {tl_title}</div>\n"
+			f"{write_html_nav_pages(lang,0)}\n"
+		"</section>\n"
+
+		f"""<section id="{_ID_NAV_TWO}">""" "\n"
+			f"{tl}\n"
+	)
+
+	tl=write_ul(
+		[
+			write_button_nav_new_asset(lang),
+			write_button_nav_search_assets(lang),
+		],
+		ul_id=_ID_NAV_TWO_OPTS,
+		ul_classes=[_CSS_CLASS_NAV]
+	)
+
+	html_text=(
+			f"{html_text}\n"
+			f"{tl}\n"
+		"</section>\n"
+
+		f"""<section id="{_ID_MAIN}">""" "\n"
+			"<!-- EMPTY AT THE MOMENT -->\n"
+		"</section>"
+	)
 
 	return Response(
 		body=write_fullpage(
 			lang,
-			page_title,
-			(
-				f"<h1>{page_title}</h1>\n"
-				f"<h3>{tl}</h3>\n"
-				f"{write_link_homepage(lang)}\n"
-				f"{write_html_user_section(lang,username=username)}"
-				f"""<section id="{_ID_NAVIGATION}">""" "\n"
-					f"{write_ul([write_button_nav_search_assets(lang),write_button_nav_new_asset(lang)])}\n"
-				"</section>\n"
-				f"""<section id="{_ID_MAIN}">""" "\n"
-					"<!-- FRAGMENTS GO HERE -->\n"
-				"</section>\n"
-				f"""<section id="{_ID_MESSAGES}">""" "\n"
-					"<!-- MESSAGES GO HERE -->\n"
-				"</section>"
-			),
+			tl_title,
+			html_text,
 			html_header_extra=[
 				_SCRIPT_HTMX,
 				_STYLE_POPUP,
@@ -1065,3 +1106,4 @@ async def route_main(
 		),
 		content_type=_MIMETYPE_HTML
 	)
+

@@ -2,36 +2,73 @@
 
 from typing import Optional
 
+from aiohttp.web import Request
+
 from dbi_accounts import (
 	_KEY_EMAIL,_KEY_TELEGRAM,
 	_KEY_VM,_KEY_OTP,_KEY_USERNAME
 )
 
-from symbols_Any import _LANG_EN,_LANG_ES
+from control_Any import (
+	is_root_local_autologin_allowed,
+	get_username
+)
+
+from symbols_Any import (
+	_LANG_EN,_LANG_ES,
+	_REQ_USERID
+)
 
 from frontend_Any import (
-	_CSS_CLASS_COMMON,_CSS_CLASS_HORIZONTAL,
-	write_button_anchor
+
+	_ID_MESSAGES,
+
+	_CSS_CLASS_COMMON,
+	# _CSS_CLASS_HORIZONTAL,
+	_CSS_CLASS_NAV,
+
+	# write_button_anchor,
 )
 
 _ID_FORM_LOGIN="form-login"
-_ID_USER_SECTION="section-user"
+_ID_USER_ACCOUNT="user-account"
 
-def write_link_account(lang:str,return_there:bool=False)->str:
+# def write_link_account(lang:str,return_there:bool=False)->str:
 
-	return write_button_anchor(
-		{
-			_LANG_EN:{
-				True:"Return to account page",
-				False:"Account"
-			}[return_there],
-			_LANG_ES:{
-				True:"Volver a la página de la cuenta",
-				False:"Cuenta"
-			}[return_there],
-		}[lang],
-		"/page/accounts"
+# 	return write_button_anchor(
+# 		{
+# 			_LANG_EN:{
+# 				True:"Return to account page",
+# 				False:"Account"
+# 			}[return_there],
+# 			_LANG_ES:{
+# 				True:"Volver a la página de la cuenta",
+# 				False:"Cuenta"
+# 			}[return_there],
+# 		}[lang],
+# 		"/page/accountss"
+# 	)
+
+def write_button_login(lang:str)->str:
+
+	# Sends:
+	# GET: /fgmt/accounts/login
+	# hx-target: #messages
+
+	tl={
+		_LANG_EN:"Log in",
+		_LANG_ES:"iniciar sesión"
+	}[lang]
+	return (
+		f"""<button class="{_CSS_CLASS_NAV}" """
+			"""hx-get="/fgmt/accounts/login" """
+			f"""hx-target=#{_ID_MESSAGES} """
+			"""hx-swap="innerHTML" """
+			">"
+			f"{tl}"
+		"</button>"
 	)
+
 
 def write_form_login(lang:str,full:bool=True)->str:
 
@@ -40,7 +77,7 @@ def write_form_login(lang:str,full:bool=True)->str:
 	html_text=(
 		"""<form """
 			"""hx-post="/api/accounts/login" """
-			"""hx-target="#messages" """
+			f"""hx-target="#{_ID_MESSAGES}" """
 			"""hx-swap="innerHTML" """
 			">"
 	)
@@ -114,14 +151,7 @@ def write_form_otp(
 
 	# Sends: POST /api/accounts/login-otp {username:String,otp:String}
 
-	# NOTE: The form leads to a full page or a redirect, so I can't use HTMX here
-	# html_text=(
-	# 	"""<form """
-	# 		"""hx-post="/api/accounts/login-otp" """
-	# 		"""hx-target="#messages" """
-	# 		"""hx-swap="innerHTML" """
-	# 		">"
-	# )
+	# NOTE: The form needs to lead to a full page in order to make those cookies, so I can't use HTMX here
 
 	html_text=(
 		"""<form method="POST" """
@@ -219,16 +249,16 @@ def write_button_login_magical(lang:str)->str:
 
 def write_button_logout(lang:str)->str:
 
-	# Sends: DELETE /api/accounts/logout {username:String}
+	# Sends: DELETE /api/accounts/logout
 
 	tl={
 		_LANG_EN:"Are you sure you want to logout?",
 		_LANG_ES:"¿Seguro que quieres cerrar sesión?"
 	}[lang]
 	html_text=(
-		"""<form """
+		f"""<button class="{_CSS_CLASS_NAV}" """
 			"""hx-delete="/api/accounts/logout" """
-			"""hx-target="#messages" """
+			f"""hx-target="#{_ID_MESSAGES}" """
 			"""hx-swap="innerHTML" """
 			f"""hx-confirm="{tl}" """
 			">\n"
@@ -239,52 +269,57 @@ def write_button_logout(lang:str)->str:
 		_LANG_ES:"Cerrar sesión"
 	}[lang]
 	html_text=(
-			f"{html_text}\n"
-			# f"""<input name="username" type=hidden value={username}>""" "\n"
-			f"""<button class="{_CSS_CLASS_COMMON}" type=submit>{tl}</button>""" "\n"
-		"</form>"
+		f"{html_text}\n"
+			f"{tl}\n"
+		"</button>"
 	)
 
 	return html_text
 
-def write_html_user_section(
-		lang:str,
-		username:Optional[str]=None,
-		full:bool=True
+async def render_html_user_section(
+		request:Request,
+		lang:str,full:bool=False,
 	)->str:
 
 	html_text=""
 
-	user_ok=(isinstance(username,str))
+	userid:Optional[str]=request[_REQ_USERID]
+	username:Optional[str]=None
 
-	if not user_ok:
+	anonymous=(userid is None)
+	if not anonymous:
+		username=await get_username(
+			request,explode=False,
+			userid=userid
+		)
+		anonymous=(username is None)
+
+	if not anonymous:
 		html_text=(
 			f"{html_text}\n"
-			"<!-- THERE IS NO USER -->"
+			f"<div>{username}</div>\n"
+			f"{write_button_logout(lang)}"
 		)
 
-	if user_ok:
-
-		tl={
-			_LANG_EN:"User",
-			_LANG_ES:"Usuario"
-		}[lang]
-
-		html_text=(
-			f"{html_text}\n"
-			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-				f"<h3>{tl}: {username}</h3>\n"
-			"""</div>""" "\n"
-			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-				f"{write_button_logout(lang)}\n"
-			"""</div>"""
-		)
+	if anonymous:
+		super_login=is_root_local_autologin_allowed(request)
+		if super_login:
+			html_text=(
+				f"{html_text}\n"
+				f"{write_button_login_magical(lang)}"
+			)
+		if not super_login:
+			html_text=(
+				f"{html_text}\n"
+				f"{write_button_login(lang)}"
+			)
 
 	if full:
 		html_text=(
-			f"""<section id="{_ID_USER_SECTION}">""" "\n"
+			f"""<div id="{_ID_USER_ACCOUNT}">""" "\n"
 				f"{html_text}\n"
-			"""</section>"""
+			"""</div>"""
 		)
 
 	return html_text
+

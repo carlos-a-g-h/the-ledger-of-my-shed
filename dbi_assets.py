@@ -195,7 +195,7 @@ async def dbi_assets_ChangeAssetMetadata(
 	if len(changes_unset)>0:
 		aggr_pipeline.append({"$unset":changes_unset})
 
-	# TODO: it should be dropped.....
+	# TODO: it should be dropped... ?
 	# https://www.mongodb.com/docs/manual/reference/operator/aggregation/merge/
 
 	print("\nAGGREGATION PIPELINE:",aggr_pipeline)
@@ -438,112 +438,112 @@ async def dbi_assets_History_GetSingleRecord(
 
 	return the_record
 
-# if __name__=="__main__":
+if __name__=="__main__":
 
-# 	import asyncio
+	import asyncio
 
-# 	from motor.motor_asyncio import AsyncIOMotorClient
-# 	from openpyxl import Workbook
-# 	from openpyxl.cell.cell import Cell
-# 	from openpyxl.comments import Comment
-# 	from openpyxl.worksheet.worksheet import Worksheet
-# 	from pathlib import Path
+	from motor.motor_asyncio import AsyncIOMotorClient
+	from openpyxl import Workbook
+	from openpyxl.cell.cell import Cell
+	from openpyxl.comments import Comment
+	from openpyxl.worksheet.worksheet import Worksheet
+	from pathlib import Path
 
-# 	from internals import util_excel_dectocol
+	from internals import util_excel_dectocol,util_valid_date
 
-# 	rdbc=AsyncIOMotorClient()
+	rdbc=AsyncIOMotorClient()
 
-# 	all_assets=asyncio.run(
-# 		dbi_assets_AssetQuery(
-# 			rdbc,"my-inventory",
-# 			get_history=True
-# 		)
-# 	)
+	all_assets=asyncio.run(
+		dbi_assets_AssetQuery(
+			rdbc,"my-inventory",
+			get_history=True
+		)
+	)
 
-# 	print(all_assets)
+	print(all_assets)
 
-# 	test_file=Path("TEST.xlsx")
-# 	if test_file.is_file():
-# 		test_file.unlink()
+	test_file=Path("TEST.xlsx")
+	if test_file.is_file():
+		test_file.unlink()
 
-# 	wb:Workbook=Workbook()
-# 	ws:Worksheet=wb.active
-# 	ws.title="Assets"
-# 	ws.append(["ID",_KEY_NAME,_KEY_TOTAL])
-# 	row=1
-# 	for asset in all_assets:
-# 		row=row+1
+	wb:Workbook=Workbook()
+	ws:Worksheet=wb.active
+	ws.title="Assets"
+	ws.append(["ID",_KEY_NAME,_KEY_TOTAL])
+	row=1
+	for asset in all_assets:
+		row=row+1
 
-# 		asset_name=asset.get(_KEY_NAME)
-# 		asset_id=asset.get("id")
+		asset_name=asset.get(_KEY_NAME)
+		asset_id=asset.get("id")
 
-# 		ws[f"A{row}"]=asset_id
-# 		ws[f"B{row}"]=asset_name
+		ws[f"A{row}"]=asset_id
+		ws[f"B{row}"]=asset_name
 
-# 		has_history=isinstance(asset.get(_KEY_HISTORY),Mapping)
-# 		if not has_history:
-# 			ws[f"C{row}"]=0
-# 			continue
+		has_history=isinstance(asset.get(_KEY_HISTORY),Mapping)
+		if not has_history:
+			ws[f"C{row}"]=0
+			continue
 
-# 		history_len=len(asset[_KEY_HISTORY])
-# 		if history_len==0:
-# 			ws[f"C{row}"]=0
-# 			continue
+		history_len=len(asset[_KEY_HISTORY])
+		if history_len==0:
+			ws[f"C{row}"]=0
+			continue
 
-# 		col_start=4
-# 		col_end=col_start+history_len-1
+		col_start=4
+		col_end=col_start+history_len-1
 
-# 		ef=f"=SUM({util_excel_dectocol(col_start)}{row}:{util_excel_dectocol(col_end)}{row})"
+		ef=f"=SUM({util_excel_dectocol(col_start)}{row}:{util_excel_dectocol(col_end)}{row})"
 
-# 		ws[f"C{row}"]=ef
+		ws[f"C{row}"]=ef
 
-# 		col_idx=-1
+		col_idx=-1
 
-# 		for uid in asset[_KEY_HISTORY]:
+		for uid in asset[_KEY_HISTORY]:
 
-# 			col_idx=col_idx+1
+			col_idx=col_idx+1
 
-# 			record_mod=util_valid_int(
-# 				asset[_KEY_HISTORY][uid].get(_KEY_RECORD_MOD)
-# 			)
+			record_mod=util_valid_int(
+				asset[_KEY_HISTORY][uid].get(_KEY_RECORD_MOD)
+			)
 
-# 			record_comment=util_valid_str(
-# 				asset[_KEY_HISTORY][uid].get(_KEY_COMMENT)
-# 			)
+			record_comment=util_valid_str(
+				asset[_KEY_HISTORY][uid].get(_KEY_COMMENT)
+			)
 
-# 			record_date=util_valid_date(
-# 				asset[_KEY_HISTORY][uid].get(_KEY_DATE)
-# 			)
+			record_date=util_valid_date(
+				asset[_KEY_HISTORY][uid].get(_KEY_DATE)
+			)
 
-# 			cell_comment=(
-# 				f"UID:\n"
-# 				f"{uid}"
-# 			)
+			cell_comment=(
+				f"UID:\n"
+				f"{uid}"
+			)
 
-# 			if record_date is not None:
-# 				cell_comment=(
-# 					f"{cell_comment}\n"
-# 					f"DATE:\n"
-# 					f"{record_date}"
-# 				)
+			if record_date is not None:
+				cell_comment=(
+					f"{cell_comment}\n"
+					f"DATE:\n"
+					f"{record_date}"
+				)
 
-# 			if record_comment is not None:
-# 				cell_comment=(
-# 					f"{cell_comment}" "\n\n"
-# 					f"{record_comment}"
-# 				)
+			if record_comment is not None:
+				cell_comment=(
+					f"{cell_comment}" "\n\n"
+					f"{record_comment}"
+				)
 
-# 			if record_mod is None:
-# 				cell_comment=(
-# 					f"{cell_comment}\n\n(WARNING)"
-# 				)
+			if record_mod is None:
+				cell_comment=(
+					f"{cell_comment}\n\n(WARNING)"
+				)
 
-# 			tgt_cell:Cell=ws[f"{util_excel_dectocol(col_start+col_idx)}{row}"]
-# 			tgt_cell.value=record_mod
-# 			tgt_cell.comment=Comment(
-# 				cell_comment,
-# 				"?",
-# 				height=160,width=160
-# 			)
+			tgt_cell:Cell=ws[f"{util_excel_dectocol(col_start+col_idx)}{row}"]
+			tgt_cell.value=record_mod
+			tgt_cell.comment=Comment(
+				cell_comment,
+				"?",
+				height=160,width=160
+			)
 
-# 	wb.save(test_file.name)
+	wb.save(test_file.name)

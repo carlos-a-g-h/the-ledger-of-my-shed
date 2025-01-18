@@ -5,17 +5,29 @@ from typing import Optional
 
 from frontend_Any import (
 
-	_ID_MAIN,_ID_MESSAGES,
+	_ID_MESSAGES,
 
 	_CSS_CLASS_DANGER,
 	_CSS_CLASS_FOCUSED,
-	_CSS_CLASS_VUP,
-	_CSS_CLASS_VDOWN,
+	_CSS_CLASS_VER,
 	_CSS_CLASS_COMMON,
+	_CSS_CLASS_NAV,
 	_CSS_CLASS_CONTROLS,
 	_CSS_CLASS_HORIZONTAL,
-	
-	write_div_display_error
+
+	_CSS_CLASS_ASSET_HISTORY,
+
+	# _CSS_CLASS_IG_CHECKBOXES,
+	_CSS_CLASS_IG_FIELDS,
+
+	_CSS_CLASS_INPUT_GUARDED,
+
+	write_button_submit,
+	write_div_display_error,
+	write_html_input_checkbox,
+	write_html_input_number,
+	write_html_input_string,
+	write_html_input_textbox
 )
 
 from internals import (
@@ -37,6 +49,7 @@ from symbols_assets import (
 
 	_ID_FORM_NEW_ASSET,
 	_ID_RESULT_NEW_ASSET,
+	_ID_FORM_AE,
 
 	html_id_asset
 )
@@ -59,10 +72,10 @@ def write_button_nav_new_asset(lang:str)->str:
 		_LANG_ES:"Crear activo nuevo"
 	}[lang]
 	return (
-		f"""<button class="{_CSS_CLASS_COMMON}" """
+		f"""<button class="{_CSS_CLASS_NAV}" """
 			"""hx-get="/fgmt/assets/new" """
 			"""hx-swap="innerHTML" """
-			f"""hx-target="#{_ID_MAIN}" """
+			f"""hx-target="#{_ID_MESSAGES}" """
 			">"
 			f"{tl}"
 		"</button>"
@@ -75,10 +88,10 @@ def write_button_nav_search_assets(lang:str)->str:
 		_LANG_ES:"Buscar activo(s)"
 	}[lang]
 	return (
-		f"""<button class="{_CSS_CLASS_COMMON}" """
+		f"""<button class="{_CSS_CLASS_NAV}" """
 			"""hx-get="/fgmt/assets/search-assets" """
 			"""hx-swap="innerHTML" """
-			f"""hx-target="#{_ID_MAIN}" """
+			f"""hx-target="#{_ID_MESSAGES}" """
 			">"
 			f"{tl}"
 		"</button>"
@@ -95,6 +108,8 @@ def write_form_new_asset(lang:str,full:bool=True)->str:
 			f"""hx-target="#{_ID_MESSAGES}" """
 			"""hx-swap="innerHTML" """
 			">\n"
+
+			f"""<div class="{_CSS_CLASS_IG_FIELDS}">""" "\n"
 	)
 
 	tl={
@@ -103,15 +118,7 @@ def write_form_new_asset(lang:str,full:bool=True)->str:
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		"<div>\n"
-			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-				f"""<label class="{_CSS_CLASS_COMMON}" for="{_KEY_NAME}">{tl}</label>""" "\n"
-				f"""<input class="{_CSS_CLASS_COMMON}" """
-					f""" name="{_KEY_NAME}" """
-					"""type="text" """
-					"""max-length=64 """
-					"required>\n"
-			"</div>"
+		f"{write_html_input_string(_KEY_NAME,label=tl,required=True)}"
 	)
 
 	tl={
@@ -120,14 +127,7 @@ def write_form_new_asset(lang:str,full:bool=True)->str:
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-			f"""<label class="{_CSS_CLASS_COMMON}" for="{_KEY_TAG}">{tl}</label>""" "\n"
-			f"""<input class="{_CSS_CLASS_COMMON}" """
-				f""" name="{_KEY_TAG}" """
-				"""type="text" """
-				"""max-length=32 """
-				">\n"
-		"</div>\n"
+		f"{write_html_input_string(_KEY_TAG,label=tl,maxlen=32)}"
 	)
 
 	tl={
@@ -135,16 +135,8 @@ def write_form_new_asset(lang:str,full:bool=True)->str:
 		_LANG_ES:"Valor"
 	}[lang]
 	html_text=(
-			f"{html_text}\n"
-			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-				f"""<label class="{_CSS_CLASS_COMMON}" for="{_KEY_VALUE}">{tl}</label>""" "\n"
-				f"""<input class="{_CSS_CLASS_COMMON}" """
-					f""" name="{_KEY_VALUE}" """
-					"""type="number" """
-					"""value=0 """
-					"required>\n"
-			"</div>\n"
-		"</div>"
+		f"{html_text}\n"
+		f"{write_html_input_number(_KEY_VALUE,label=tl,value=0,minimum=0)}"
 	)
 
 	tl={
@@ -152,13 +144,9 @@ def write_form_new_asset(lang:str,full:bool=True)->str:
 		_LANG_ES:"Comentario"
 	}[lang]
 	html_text=(
-		f"{html_text}\n"
-		f"""<label class="{_CSS_CLASS_COMMON}" for="{_KEY_COMMENT}">{tl}</label>""" "\n"
-		f"""<textarea class="{_CSS_CLASS_COMMON}" """
-			f"""name="{_KEY_COMMENT}" """
-			"max-length=256 "
-			">"
-		"""</textarea>"""
+			f"{html_text}\n"
+		"</div>\n"
+		f"{write_html_input_textbox(_KEY_COMMENT,label=tl)}"
 	)
 
 	tl={
@@ -166,15 +154,11 @@ def write_form_new_asset(lang:str,full:bool=True)->str:
 		_LANG_ES:"Crear activo"
 	}[lang]
 	html_text=(
-			f"{html_text}"
+			f"{html_text}\n"
 			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
-				"""<button """
-					f"""class="{_CSS_CLASS_COMMON}" """
-					"""type="submit" """
-					">"
-					f"{tl}"
-				"</button>\n"
+				f"{write_button_submit(tl)}\n"
 			"</div>\n"
+
 		"</form>"
 	)
 
@@ -184,9 +168,11 @@ def write_form_new_asset(lang:str,full:bool=True)->str:
 			_LANG_ES:"Creación de un nuevo activo"
 		}[lang]
 		html_text=(
-			f"<h3>{tl}</h3>\n"
-			f"""<div id="{_ID_FORM_NEW_ASSET}">""" "\n"
-				f"{html_text}\n"
+			"<div>\n"
+				f"<h3>{tl}</h3>\n"
+				f"""<div id="{_ID_FORM_NEW_ASSET}">""" "\n"
+					f"{html_text}\n"
+				"</div>\n"
 			"</div>\n"
 			f"""<div id="{_ID_RESULT_NEW_ASSET}">""" "\n"
 				"<!-- NEW ASSET GOES HERE -->\n"
@@ -207,73 +193,66 @@ def write_form_edit_asset_metadata(
 	html_text=(
 		"<!-- ASSET METADATA EDITOR -->\n"
 		f"<summary>{tl}</summary>\n"
-		f"""<div class="{_CSS_CLASS_VUP}">""" "\n"
-			f"""<form hx-post="/api/assets/change-metadata" """ "\n"
-				"""hx-swap="innerHTML" """ "\n"
-				f"""hx-target="#{_ID_MESSAGES}" """ "\n"
-				">\n"
-				f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
-					f"""<input name="{_KEY_ASSET}" type=hidden value="{asset_id}">"""
-	)
+		f"""<form hx-post="/api/assets/change-metadata" """ "\n"
+			"""hx-swap="innerHTML" """ "\n"
+			f"""hx-target="#{_ID_MESSAGES}" """ "\n"
+			">\n"
 
-	html_text=(
-		f"{html_text}\n"
-		f"""<div>"""
+			f"""<input name="{_KEY_ASSET}" type=hidden value="{asset_id}" required>""" "\n"
+
+			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
+
+				# Group of fields start
+				f"""<div class="{_CSS_CLASS_IG_FIELDS}">"""
 	)
 
 	tl={
 		_LANG_EN:"Name",
 		_LANG_ES:"Nombre"
 	}[lang]
+	tl_change=f"change-{_KEY_NAME}"
 	html_text=(
 		f"{html_text}\n"
 
-		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-			"<div>\n"
-				f"""<input name="change-{_KEY_NAME}" type=checkbox>""" "\n"
-				f"""<label for=change-{_KEY_NAME}>{tl}</label>""" "\n"
-			"</div>\n"
-			f"""<input class="{_CSS_CLASS_COMMON}" name="{_KEY_NAME}" type=text max-length=32>""" "\n"
-		"</div>"
+			f"""<div class="{_CSS_CLASS_INPUT_GUARDED}">""" "\n"
+				f"{write_html_input_checkbox(tl_change,tl)}\n"
+				f"{write_html_input_string(_KEY_NAME)}"
+			"</div>"
 	)
 
 	tl={
 		_LANG_EN:"Tag",
 		_LANG_ES:"Etiqueta"
 	}[lang]
+	tl_change=f"change-{_KEY_TAG}"
 	html_text=(
 		f"{html_text}\n"
 
-		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-			"<div>\n"
-				f"""<input name="change-{_KEY_TAG}" type=checkbox>""" "\n"
-				f"""<label for=change-{_KEY_TAG}>{tl}</label>""" "\n"
-			"</div>\n"
-			f"""<input class="{_CSS_CLASS_COMMON}" name="{_KEY_TAG}" type=text max-length=32>""" "\n"
+		f"""<div class="{_CSS_CLASS_INPUT_GUARDED}">""" "\n"
+			f"{write_html_input_checkbox(tl_change,tl)}\n"
+			f"{write_html_input_string(_KEY_TAG)}"
 		"</div>"
 	)
 
 	html_text=(
 			f"{html_text}\n"
+
 		"</div>"
+		# Group of fields ends
 	)
 
 	tl={
 		_LANG_EN:"Comment",
 		_LANG_ES:"Comentario"
 	}[lang]
+	tl_change=f"change-{_KEY_COMMENT}"
 	html_text=(
 		f"{html_text}\n"
 
-		"<div>\n"
-			f"""<input name="change-{_KEY_COMMENT}" type=checkbox>""" "\n"
-			f"""<label for=change-{_KEY_COMMENT}>{tl}</label>""" "\n"
-		"</div>\n"
-		f"""<textarea class="{_CSS_CLASS_COMMON}" """
-			f"""name="{_KEY_COMMENT}" """
-			"max-length=256 "
-			">"
-		"</textarea>"
+		f"""<div class="{_CSS_CLASS_INPUT_GUARDED}">""" "\n"
+			f"{write_html_input_checkbox(tl_change,tl)}\n"
+			f"{write_html_input_textbox(_KEY_COMMENT)}"
+		"</div>"
 	)
 
 	tl={
@@ -281,23 +260,21 @@ def write_form_edit_asset_metadata(
 		_LANG_ES:"Aplicar cambios"
 	}[lang]
 	html_text=(
-					f"{html_text}\n"
+				f"{html_text}\n"
 
-					f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
-						f"""<button type="submit" """
-							f"""class="{_CSS_CLASS_COMMON}">""" "\n"
-								f"{tl}\n"
-						"</button>" "\n"
-					"</div>\n"
+				f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
+					f"{write_button_submit(tl)}\n"
 				"</div>\n"
-			"</form>\n"
-		"</div>"
+
+			"</div>\n"
+
+		"</form>"
 	)
 
 	if full:
 		html_text=(
-			f"""<details id="{html_id_asset(asset_id,editor=True)}" """
-				f"""class="{_CSS_CLASS_VUP} {_CSS_CLASS_VDOWN}" """
+			f"""<details id="{_ID_FORM_AE}" """
+				f"""class="{_CSS_CLASS_VER}" """
 				">\n"
 				f"{html_text}\n"
 			"</details>"
@@ -365,10 +342,7 @@ def write_form_delete_asset(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-			f"""<button class="{_CSS_CLASS_COMMON} {_CSS_CLASS_DANGER}" """
-				"""type="submit">"""
-				f"{tl}"
-			"</button>\n"
+			f"{write_button_submit(tl,[_CSS_CLASS_COMMON,_CSS_CLASS_DANGER])}\n"
 		"</form>"
 	)
 
@@ -387,6 +361,10 @@ def write_form_add_record(lang:str,asset_id:str)->str:
 				"""type="hidden" """
 				f"""value="{asset_id}" """
 				"required>\n"
+
+			f"""<div class={_CSS_CLASS_IG_FIELDS}>"""
+				# conventional fields {
+
 	)
 
 	tl={
@@ -395,18 +373,7 @@ def write_form_add_record(lang:str,asset_id:str)->str:
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-
-		# NOTE: horizontal content starts
-		"<div>"
-
-			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-				f"""<label class="{_CSS_CLASS_COMMON}" for="{_KEY_RECORD_MOD}">{tl}</label>""" "\n"
-				f"""<input class="{_CSS_CLASS_COMMON}" """
-					f"""name="{_KEY_RECORD_MOD}" """
-					"""type="number" """
-					"""value=0 """
-					"required>\n"
-			"</div>"
+		f"{write_html_input_number(_KEY_RECORD_MOD,label=tl,value=0,required=True)}"
 	)
 
 	tl={
@@ -415,18 +382,8 @@ def write_form_add_record(lang:str,asset_id:str)->str:
 	}[lang]
 
 	html_text=(
-			f"{html_text}\n"
-			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-				f"""<label class="{_CSS_CLASS_COMMON}" for="{_KEY_TAG}">{tl}</label>""" "\n"
-				f"""<input class="{_CSS_CLASS_COMMON}" """
-					f""" name="{_KEY_TAG}" """
-					""" type="text" """
-					"""max-length=32 """
-					">\n"
-			"</div>"
-
-		# NOTE: horizontal content ends
-		"</div>\n"
+		f"{html_text}\n"
+		f"{write_html_input_number(_KEY_TAG,label=tl,value=0,required=True)}"
 	)
 
 	tl={
@@ -434,14 +391,10 @@ def write_form_add_record(lang:str,asset_id:str)->str:
 		_LANG_ES:"Comentario"
 	}[lang]
 	html_text=(
-		f"{html_text}\n"
-
-		f"""<label class="{_CSS_CLASS_COMMON}" for="{_KEY_COMMENT}">{tl}</label>""" "\n"
-		f"""<textarea class="{_CSS_CLASS_COMMON}" """ 
-			f"""name="{_KEY_COMMENT}" """
-			"max-length=256 "
-			">"
-		"</textarea>"
+			f"{html_text}\n"
+			# } conventional fields 
+		"</div>\n"
+		f"{write_html_input_textbox(_KEY_COMMENT,label=tl)}"
 	)
 
 	tl={
@@ -451,11 +404,7 @@ def write_form_add_record(lang:str,asset_id:str)->str:
 	html_text=(
 			f"{html_text}\n"
 			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
-				"""<button type="submit" """
-					f"""class="{_CSS_CLASS_COMMON}" """
-					">"
-					f"{tl}"
-				"</button>\n"
+				f"{write_button_submit(tl)}\n"
 			"</div>\n"
 
 		# NOTE: end of the form
@@ -541,18 +490,6 @@ def write_html_record(
 			f"{tl}: {record_mod}"
 		"</div>\n"
 	)
-
-	# tl={
-	# 	_LANG_EN:"Signed by",
-	# 	_LANG_ES:"Firmado por"
-	# }[lang]
-	# html_text=(
-	# 	f"{html_text}\n"
-	# 		f"""<div class="{_CSS_CLASS_HORIZONTAL}">"""
-	# 			f"{tl}: {record_sign}"
-	# 		"</div>\n"
-	# 	"</div>"
-	# )
 
 	if isinstance(record_tag,str):
 		tl={
@@ -772,13 +709,13 @@ def write_html_asset_info(
 	signed_neat=(isinstance(asset_sign_uname,str))
 	if signed_raw or signed_neat:
 		tl={
-			_LANG_EN:"Signed by",
-			_LANG_ES:"Firmado por"
+			_LANG_EN:"Signed by:",
+			_LANG_ES:"Firmado por:"
 		}[lang]
 		if signed_neat:
-			tl=f"{tl}: [ <code>{asset_sign_uname}</code> ]"
+			tl=f"{tl} [ <code>{asset_sign_uname}</code> ]"
 		if signed_raw:
-			tl=f"{tl}: [ <code>{asset_sign}</code> ]"
+			tl=f"{tl} [ <code>{asset_sign}</code> ]"
 
 		html_text=(
 			f"{html_text}\n"
@@ -869,7 +806,7 @@ def write_html_asset_as_item(
 
 	return html_text
 
-def write_html_asset_as_panel(
+def write_html_asset_details(
 		lang:str,
 		the_asset:Mapping,
 		authorized:bool=True,
@@ -879,7 +816,15 @@ def write_html_asset_as_panel(
 	if asset_id is None:
 		return write_div_display_error(lang)
 
-	html_text=write_html_asset_info(lang,the_asset)
+	tl={
+		_LANG_EN:"Asset details",
+		_LANG_ES:"Detalles del activo"
+	}[lang]
+
+	html_text=(
+		f"<h3>{tl}</h3>\n"
+		f"{write_html_asset_info(lang,the_asset)}"
+	)
 
 	if authorized:
 		html_text=(
@@ -887,27 +832,35 @@ def write_html_asset_as_panel(
 			f"{write_form_edit_asset_metadata(lang,asset_id)}"
 		)
 
+	tl=html_id_asset(asset_id,controls=True)
+
 	html_text=(
 		f"{html_text}\n"
-		f"""<div id="{html_id_asset(asset_id,controls=True)}">""" "\n"
-			f"""<div class="{_CSS_CLASS_HORIZONTAL}">"""
-				f"{write_button_asset_fullview_or_update(lang,asset_id,True)}\n"
-			"</div>"
+		f"""<div id="{tl}" class="{_CSS_CLASS_CONTROLS}">""" "\n"
+			f"{write_button_asset_fullview_or_update(lang,asset_id,True)}\n"
 	)
 	if authorized:
 		html_text=(
 			f"{html_text}\n"
-			f"""<div class="{_CSS_CLASS_HORIZONTAL}">"""
-				f"{write_form_delete_asset(lang,asset_id,False)}"
-			"</div>"
+			f"{write_form_delete_asset(lang,asset_id,False)}"
 		)
 
 	html_text=(
-				f"{html_text}\n"
-			"</div>"
+			f"{html_text}\n"
 		"</div>"
 	)
 
+	return html_text
+
+def write_html_asset_history(
+		lang:str,
+		data:Mapping,
+		authorized:bool=True,
+	)->str:
+
+	asset_id=data.get(_KEY_ASSET)
+	if asset_id is None:
+		return write_div_display_error(lang)
 	# History
 
 	tl={
@@ -915,7 +868,6 @@ def write_html_asset_as_panel(
 		_LANG_ES:"Historial"
 	}[lang]
 	html_text=(
-		f"{html_text}\n"
 		f"<!-- HISTORY FOR {asset_id} -->\n"
 		f"<h3>{tl}</h3>"
 	)
@@ -930,24 +882,15 @@ def write_html_asset_as_panel(
 
 	html_text=(
 		f"{html_text}\n"
-		f"""<div id="{html_id_asset(asset_id,history=True)}">"""
+		f"""<div id="{html_id_asset(asset_id,history=True)}" """
+			f""" class="{_CSS_CLASS_ASSET_HISTORY}">"""
 	)
-
-	history_empty=(not isinstance(the_asset.get(_KEY_HISTORY),Mapping))
+	history_empty=(not isinstance(data.get(_KEY_HISTORY),Mapping))
 	if not history_empty:
-		history_empty=(len(the_asset[_KEY_HISTORY])==0)
-
+		history_empty=(len(data[_KEY_HISTORY])==0)
 
 	if history_empty:
-
-		tl={
-			_LANG_EN:"History is empty/unknown",
-			_LANG_ES:"Historial vacío/desconocido"
-		}[lang]
-		html_text=(
-			f"{html_text}\n"
-			f"<div>{tl}</div>"
-		)
+		html_text=f"{html_text}\n<!-- HISTORY FOR {asset_id} IS EMPTY -->"
 
 	if not history_empty:
 
@@ -955,19 +898,19 @@ def write_html_asset_as_panel(
 
 		html_text_history=""
 
-		for record_uid in the_asset[_KEY_HISTORY]:
+		for record_uid in data[_KEY_HISTORY]:
 			if not isinstance(
-				the_asset[_KEY_HISTORY].get(record_uid),
+				data[_KEY_HISTORY].get(record_uid),
 				Mapping
 			):
 				continue
 
-			if len(the_asset[_KEY_HISTORY][record_uid])==0:
+			if len(data[_KEY_HISTORY][record_uid])==0:
 				continue
 
 			html_text_history=write_html_record(
 				lang,asset_id,
-				the_asset[_KEY_HISTORY][record_uid],
+				data[_KEY_HISTORY][record_uid],
 				record_uid=record_uid,
 				authorized=authorized,
 			)+f"\n{html_text_history}"
@@ -975,12 +918,9 @@ def write_html_asset_as_panel(
 		if len(html_text_history)>0:
 			html_text=f"{html_text}\n{html_text_history}"
 
-	# History ends here
-
 	html_text=(
 			f"{html_text}\n"
 		"</div>"
 	)
 
 	return html_text
-

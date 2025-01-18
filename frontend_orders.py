@@ -47,17 +47,25 @@ from symbols_orders import (
 from frontend_Any import (
 
 	_ID_MESSAGES,
-	_ID_MAIN2,
+	_ID_MAIN_TWO,
 
+	_CSS_CLASS_NAV,
 	_CSS_CLASS_COMMON,
 	_CSS_CLASS_HORIZONTAL,
 	_CSS_CLASS_FOCUSED,
 	_CSS_CLASS_DANGER,
 	_CSS_CLASS_CONTROLS,
 
+	_CSS_CLASS_ASSET_IN_ORDER,
+
 	# _STYLE_TALIGN_R,
 
+	write_button_submit,
 	write_div_display_error,
+	write_html_input_number,
+	write_html_input_string,
+	write_html_input_checkbox,
+	write_html_input_textbox
 )
 
 from internals import (
@@ -75,7 +83,7 @@ def write_button_nav_new_order(lang:str)->str:
 	}[lang]
 
 	return (
-		f"""<button class="{_CSS_CLASS_COMMON}" """
+		f"""<button class="{_CSS_CLASS_NAV}" """
 			"""hx-get="/fgmt/orders/new" """
 			"""hx-swap="innerHTML" """
 			f"""hx-target="#{_ID_MESSAGES}" """
@@ -92,7 +100,7 @@ def write_button_nav_list_orders(lang:str)->str:
 	}[lang]
 
 	return (
-		f"""<button class="{_CSS_CLASS_COMMON}" """
+		f"""<button class="{_CSS_CLASS_NAV}" """
 			"""hx-get="/fgmt/orders/list-orders" """
 			"""hx-swap="innerHTML" """
 			f"""hx-target="#{_ID_MESSAGES}" """
@@ -115,18 +123,10 @@ def write_form_new_order(lang:str,full:bool=True)->str:
 		_LANG_EN:"Tag",
 		_LANG_ES:"Etiqueta"
 	}[lang]
-
-	html_text=(
-		f"{html_text}\n"
-		"<div>"
-			f"""<label class="{_CSS_CLASS_COMMON}" for="{_KEY_TAG}">{tl}</label>""" "\n"
-			f"""<input class="{_CSS_CLASS_COMMON}" """
-				f""" name="{_KEY_TAG}" """
-				"""type="text" """
-				"""max-length=32 """
-				f"""value="ord-{util_rnow()}" """
-				"required>\n"
-		"</div>"
+	html_text=f"{html_text}\n"+write_html_input_string(
+		_KEY_TAG,label=tl,
+		value=f"ord-{util_rnow()}",
+		maxlen=32,required=True
 	)
 
 	tl={
@@ -135,14 +135,7 @@ def write_form_new_order(lang:str,full:bool=True)->str:
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		"<div>\n"
-			f"""<label class="{_CSS_CLASS_COMMON}" for="{_KEY_COMMENT}">{tl}</label>""" "\n"
-			f"""<textarea class="{_CSS_CLASS_COMMON}" """
-				f"""name="{_KEY_COMMENT}" """
-				"max-length=256 "
-				">"
-			"""</textarea>""" "\n"
-		"<div>"
+		f"{write_html_input_textbox(_KEY_COMMENT,label=tl)}"
 	)
 
 	tl={
@@ -151,12 +144,9 @@ def write_form_new_order(lang:str,full:bool=True)->str:
 	}[lang]
 	html_text=(
 			f"{html_text}\n"
-			"""<button """
-				f"""class="{_CSS_CLASS_COMMON}" """
-				"""type="submit" """
-				">"
-				f"{tl}"
-			"</button>\n"
+			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
+				f"{write_button_submit(tl)}\n"
+			"</div>\n"
 		"</form>"
 	)
 
@@ -172,7 +162,11 @@ def write_form_new_order(lang:str,full:bool=True)->str:
 
 	return html_text
 
-def write_button_order_details(lang:str,order_id:str,refresh:bool=False)->str:
+def write_button_order_details(
+		lang:str,order_id:str,
+		refresh:bool=False
+	)->str:
+
 	tl={
 		True:{
 			_LANG_EN:"Refresh",
@@ -187,7 +181,7 @@ def write_button_order_details(lang:str,order_id:str,refresh:bool=False)->str:
 	url_path=f"/fgmt/orders/current/{order_id}/details"
 
 	if refresh:
-		url_path=f"{url_path}?{_SECTION}={_ID_MAIN2}"
+		url_path=f"{url_path}?{_SECTION}={_ID_MAIN_TWO}"
 
 	return (
 		f"""<button class="{_CSS_CLASS_COMMON}" """
@@ -215,7 +209,6 @@ def write_form_run_order(
 			"""hx-swap="innerHTML" """
 			f"""hx-confirm="{tl}" """
 			">\n"
-			# f"""<input type="hidden" name="{_KEY_ORDER}">"""
 	)
 
 	tl={
@@ -224,10 +217,7 @@ def write_form_run_order(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		"<div>"
-			f"""<input type=checkbox name="{_KEY_ORDER_KEEP}" checked>""" "\n"
-			f"""<label for="{_KEY_ORDER_KEEP}">{tl}</label>"""
-		"<div>"
+		f"{write_html_input_checkbox(_KEY_ORDER_KEEP,tl,True)}"
 	)
 
 	tl={
@@ -236,15 +226,13 @@ def write_form_run_order(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"""<button class="{_CSS_CLASS_COMMON}">"""
-			f"{tl}"
-		"</button>"
+		f"{write_button_submit(tl)}"
 	)
 
 	if full:
 		html_text=(
 			f"""<div id="{_ID_FORM_RUN_ORDER}" """
-				f"""class="{_CSS_CLASS_COMMON}" """
+				f"""class="{_CSS_CLASS_COMMON} {_CSS_CLASS_CONTROLS}" """
 				">\n"
 				f"{html_text}\n"
 			"</div>"
@@ -271,14 +259,10 @@ def write_button_add_asset_to_order(
 
 				f"""<input type="hidden" name="{_KEY_ASSET}" value="{asset_id}">""" "\n"
 
-				f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-					f"""<input type="number" name="{_KEY_RECORD_MOD}" value=0 class="{_CSS_CLASS_COMMON}">""" "\n"
-				"</div>\n"
+				f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
 
-				f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-					f"""<input type="checkbox" name="{_KEY_COPY_VALUE}" checked>""" "\n"
-					f"""<label for="{_KEY_COPY_VALUE}">{tl}</label>"""
-				"</div>"
+					f"{write_html_input_number(_KEY_RECORD_MOD,value=0,required=True)}\n"
+					f"{write_html_input_checkbox(_KEY_COPY_VALUE,tl,True)}"
 	)
 
 	tl={
@@ -286,88 +270,12 @@ def write_button_add_asset_to_order(
 		_LANG_ES:"Agregar a la orden"
 	}[lang]
 	html_text=(
-				f"{html_text}\n"
-				"""<button type="submit" """
-					f"""class="{_CSS_CLASS_COMMON} {_CSS_CLASS_HORIZONTAL}" """
-					">\n"
-					f"{tl}\n"
-				"</button>\n"
-
-			"</form>"
-		"</div>"
-	)
-
-	return html_text
-
-def write_form_update_asset_in_order(
-		lang:str,
-		order_id:str,asset_id:str,
-		# asset_mod:Optional[Union[int,str]]=None,
-		full:bool=True
-	)->str:
-
-	tl={
-		_LANG_EN:"Edit",
-		_LANG_ES:"Editar"
-	}[lang]
-	html_text=(
-		f"<summary>{tl}</summary>\n"
-
-		# f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-		"<div>\n"
-			f"""<form hx-post="/api/orders/current/{order_id}/update-asset" """
-				f"""hx-target="#{_ID_MESSAGES}" """
-				"""hx-swap="innerHTML" """
-				">"
-	)
-
-	tl={
-		_LANG_EN:"Algebraic sum",
-		_LANG_ES:"Suma algebraica"
-	}[lang]
-	html_text=(
-		f"{html_text}\n"
-			"<div>"
-				f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-					f"""<input type="hidden" name="{_KEY_ASSET}" value="{asset_id}">""" "\n"
-					f"""<input type="number" name="{_KEY_RECORD_MOD}" value=0 class="{_CSS_CLASS_COMMON}">""" "\n"
-				"</div>\n"
-				f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-					f"""<input type=checkbox name="{_KEY_ALGSUM}">""" "\n"
-					f"""<label for="{_KEY_ALGSUM}">{tl}</label>""" "\n"
-				"</div>"
-	)
-
-
-	tl={
-		_LANG_EN:"Update",
-		_LANG_ES:"Actualizar"
-	}[lang]
-
-	html_text=(
 					f"{html_text}\n"
-					f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-						f"""<button type="submit" class="{_CSS_CLASS_COMMON}">"""
-							f"{tl}"
-						"</button>\n"
-					"</div>\n"
+					f"{write_button_submit(tl)}\n"
 				"</div>\n"
 			"</form>\n"
 		"</div>"
-
-		# f"""<div class="{_CSS_CLASS_HORIZONTAL}" style="{_STYLE_TALIGN_R}">""" "\n"
-		"<div>\n"
-			f"{write_button_remove_asset_from_order(lang,order_id,asset_id)}\n"
-		"</div>\n"
-
 	)
-
-	if full:
-		html_text=(
-			"<details>\n"
-				f"{html_text}\n"
-			"</details>"
-		)
 
 	return html_text
 
@@ -384,15 +292,65 @@ def write_button_remove_asset_from_order(
 			f"""hx-target="#{_ID_MESSAGES}" """
 			"""hx-swap="innerHTML">"""
 
-			f"""<input type="hidden" name="{_KEY_ASSET}" value="{asset_id}">""" "\n"
+			f"""<input type=hidden name="{_KEY_ASSET}" value="{asset_id}">""" "\n"
 
-			"""<button type="submit" """
-				f"""class="{_CSS_CLASS_COMMON} {_CSS_CLASS_DANGER}">"""
-				f"{tl}"
-			"</button>\n"
+			f"{write_button_submit(tl,[_CSS_CLASS_COMMON,_CSS_CLASS_DANGER])}\n"
 
 		"</form>"
 	)
+
+def write_form_update_asset_in_order(
+		lang:str,
+		order_id:str,asset_id:str,
+		full:bool=True
+	)->str:
+
+	html_text=(
+		f"""<form hx-post="/api/orders/current/{order_id}/update-asset" """
+			f"""hx-target="#{_ID_MESSAGES}" """
+			"""hx-swap="innerHTML" """
+			">\n"
+
+			f"""<input type="hidden" name="{_KEY_ASSET}" value="{asset_id}">""" "\n"
+	)
+
+	tl={
+		_LANG_EN:"Algebraic sum",
+		_LANG_ES:"Suma algebraica"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
+			f"{write_html_input_number(_KEY_RECORD_MOD,value=0,required=True)}\n"
+			f"{write_html_input_checkbox(_KEY_ALGSUM,tl,False)}\n"
+	)
+
+	tl={
+		_LANG_EN:"Update",
+		_LANG_ES:"Actualizar"
+	}[lang]
+
+	html_text=(
+				f"{html_text}\n"
+				f"{write_button_submit(tl)}\n"
+			"</div>\n"
+		"</form>\n"
+		# f"{write_button_remove_asset_from_order(lang,order_id,asset_id)}"
+	)
+
+	if full:
+		tl={
+			_LANG_EN:"Edit",
+			_LANG_ES:"Editar"
+		}[lang]
+		html_text=(
+			"<details>\n"
+				f"<summary>{tl}</summary>\n"
+				f"{html_text}\n"
+			"</details>"
+		)
+
+	return html_text
 
 def write_button_delete_order(
 		lang:str,
@@ -424,11 +382,7 @@ def write_button_delete_order(
 	}[lang]
 	html_text=(
 			f"{html_text}\n"
-			"""<button type="submit" """
-				f"""class="{_CSS_CLASS_COMMON} {_CSS_CLASS_DANGER}" """
-				">"
-				f"{tl}"
-			"</button>\n"
+			f"{write_button_submit(tl,[_CSS_CLASS_COMMON,_CSS_CLASS_DANGER])}\n"
 		"</form>"
 	)
 
@@ -486,10 +440,22 @@ def write_html_asset_in_order(
 
 		html_text=(
 			f"{html_text}\n"
-			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
-				f"<strong>{tl}</strong>\n"
+			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
+				f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
+					f"<strong>{tl}</strong>\n"
+				"</div>\n"
+		)
+		if authorized:
+			html_text=(
+				f"{html_text}\n"
+				f"{write_button_remove_asset_from_order(lang,order_id,asset_id)}"
+			)
+
+		html_text=(
+				f"{html_text}\n"
 			"</div>"
 		)
+
 
 	# Wrapping around all the info
 
@@ -510,7 +476,7 @@ def write_html_asset_in_order(
 
 	if full:
 
-		classes=f"{_CSS_CLASS_COMMON}"
+		classes=f"{_CSS_CLASS_ASSET_IN_ORDER} {_CSS_CLASS_COMMON}"
 		if focus:
 			classes=f"{classes} {_CSS_CLASS_FOCUSED}"
 
@@ -619,13 +585,13 @@ def write_html_order_info(
 		if signed or signed_uname:
 
 			tl={
-				_LANG_EN:"Signed by",
-				_LANG_ES:"Firmado por"
+				_LANG_EN:"Signed by:",
+				_LANG_ES:"Firmado por:"
 			}[lang]
 			if signed_uname:
-				tl=f"{tl}: [ <code>{order_sign_uname}</code> ]"
+				tl=f"{tl} [ <code>{order_sign_uname}</code> ]"
 			if signed:
-				tl=f"{tl}: [ <code>{order_sign}</code> ]"
+				tl=f"{tl} [ <code>{order_sign}</code> ]"
 
 			html_text=(
 				f"{html_text}\n"
@@ -633,21 +599,11 @@ def write_html_order_info(
 			)
 
 		locked_by=data.get(_KEY_LOCKED_BY)
-		if locked_by is not None:
-			# if full:
-			# 	tl={
-			# 		_LANG_EN:"LOCKED",
-			# 		_LANG_ES:"BLOQUEADA"
-			# 	}[lang]
-			# 	html_text=(
-			# 		f"{html_text}\n"
-			# 		f"<div>{tl}</div>"
-			# 	)
+		if isinstance(locked_by,str):
 
-			# if not full:
 			tl={
-				_LANG_EN:"Locked by",
-				_LANG_ES:"Bloqueada por"
+				_LANG_EN:"Locked by:",
+				_LANG_ES:"Bloqueada por:"
 			}[lang]
 			html_text=(
 				f"{html_text}\n"
@@ -677,7 +633,8 @@ def write_html_order_info(
 def write_html_order_as_item(
 		lang:str,
 		data:Mapping,
-		full:bool
+		authorized:bool,
+		full:bool=True,
 	)->str:
 
 	print("Data to render:",data)
@@ -691,7 +648,7 @@ def write_html_order_as_item(
 	# html_text=write_html_order_as_item(lang,data,False)
 
 	html_text=(
-		f"{write_html_order_info(lang,data,False)}\n"
+		f"{write_html_order_info(lang,data,authorized)}\n"
 
 		f"""<div class={_CSS_CLASS_CONTROLS}>""" "\n"
 
@@ -720,7 +677,7 @@ def write_html_order_as_item(
 def write_html_order_details(
 		lang:str,data:Mapping,
 		authorized:bool,
-		focus:Optional[str]=None
+		focus:Optional[str]=None,
 	)->str:
 
 	order_id:Optional[str]=util_valid_str(
@@ -738,18 +695,14 @@ def write_html_order_details(
 	html_text=(
 		f"""<div id={html_id_order(order_id,info=True)}>""" "\n"
 			f"<h3>{tl}</h3>\n"
-			f"{write_html_order_info(lang,data,False)}\n"
+			f"{write_html_order_info(lang,data,authorized)}\n"
 			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
-				f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-					f"{write_button_order_details(lang,order_id,True)}\n"
-				"</div>"
+				f"{write_button_order_details(lang,order_id,True)}\n"
 	)
 	if authorized:
 		html_text=(
 			f"{html_text}\n"
-			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-				f"{write_button_delete_order(lang,order_id)}\n"
-			"</div>\n"
+			f"{write_button_delete_order(lang,order_id)}\n"
 		)
 
 	html_text=(

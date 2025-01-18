@@ -13,6 +13,8 @@ _KEY_HISTORY="history"
 _KEY_RECORD_UID="record_id"
 _KEY_RECORD_MOD="mod"
 
+_ID_FORM_AE="form-asset-editor"
+
 _ID_FORM_NEW_ASSET="form-new-asset"
 _ID_RESULT_NEW_ASSET="result-new-asset"
 

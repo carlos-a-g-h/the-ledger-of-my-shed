@@ -8,7 +8,7 @@ from aiohttp.web import (
 )
 
 from symbols_Any import (
-	# _ROOT_USER,
+
 	_APP_LANG,_LANG_EN,_LANG_ES,
 	_APP_PROGRAMDIR,
 	_MIMETYPE_HTML,
@@ -105,8 +105,6 @@ async def route_fgmt_section_users(
 				""
 				f"{write_form_create_user(lang)}\n"
 				f"{write_form_search_users(lang)}\n"
-				# f"{write_form_update_config(lang)}\n"
-				# f"{write_button_update_known_asset_names(lang)}\n"
 			"</section>"
 		),
 		content_type=_MIMETYPE_HTML

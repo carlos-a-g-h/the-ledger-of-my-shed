@@ -21,8 +21,9 @@ from control_Any import (
 )
 
 from control_accounts import (
-	_ROUTE_PAGE as _ROUTE_PAGE_ACCOUNT,
+	_ROUTE_PAGE as _ROUTE_PAGE_ACCOUNTS,
 	route_main as route_Accounts,
+	route_fgmt_login as route_Accounts_fgmt_Login,
 	route_api_login as route_Accounts_api_Login,
 	route_api_login_otp as route_Accounts_api_LoginOTP,
 	route_api_login_magical as route_Accounts_api_LoginMagical,
@@ -284,9 +285,13 @@ def build_app(
 		# ACCOUNT
 
 		web_GET(
-			_ROUTE_PAGE_ACCOUNT,
+			_ROUTE_PAGE_ACCOUNTS,
 			route_Accounts,
 		),
+			web_GET(
+				"/fgmt/accounts/login",
+				route_Accounts_fgmt_Login
+			),
 			web_POST(
 				"/api/accounts/login",
 				route_Accounts_api_Login

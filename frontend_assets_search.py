@@ -16,7 +16,10 @@ from frontend_Any import (
 
 	_CSS_CLASS_COMMON,
 	_CSS_CLASS_CONTROLS,
-	_CSS_CLASS_HORIZONTAL,
+	_CSS_CLASS_IG_FIELDS,
+	_CSS_CLASS_IG_CHECKBOXES,
+	write_html_input_checkbox,
+	write_html_input_string,
 )
 
 from symbols_assets import(
@@ -50,7 +53,7 @@ def write_form_search_assets(
 			">\n"
 
 			# NOTE: fields start
-			"""<div class="hc">"""
+			f"""<div class="{_CSS_CLASS_IG_FIELDS}">"""
 	)
 
 	tl={
@@ -58,34 +61,9 @@ def write_form_search_assets(
 		_LANG_ES:"Nombre"
 	}[lang]
 	html_text=(
-		f"{html_text}"
-		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-			f"""<label class="{_CSS_CLASS_COMMON}" for="{_KEY_NAME}">{tl}</label>"""
-			"\n"
-			f"""<input class="{_CSS_CLASS_COMMON}" """
-				f"""name="{_KEY_NAME}" """
-				"""type="text" """
-				"""max-length=32 """
-				">\n"
-		"</div>"
+		f"{html_text}\n"
+		f"{write_html_input_string(_KEY_NAME,label=tl)}"
 	)
-
-	if authorized:
-		tl={
-			_LANG_EN:"Sign (User ID)",
-			_LANG_ES:"Firma (ID de Usuario)"
-		}[lang]
-		html_text=(
-			f"{html_text}\n"
-			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-				f"""<label class="{_CSS_CLASS_COMMON}" for="{_KEY_SIGN}">{tl}</label>""" "\n"
-				f"""<input class="{_CSS_CLASS_COMMON}" """
-					f"""name="{_KEY_SIGN}" """
-					"""type="text" """
-					"""max-length=32 """
-					">\n"
-			"</div>"
-		)
 
 	tl={
 		_LANG_EN:"Tag",
@@ -93,16 +71,18 @@ def write_form_search_assets(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-			f"""<label class="{_CSS_CLASS_COMMON}" for="{_KEY_TAG}">{tl}</label>"""
-			"\n"
-			f"""<input class="{_CSS_CLASS_COMMON}" """
-				f"""name="{_KEY_TAG}" """
-				"""type="text" """
-				"""max-length=32 """
-				">\n"
-		"</div>"
+		f"{write_html_input_string(_KEY_TAG,label=tl,maxlen=32)}"
 	)
+
+	if authorized:
+		tl={
+			_LANG_EN:"Sign (by ID)",
+			_LANG_ES:"Firma (por ID)"
+		}[lang]
+		html_text=(
+			f"{html_text}\n"
+			f"{write_html_input_string(_KEY_SIGN,label=tl,maxlen=32)}"
+		)
 
 	html_text=(
 			f"{html_text}\n"
@@ -117,8 +97,8 @@ def write_form_search_assets(
 		html_text=(
 			f"{html_text}\n"
 
-			# NOTE: fields start
-			"<div>"
+			f"""<div class="{_CSS_CLASS_IG_CHECKBOXES}">"""
+				# checkboxes start {
 		)
 
 		tl={
@@ -127,14 +107,7 @@ def write_form_search_assets(
 		}[lang]
 		html_text=(
 			f"{html_text}\n"
-			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-				f"""<input class="{_CSS_CLASS_COMMON}" """
-					f"""name="{_KEY_GET_VALUE}" """
-					"""type="checkbox" """
-					# """checked"""
-					">\n"
-				f"""<label for="{_KEY_GET_VALUE}">{tl}</label>""" "\n"
-			"</div>"
+			f"{write_html_input_checkbox(_KEY_GET_VALUE,label=tl)}"
 		)
 
 		tl={
@@ -143,20 +116,13 @@ def write_form_search_assets(
 		}[lang]
 		html_text=(
 			f"{html_text}\n"
-			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-				f"""<input class="{_CSS_CLASS_COMMON}" """
-					f"""name="{_KEY_GET_TOTAL}" """
-					"""type="checkbox" """
-					# """checked"""
-					">\n"
-				f"""<label for="{_KEY_GET_TOTAL}">{tl}</label>""" "\n"
-			"</div>"
+			f"{write_html_input_checkbox(_KEY_GET_TOTAL,label=tl)}"
 		)
 
 		html_text=(
-			f"{html_text}\n"
+				f"{html_text}\n"
 
-			# NOTE: fields end
+				# } checkboxes end
 			"</div>"
 		)
 
@@ -185,9 +151,11 @@ def write_form_search_assets(
 		}[lang]
 
 		html_text=(
-			f"<h3>{tl}</h3>\n"
-			f"""<div id={_ID_FORM_SEARCH_ASSETS}>""" "\n"
-				f"{html_text}\n"
+			"<div>\n"
+				f"<h3>{tl}</h3>\n"
+				f"""<div id={_ID_FORM_SEARCH_ASSETS}>""" "\n"
+					f"{html_text}\n"
+				"</div>\n"
 			"</div>\n"
 			f"""<div id={_ID_RESULT_SEARCH_ASSETS}>""" "\n"
 				"<!-- SEARCH RESULTS GO HERE -->\n"
@@ -207,39 +175,3 @@ def write_form_search_assets(
 		)
 
 	return html_text
-
-# def write_html_list_of_assets(
-# 		lang:str,assets_list:list,
-# 		order_id:Optional[str]=None
-# 	)->str:
-
-# 	html_text="""<div id="list-of-assets">"""
-
-# 	empty=(len(assets_list)==0)
-
-# 	if empty:
-# 		tl={
-# 			_LANG_EN:"There are no assets",
-# 			_LANG_ES:"No hay activos"
-# 		}[lang]
-# 		html_text=(
-# 			f"{html_text}\n"
-# 			f"<div>{tl}</div>"
-# 		)
-
-# 	if not empty:
-
-# 		x=len(assets_list)
-# 		while True:
-# 			x=x-1
-# 			if x<0:
-# 				break
-# 			html_text=(
-# 				f"{html_text}\n"
-# 				f"{write_html_asset(lang,assets_list[x])}"
-# 			)
-
-# 	return (
-# 			f"{html_text}\n"
-# 		"</div>"
-# 	)

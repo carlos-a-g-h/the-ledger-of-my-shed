@@ -9,7 +9,7 @@ from symbols_Any import (
 from frontend_Any import (
 	_CSS_CLASS_COMMON,_CSS_CLASS_CONTROLS,
 	_CSS_CLASS_HORIZONTAL,
-	_CSS_CLASS_VUP,
+	_CSS_CLASS_VER,
 )
 
 def write_button_nav_users(lang:str)->str:
@@ -270,7 +270,7 @@ def write_form_update_config(
 	html_text=(
 		f"{html_text}\n"
 		"<!-- LANG CONFIG -->\n"
-		f"""<div class={_CSS_CLASS_VUP}>""" "\n"
+		f"""<div class={_CSS_CLASS_VER}>""" "\n"
 			"<div>\n"
 				f"""<input name="change-lang" type=checkbox>""" "\n"
 				f"""<label for=change-lang>{tl}</label>""" "\n"
@@ -313,7 +313,7 @@ def write_form_update_config(
 
 		"<!-- PORT CONFIG -->\n"
 
-		f"""<div class={_CSS_CLASS_VUP}>""" "\n"
+		f"""<div class={_CSS_CLASS_VER}>""" "\n"
 			"<div>\n"
 				f"""<input name="change-port" type=checkbox>""" "\n"
 				f"""<label for=change-port>{tl}</label>""" "\n"

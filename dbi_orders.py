@@ -8,7 +8,10 @@ from motor.motor_asyncio import (
 	AsyncIOMotorCollection
 )
 
-from pymongo import UpdateOne,ReturnDocument
+from pymongo import (
+	UpdateOne,
+	ReturnDocument
+)
 from pymongo.results import BulkWriteResult
 
 from internals import (
@@ -20,7 +23,8 @@ from internals import (
 
 from symbols_Any import (
 
-	_ERR,_WARN,
+	_ERR,
+	# _WARN,
 	
 	_KEY_SIGN,
 	_KEY_TAG,
@@ -33,7 +37,7 @@ from symbols_assets import (
 	_COL_ASSETS,
 
 	_KEY_NAME,
-	_KEY_TOTAL,
+	# _KEY_TOTAL,
 	_KEY_VALUE,
 
 	_KEY_RECORD_MOD,
@@ -43,12 +47,11 @@ from symbols_assets import (
 from symbols_orders import (
 	_COL_ORDERS,
 	_KEY_ORDER,
-	_KEY_ORDER_VALUE,
+	# _KEY_ORDER_VALUE,
 	_KEY_LOCKED_BY,
 )
 
 from dbi_assets import dbi_assets_AssetQuery
-
 
 async def dbi_orders_IsItLocked(
 		rdbc:AsyncIOMotorClient,
@@ -486,6 +489,12 @@ async def dbi_Orders_ApplyOrder(
 	if len(the_order[_COL_ASSETS])==0:
 		return {_ERR:"Check the 'assets' field (it's empty)"}
 
+	locked_by=util_valid_str(
+		the_order.get(_KEY_LOCKED_BY)
+	)
+	if locked_by is not None:
+		return {_ERR:f"Order locked by {locked_by}"}
+
 	lock_order=isinstance(user_runner,str)
 
 	if lock_order:
@@ -528,7 +537,7 @@ async def dbi_Orders_ApplyOrder(
 		)
 
 	if total_ops==0:
-		return {_ERR:"There are no write operations???"}
+		return {_ERR:"No write ops ???"}
 
 	try:
 		col_assets:AsyncIOMotorCollection=rdbc[name_db][_COL_ASSETS]
@@ -545,7 +554,9 @@ async def dbi_Orders_ApplyOrder(
 		return {_ERR:f"{exc}"}
 
 	if not total_ops==results.matched_count:
-		return {_ERR:"The matched count does not equal to the total"}
+		return {
+			_ERR:f"results.matched_count != total_ops, results.matched_count = {results.matched_count}, total_ops = {total_ops}"
+		}
 
 	if not lock_order:
 
@@ -554,5 +565,92 @@ async def dbi_Orders_ApplyOrder(
 				rdbc,name_db,order_id
 			)
 		)
+
+	return {}
+
+async def dbi_Orders_RevertOrder(
+		rdbc:AsyncIOMotorClient,
+		name_db:str,order_id:str,
+	)->Mapping:
+
+	print("REVERTING ORDER")
+
+	the_order:Mapping=await dbi_orders_QueryOrders(
+		rdbc,name_db,
+		order_id=order_id,
+		include_assets=True
+	)
+	print("the_order ?:",the_order)
+	msg_err:Optional[str]=the_order.get(_ERR)
+	if msg_err is not None:
+		return {_ERR:f"{msg_err}"}
+
+	order_tag=util_valid_str(
+		the_order.get(_KEY_TAG),True
+	)
+	if not order_tag:
+		return {_ERR:"Check the 'tag' field"}
+
+	order_date=util_valid_date(
+		util_valid_str(
+			the_order.get(_KEY_DATE)
+		),
+	)
+	if not order_date:
+		return {_ERR:"The 'date' field is not valid"}
+
+	if not isinstance(
+		the_order.get(_COL_ASSETS),
+		Mapping
+	):
+		return {_ERR:"Check the 'assets' field"}
+
+	if len(the_order[_COL_ASSETS])==0:
+		return {_ERR:"Check the 'assets' field (it's empty)"}
+
+	locked_by=util_valid_str(
+		the_order.get(_KEY_LOCKED_BY)
+	)
+	if locked_by is None:
+		return {_ERR:"This order is not locked"}
+
+	total_ops=0
+	bulk_write_ops=[]
+
+	for asset_id in the_order[_COL_ASSETS]:
+
+		total_ops=total_ops+1
+		bulk_write_ops.append(
+			UpdateOne(
+				{"_id":asset_id},
+				{
+					"$unset":[
+						{f"{_KEY_HISTORY}.{order_id}":0}
+					]
+				}
+			)
+		)
+
+	if total_ops==0:
+		return {_ERR:"No write ops ???"}
+
+	try:
+		col_assets:AsyncIOMotorCollection=rdbc[name_db][_COL_ASSETS]
+		results:BulkWriteResult=await col_assets.bulk_write(
+			bulk_write_ops
+		)
+		print(
+			f"TOTAL: {total_ops}" "\n"
+			f"MODIFIED: {results.modified_count}" "\n"
+			f"MATCHED: {results.matched_count}" "\n"
+		)
+	
+	except Exception as exc:
+		return {_ERR:f"{exc}"}
+
+	if not total_ops==results.matched_count:
+		return {
+			_ERR:f"results.matched_count != total_ops, results.matched_count = {results.matched_count}, total_ops = {total_ops}"
+		}
 
 	return {}

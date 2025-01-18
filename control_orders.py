@@ -38,30 +38,34 @@ from dbi_orders import (
 	dbi_orders_DropAsset,
 	dbi_orders_PatchAsset,
 	dbi_Orders_ApplyOrder,
+	dbi_Orders_RevertOrder,
 )
 
 from frontend_Any import (
 
-	_ID_NAVIGATION,
-	_ID_MAIN,_ID_MAIN1,_ID_MAIN2,
+	# _ID_NAVIGATION,
+	_ID_MAIN,_ID_MAIN_ONE,_ID_MAIN_TWO,
+	_ID_NAV_ONE,_ID_NAV_TWO,_ID_NAV_TWO_OPTS,
 	_ID_MESSAGES,
 
 	_SCRIPT_HTMX,_STYLE_CUSTOM,_STYLE_POPUP,
 
-	_CSS_CLASS_CONTAINER,
-	_CSS_CLASS_CONTENT,
+	# _CSS_CLASS_CONTAINER,
+	# _CSS_CLASS_CONTENT,
+	_CSS_CLASS_NAV,
 
 	# _CSS_CLASS_COMMON,
 	# _CSS_CLASS_HORIZONTAL,
-	_CSS_CLASS_TITLE,
+	# _CSS_CLASS_TITLE,
 
 	_DETAILS,
 
 	write_fullpage,write_popupmsg,
-	write_link_homepage,write_ul
+	write_ul,
+	write_html_nav_pages,
 )
 
-from frontend_accounts import write_html_user_section
+from frontend_accounts import render_html_user_section
 
 from frontend_assets_search import write_form_search_assets
 
@@ -95,7 +99,8 @@ from symbols_Any import (
 	_APP_CACHE_ASSETS,
 	_APP_RDBC,_APP_RDBN,
 
-	_REQ_LANGUAGE,_REQ_USERID,_REQ_CLIENT_TYPE,
+	_REQ_LANGUAGE,_REQ_USERID,
+	_REQ_CLIENT_TYPE,_REQ_HAS_SESSION,
 
 	_LANG_EN,_LANG_ES,
 
@@ -251,6 +256,7 @@ async def route_fgmt_new_order(
 	)->Union[Response,json_response]:
 
 	# GET: /fgmt/orders/new
+	# hx-target: #messages
 
 	if not assert_referer(
 			request[_REQ_CLIENT_TYPE],
@@ -266,21 +272,13 @@ async def route_fgmt_new_order(
 
 			"<!-- ORDER CREATION FORM -->\n\n"
 
-			f"""<section hx-swap-oob="innerHTML:#{_ID_NAVIGATION}">""" "\n"
-				f"{write_ul([write_button_nav_list_orders(lang)])}\n"
-			"</section>\n\n"
+			f"""<ul hx-swap-oob="innerHTML:#{_ID_NAV_TWO_OPTS}">""" "\n"
+				f"{write_ul([write_button_nav_list_orders(lang)],full=False)}\n"
+			"</ul>\n\n"
 
 			f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
 				f"{write_form_new_order(lang)}\n"
 			"</section>\n\n"
-
-			f"""<div hx-swap-oob="innerHTML:#{_ID_MAIN1}">""" "\n"
-				"<!-- EMPTY -->\n"
-			"</div>\n\n"
-			f"""<div hx-swap-oob="innerHTML:#{_ID_MAIN2}">""" "\n"
-				"<!-- EMPTY -->\n"
-			"</div>\n\n"
-
 		),
 		content_type=_MIMETYPE_HTML
 	)
@@ -290,6 +288,7 @@ async def route_api_new_order(
 	)->Union[Response,json_response]:
 
 	# POST: /api/orders/new
+	# hx-target: #messages
 
 	ct=request[_REQ_CLIENT_TYPE]
 	if not assert_referer(ct,request,_ROUTE_PAGE):
@@ -358,7 +357,7 @@ async def route_api_new_order(
 				f"{write_form_new_order(lang,False)}\n"
 			"</div>\n"
 
-			f"""<div hx-swap-oob="innerHTML:#{_ID_RESULT_NEW_ORDER}">""" "\n"
+			f"""<div hx-swap-oob="afterbegin:#{_ID_RESULT_NEW_ORDER}">""" "\n"
 				f"{write_html_order_as_item(lang,dbi_result,True)}\n"
 			"</div>"
 
@@ -371,10 +370,13 @@ async def route_fgmt_list_orders(
 	)->Union[Response,json_response]:
 
 	# GET: /fgmt/orders/list-orders
+	# hx-target: #messages
 
 	ct=request[_REQ_CLIENT_TYPE]
 	if not assert_referer(ct,request,_ROUTE_PAGE):
 		return Response(status=406)
+
+	authorized=request[_REQ_HAS_SESSION]
 
 	lang=request[_REQ_LANGUAGE]
 
@@ -401,11 +403,12 @@ async def route_fgmt_list_orders(
 	html_text=(
 		"<!-- LISTING EXISTING ORDERS -->\n"
 
-		f"""<div hx-swap-oob="innerHTML:#{_ID_NAVIGATION}">""" "\n"
-			f"{write_ul([write_button_nav_new_order(lang)])}\n"
+		f"""<div hx-swap-oob="innerHTML:#{_ID_NAV_TWO_OPTS}">""" "\n"
+			f"{write_ul([write_button_nav_new_order(lang)],full=False)}\n"
 		"</div>\n"
 
 		f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
+			"<div>"
 	)
 
 	if empty:
@@ -422,19 +425,13 @@ async def route_fgmt_list_orders(
 		for obj_order in results_list:
 			html_text=(
 				f"{html_text}\n"
-				f"{write_html_order_as_item(lang,results_list.pop(),True)}"
+				f"{write_html_order_as_item(lang,results_list.pop(),authorized)}"
 			)
 
 	html_text=(
-			f"{html_text}\n"
+				f"{html_text}\n"
+			"</div>\n"
 		"</section>\n"
-
-		f"""<div hx-swap-oob="innerHTML:#{_ID_MAIN1}">""" "\n"
-			"<!-- EMPTY -->" "\n"
-		"</div>\n"
-		f"""<div hx-swap-oob="innerHTML:#{_ID_MAIN2}">""" "\n"
-			"<!-- EMPTY -->" "\n"
-		"</div>"
 	)
 
 	return Response(
@@ -457,41 +454,25 @@ async def route_fgmt_order_details(
 
 	order_id=request.match_info[_KEY_ORDER]
 
-	render_main_1=(request.query.get(_SECTION)==_ID_MAIN1)
-	render_main_2=(request.query.get(_SECTION)==_ID_MAIN2)
+	render_main_1=(request.query.get(_SECTION)==_ID_MAIN_ONE)
+	render_main_2=(request.query.get(_SECTION)==_ID_MAIN_TWO)
 
 	render_all=(
 		(render_main_1 and render_main_2) or
-		((not render_main_1) and (not render_main_2))
+		(
+			(not render_main_1) or
+			(not render_main_2)
+		)
 	)
 
-	html_text=(
-		f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
-			"<!-- EMPTY -->\n"
-		"</section>"
+	print(
+		"Render what?",
+		render_all,
+		render_main_1,
+		render_main_2
 	)
 
-	if render_all:
-
-		html_text=(
-			f"{html_text}\n"
-			f"<!-- EDITOR MODE FOR ORDER {order_id} -->\n"
-			f"""<section hx-swap-oob="innerHTML:#{_ID_NAVIGATION}">""" "\n"
-				f"{write_ul([write_button_nav_new_order(lang),write_button_nav_list_orders(lang)])}\n"
-			"</section>\n"
-		)
-
-	if render_all or render_main_1:
-
-		html_text=(
-			f"{html_text}\n"
-
-			f"""<div hx-swap-oob="innerHTML:#{_ID_MAIN1}">""" "\n"
-				"<!-- start { -->\n"
-					f"{write_form_search_assets(lang,order_id=order_id)}\n"
-				"<!-- } end -->\n"
-			"</div>"
-		)
+	html_text_order=""
 
 	if render_all or render_main_2:
 
@@ -521,16 +502,59 @@ async def route_fgmt_order_details(
 			True
 		)
 
+		html_text_order=f"{write_html_order_details(lang,dbi_result,True)}\n"
+
+	html_text=f"<!-- EDITOR MODE FOR ORDER {order_id} -->"
+
+	if render_all:
+
 		html_text=(
+
 			f"{html_text}\n"
 
-			f"""<div hx-swap-oob="innerHTML:#{_ID_MAIN2}">""" "\n"
-				"<!-- start { -->\n"
-					f"{write_html_order_details(lang,dbi_result,True)}\n"
-				"<!-- } end -->\n"
-			"</div>"
+			f"""<ul hx-swap-oob="innerHTML:#{_ID_NAV_TWO_OPTS}">""" "\n"
+				f"{write_ul([write_button_nav_new_order(lang),write_button_nav_list_orders(lang)],full=False)}\n"
+			"</ul>\n"
 
+			f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
+
+				f"""<div id="{_ID_MAIN_ONE}">""" "\n"
+					f"{write_form_search_assets(lang,order_id=order_id)}\n"
+				"</div>\n"
+
+				f"""<div id="{_ID_MAIN_TWO}">""" "\n"
+					f"{html_text_order}\n"
+				"</div>\n"
+
+			"</section>"
 		)
+
+	if not render_all:
+
+		if render_main_1:
+
+			html_text=(
+				f"{html_text}\n"
+
+				f"""<div hx-swap-oob="innerHTML:#{_ID_MAIN_ONE}">""" "\n"
+					"<!-- start { -->\n"
+						f"{write_form_search_assets(lang,order_id=order_id)}\n"
+					"<!-- } end -->\n"
+				"</div>"
+			)
+
+		if render_main_2:
+	
+			html_text=(
+				f"{html_text}\n"
+
+				f"""<div hx-swap-oob="innerHTML:#{_ID_MAIN_TWO}">""" "\n"
+					"<!-- start { -->\n"
+						f"{html_text_order}\n"
+					"<!-- } end -->\n"
+				"</div>"
+	
+			)
 
 	return Response(
 		body=html_text,
@@ -674,7 +698,7 @@ async def route_api_update_asset_in_order(
 	html_text=(
 		f"<!-- UPDATED {asset_id} IN {order_id} -->\n"
 
-		f"""<div hx-swap-oob="innerHTML:#{_ID_MAIN2}">""" "\n"
+		f"""<div hx-swap-oob="innerHTML:#{_ID_MAIN_TWO}">""" "\n"
 			f"{write_html_order_details(lang,result_patch,True,focus=asset_id)}\n"
 		"</div>"
 	)
@@ -769,7 +793,7 @@ async def route_api_remove_asset_from_order(
 	return Response(
 		body=(
 			f"<!-- REMOVED FROM ORDER: {order_id} -->\n"
-			f"""<div hx-swap-oob="innerHTML:#{_ID_MAIN2}">"""
+			f"""<div hx-swap-oob="innerHTML:#{_ID_MAIN_TWO}">"""
 				f"{write_html_order_details(lang,result_drop,True)}\n"
 			"</div>"
 		),
@@ -889,17 +913,13 @@ async def route_api_delete_order(
 		html_text=(
 			f"{html_text}\n"
 
-			f"""<section hx-swap-oob="innerHTML:#{_ID_NAVIGATION}">""" "\n"
-				f"{write_ul([write_button_nav_new_order(lang),write_button_nav_list_orders(lang)])}\n"
+			f"""<ul hx-swap-oob="innerHTML:#{_ID_NAV_TWO_OPTS}">""" "\n"
+				f"{write_ul([write_button_nav_new_order(lang),write_button_nav_list_orders(lang)],full=False)}\n"
+			"</ul>\n"
+
+			f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
+				"<!-- EMPTY -->\n"
 			"</section>\n"
-
-			f"""<div hx-swap-oob="innerHTML:#{_ID_MAIN1}">""" "\n"
-				"<!-- EMPTY -->\n"
-			"</div>\n"
-
-			f"""<div hx-swap-oob="innerHTML:#{_ID_MAIN2}">""" "\n"
-				"<!-- EMPTY -->\n"
-			"</div>"
 		)
 
 	return Response(
@@ -918,8 +938,6 @@ async def route_api_run_order(
 		return Response(status=406)
 
 	request_data=await get_request_body_dict(ct,request)
-	# if request_data is None:
-	# 	return Response(status=406)
 
 	lang=request[_REQ_LANGUAGE]
 
@@ -963,17 +981,70 @@ async def route_api_run_order(
 	html_text=(
 		f"{html_text}\n"
 
-		f"""<section hx-swap-oob="innerHTML:#{_ID_NAVIGATION}">""" "\n"
-			f"{write_ul([write_button_nav_new_order(lang),write_button_nav_list_orders(lang)])}\n"
+		f"""<ul hx-swap-oob="innerHTML:#{_ID_NAV_TWO_OPTS}">""" "\n"
+			f"{write_ul([write_button_nav_new_order(lang),write_button_nav_list_orders(lang)],full=False)}\n"
+		"</ul>\n"
+
+		f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
+			"<!-- EMPTY -->\n"
 		"</section>\n"
+	)
 
-		f"""<div hx-swap-oob="innerHTML:#{_ID_MAIN1}">""" "\n"
-			"<!-- EMPTY -->\n"
-		"</div>\n"
+	return Response(
+		body=html_text,
+		content_type=_MIMETYPE_HTML
+	)
 
-		f"""<div hx-swap-oob="innerHTML:#{_ID_MAIN2}">""" "\n"
+async def route_api_revert_order(
+		request:Request
+	)->Union[Response,json_response]:
+
+	# POST: /api/orders/current/{order_id}/revert
+	# hx-target: #messages
+
+	ct=request[_REQ_CLIENT_TYPE]
+	if not assert_referer(ct,request,_ROUTE_PAGE):
+		return Response(status=406)
+
+	lang=request[_REQ_LANGUAGE]
+
+	order_id=request.match_info[_KEY_ORDER]
+
+	result_rev=await dbi_Orders_RevertOrder(
+		request.app[_APP_RDBC],
+		request.app[_APP_RDBN],
+		order_id
+	)
+
+	msg_err:Optional[str]=util_valid_str(
+		result_rev.get(_ERR)
+	)
+	if msg_err is not None:
+		return response_errormsg(
+			_ERR_TITLE_EXECUTE_ORDER[lang],
+			f"{_ERR_DETAIL_DBI_FAIL[lang]}; {msg_err}",
+			ct,400
+		)
+
+	if ct==_TYPE_CUSTOM:
+		return json_response(data={})
+
+	tl={
+		_LANG_EN:"The order has been fully reversed",
+		_LANG_ES:"La orden ha sido completamente revertida"
+	}[lang]
+	html_text=write_popupmsg(f"<h2>{tl}</h2>")
+
+	html_text=(
+		f"{html_text}\n"
+
+		f"""<ul hx-swap-oob="innerHTML:#{_ID_NAV_TWO_OPTS}">""" "\n"
+			f"{write_ul([write_button_nav_new_order(lang),write_button_nav_list_orders(lang)],full=False)}\n"
+		"</ul>\n"
+
+		f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
 			"<!-- EMPTY -->\n"
-		"</div>"
+		"</section>\n"
 	)
 
 	return Response(
@@ -986,49 +1057,53 @@ async def route_main(
 	)->Union[Response,json_response]:
 
 	lang=request[_REQ_LANGUAGE]
-	username=await get_username(request,False)
+	userid=request[_REQ_USERID]
 
-	page_title={
-		_LANG_EN:"Orders manager",
-		_LANG_ES:"Administrador de órdenes"
+	tl_title={
+		_LANG_EN:"Orders",
+		_LANG_ES:"Órdenes"
 	}[lang]
 
-	tl={
-		_LANG_EN:"Create, edit and run orders",
-		_LANG_ES:"Crea, edita y ejecuta órdenes"
-	}[lang]
+	tl=await render_html_user_section(request,lang,userid)
+
+	html_text=(
+		f"""<section id="{_ID_MESSAGES}">""" "\n"
+			"<!-- MESSAGES GO HERE -->\n"
+		"</section>\n"
+
+		f"""<section id="{_ID_NAV_ONE}">""" "\n"
+			f"<div>SHLED / {tl_title}</div>\n"
+			f"{write_html_nav_pages(lang,1)}\n"
+		"</section>\n"
+
+		f"""<section id="{_ID_NAV_TWO}">""" "\n"
+			f"{tl}\n"
+	)
+
+	tl=write_ul(
+		[
+			write_button_nav_new_order(lang),
+			write_button_nav_list_orders(lang)
+		],
+		ul_id=_ID_NAV_TWO_OPTS,
+		ul_classes=[_CSS_CLASS_NAV]
+	)
+
+	html_text=(
+			f"{html_text}\n"
+			f"{tl}\n"
+		"</section>\n"
+
+		f"""<section id="{_ID_MAIN}">""" "\n"
+			"<!-- EMPTY AT THE MOMENT -->\n"
+		"</section>"
+	)
 
 	return Response(
 		body=write_fullpage(
-			lang,page_title,
-			(
-				f"""<h1 class="{_CSS_CLASS_TITLE}">{page_title}</h1>""" "\n"
-				f"<h3>{tl}</h3>\n"
-				f"{write_link_homepage(lang)}\n"
-				f"{write_html_user_section(lang,username=username)}\n"
-				f"""<section id="{_ID_NAVIGATION}">""" "\n"
-					f"{write_ul([write_button_nav_new_order(lang),write_button_nav_list_orders(lang)])}\n"
-				"</section>\n"
-
-				f"""<section id="{_ID_MAIN}">""" "\n"
-					"<!-- EMPTY -->\n"
-				"</section>\n"
-
-				f"""<section class="{_CSS_CLASS_CONTAINER}">""" "\n"
-
-					f"""<div id="{_ID_MAIN1}" class="{_CSS_CLASS_CONTENT}">""" "\n"
-						"<!-- EMPTY -->\n"
-					"</div>\n"
-					f"""<div id="{_ID_MAIN2}" class="{_CSS_CLASS_CONTENT}">""" "\n"
-						"<!-- EMPTY -->\n"
-					"</div>\n"
-
-				"</section>\n"
-
-				f"""<section id="{_ID_MESSAGES}">""" "\n"
-					"<!-- WELCOME TO THE ORDER BOOK -->\n"
-				"</section>"
-			),
+			lang,
+			tl_title,
+			html_text,
 			html_header_extra=[
 				_SCRIPT_HTMX,
 				_STYLE_POPUP,

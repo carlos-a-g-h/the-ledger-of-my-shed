@@ -17,15 +17,16 @@ from yarl import URL as yarl_URL
 
 from frontend_Any import (
 
-	_STYLE_CUSTOM,_STYLE_POPUP_CONTENTS,
-	_CSS_CLASS_TITLE_UNIQUE,
+	_STYLE_CUSTOM,
+	_STYLE_POPUP_CONTENTS,
+	# _CSS_CLASS_TITLE_UNIQUE,
 
 	write_popupmsg,
 	write_fullpage,
 	write_button_anchor,
 )
 
-from frontend_accounts import write_link_account
+# from frontend_accounts import write_link_account
 
 from internals import (
 	util_valid_str,util_valid_date,
@@ -36,11 +37,11 @@ from internals import (
 
 from symbols_Any import (
 
-	# _ROOT_USER,
+	_ROOT_USER_ID,
 	_ONE_MB,
 	_ERR,
 
-	_APP_PROGRAMDIR,_APP_ROOT_USERID,
+	_APP_PROGRAMDIR,
 	_APP_LANG,_LANG_EN,_LANG_ES,
 
 	_MIMETYPE_HTML,_MIMETYPE_CSS,_MIMETYPE_JS,
@@ -237,6 +238,7 @@ async def get_request_body_dict(
 		return request_data
 
 	return None
+
 
 # Responses
 
@@ -513,24 +515,31 @@ async def the_middleware_factory(app,handler):
 				if has_session:
 					userid,access_key=util_extract_from_cookies(request)
 
-			# The following routes despite asking for a session will return
-			# "partial" content to unauthenticated users instead of denying it
+			# The following routes despite asking for a session will return a
+			# "different" content to unauthenticated users instead of denying it
 
 			allowed=(
 				request.path.startswith("/fgmt/assets/search-assets") or
 				request.path.startswith("/api/assets/search-assets") or
 				request.path.startswith("/fgmt/assets/panel/") or
-				request.path.startswith("/fgmt/assets/history/")
+				request.path.startswith("/fgmt/assets/history/") or 
+				url_is_account
 			)
 
+			print("\tis account?",url_is_account)
+			print("\tis admin?",url_is_admin)
+			print("\tis page?",url_is_page)
+
 			if not allowed:
+
+				print("\nNOT ALLOWED")
 
 				if not url_is_account:
 					if (not url_is_page) and (not has_session):
 						return response_unauthorized(lang,client_type)
 
 				if (not url_is_page) and url_is_admin:
-					if not userid==request.app[_APP_ROOT_USERID]:
+					if not userid==_ROOT_USER_ID:
 						return response_unauthorized(lang,client_type,True)
 
 		request[_REQ_USERID]=userid
@@ -549,6 +558,8 @@ async def the_middleware_factory(app,handler):
 			):
 				the_response.del_cookie(_COOKIE_AKEY)
 				the_response.del_cookie(_COOKIE_USER)
+
+		print("[!] Reached real end")
 
 		return the_response
 
@@ -625,7 +636,8 @@ async def route_main(
 		_LANG_EN:"Welcome",
 		_LANG_ES:"Bienvenid@"
 	}[lang]
-	html_text=f"""<h1 class="{_CSS_CLASS_TITLE_UNIQUE}">{tl}</h1>"""
+	# html_text=f"""<h1 class="{_CSS_CLASS_TITLE_UNIQUE}">{tl}</h1>"""
+	html_text=f"""<h1>{tl}</h1>"""
 
 	tl={
 		_LANG_EN:"Assets",
@@ -639,7 +651,13 @@ async def route_main(
 	}[lang]
 	html_text=f"{html_text}\n"+write_button_anchor(tl,"/page/orders")
 
-	html_text=f"{html_text}{write_link_account(lang)}"
+	tl={
+		_LANG_EN:"Account",
+		_LANG_ES:"Cuenta"
+	}[lang]
+	html_text=f"{html_text}\n"+write_button_anchor(tl,"/page/accounts")
+
+	# html_text=f"{html_text}{write_link_account(lang)}"
 
 	tl={
 		_LANG_EN:"System config",
