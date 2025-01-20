@@ -41,8 +41,9 @@ from control_admin import (
 
 from control_assets import (
 	route_main as route_Assets,
+	route_api_excel_export as route_Assets_api_ExportAsExcel,
 	route_api_select_asset as route_Assets_api_GetAsset,
-	route_fgmt_asset_panel as route_Assets_fgmt_AssetPanel,
+	route_fgmt_asset_details as route_Assets_fgmt_AssetDetails,
 	route_fgmt_new_asset as route_Assets_fgmt_NewAsset,
 	route_api_new_asset as route_Assets_api_NewAsset,
 	route_api_asset_change_metadata as route_Assets_api_ChangeMetadata,
@@ -317,6 +318,12 @@ def build_app(
 		),
 
 			web_GET(
+				"/api/assets/export-as-excel",
+				route_Assets_api_ExportAsExcel,
+			),
+
+
+			web_GET(
 				"/fgmt/assets/new",
 				route_Assets_fgmt_NewAsset
 			),
@@ -334,31 +341,38 @@ def build_app(
 					route_Assets_api_SearchAssets
 				),
 
+			# NOTE: For custom clients only
+			web_POST(
+				"/api/assets/get-asset",
+				route_Assets_api_GetAsset
+			),
+
 			web_GET(
-				"/fgmt/assets/panel/{asset_id}",
-				route_Assets_fgmt_AssetPanel
+				"/fgmt/assets/pool/{asset_id}",
+				route_Assets_fgmt_AssetDetails
 		
 			),
 				web_POST(
-					"/api/assets/select/{asset_id}",
-					route_Assets_api_GetAsset
-				),
-				web_POST(
-					"/api/assets/change-metadata",
+					"/fgmt/assets/pool/{asset_id}/change-metadata",
 					route_Assets_api_ChangeMetadata
 				),
 
-			web_DELETE(
-				"/api/assets/drop",
-				route_Assets_api_DropAsset
-			),
+				web_DELETE(
+					"/api/assets/pool/{asset_id}/drop",
+					route_Assets_api_DropAsset
+				),
+					web_DELETE(
+						"/api/assets/drop-asset",
+						route_Assets_api_DropAsset
+					),
 
-			web_POST(
-				"/api/assets/history/{asset_id}/add",
-				route_Assets_api_AddRecord
-			),
+				web_POST(
+					"/api/assets/pool/{asset_id}/history/add",
+					route_Assets_api_AddRecord
+				),
+
 				web_GET(
-					"/api/assets/history/{asset_id}/records/{record_id}",
+					"/fgmt/assets/pool/{asset_id}/history/records/{record_id}",
 					route_Assets_api_GetRecord
 				),
 
@@ -379,41 +393,41 @@ def build_app(
 				),
 
 			web_GET(
-				"/fgmt/orders/list-orders",
+				"/fgmt/orders/all-orders",
 				route_Orders_fgmt_ListOrders
 			),
 
 			web_GET(
-				"/fgmt/orders/current/{order_id}/search-assets",
+				"/fgmt/orders/pool/{order_id}/search-assets",
 				route_Assets_fgmt_SearchAssets
 			),
 				web_POST(
-					"/api/orders/current/{order_id}/search-assets",
+					"/api/orders/pool/{order_id}/search-assets",
 					route_Assets_api_SearchAssets
 				),
 
 			web_GET(
-				"/fgmt/orders/current/{order_id}/details",
+				"/fgmt/orders/pool/{order_id}/details",
 				route_Order_fgmt_Details
 			),
 			web_POST(
-				"/api/orders/current/{order_id}/add-asset",
+				"/api/orders/pool/{order_id}/add-asset",
 				route_Orders_api_UpdateAsset
 			),
 			web_POST(
-				"/api/orders/current/{order_id}/update-asset",
+				"/api/orders/pool/{order_id}/update-asset",
 				route_Orders_api_UpdateAsset
 			),
 			web_DELETE(
-				"/api/orders/current/{order_id}/remove-asset",
+				"/api/orders/pool/{order_id}/remove-asset",
 				route_Orders_api_RemoveAsset
 			),
 			web_POST(
-				"/api/orders/current/{order_id}/run",
+				"/api/orders/pool/{order_id}/run",
 				route_Orders_api_RunOrder
 			),
 			web_DELETE(
-				"/api/orders/current/{order_id}/drop",
+				"/api/orders/pool/{order_id}/drop",
 				route_Orders_api_DeleteOrder
 			),
 	])

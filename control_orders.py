@@ -108,7 +108,7 @@ from symbols_Any import (
 	_TYPE_BROWSER,
 	_MIMETYPE_HTML,
 
-	_KEY_DELETE_ITEM,
+	_KEY_DELETE_AS_ITEM,
 	_KEY_VLEVEL,
 	_KEY_SIGN,_KEY_SIGN_UNAME,
 	_KEY_TAG,_KEY_COMMENT,
@@ -167,9 +167,14 @@ _ERR_TITLE_DROP_ORDER={
 	_LANG_ES:"Fallo al eliminar la orden"
 }
 
-_ERR_TITLE_EXECUTE_ORDER={
+_ERR_TITLE_RUN_ORDER={
 	_LANG_EN:"Failed to execute the order",
 	_LANG_ES:"Fallo al ejecutar la orden"
+}
+
+_ERR_TITLE_REVERT_ORDER={
+	_LANG_EN:"Failed to revert the order",
+	_LANG_ES:"Fallo al revertir la orden"
 }
 
 async def util_patch_order_with_asset_names(
@@ -258,12 +263,11 @@ async def route_fgmt_new_order(
 	# GET: /fgmt/orders/new
 	# hx-target: #messages
 
-	if not assert_referer(
-			request[_REQ_CLIENT_TYPE],
-			request,_ROUTE_PAGE
-		):
-
-		return Response(status=406)
+	assert_referer(
+		request,
+		request[_REQ_CLIENT_TYPE],
+		_ROUTE_PAGE
+	)
 
 	lang=request[_REQ_LANGUAGE]
 
@@ -291,8 +295,7 @@ async def route_api_new_order(
 	# hx-target: #messages
 
 	ct=request[_REQ_CLIENT_TYPE]
-	if not assert_referer(ct,request,_ROUTE_PAGE):
-		return Response(status=406)
+	assert_referer(request,ct,_ROUTE_PAGE)
 
 	req_data=await get_request_body_dict(ct,request)
 	if req_data is None:
@@ -369,12 +372,11 @@ async def route_fgmt_list_orders(
 		request:Request
 	)->Union[Response,json_response]:
 
-	# GET: /fgmt/orders/list-orders
+	# GET: /fgmt/orders/all-orders
 	# hx-target: #messages
 
 	ct=request[_REQ_CLIENT_TYPE]
-	if not assert_referer(ct,request,_ROUTE_PAGE):
-		return Response(status=406)
+	assert_referer(request,ct,_ROUTE_PAGE)
 
 	authorized=request[_REQ_HAS_SESSION]
 
@@ -422,11 +424,14 @@ async def route_fgmt_list_orders(
 		)
 
 	if not empty:
+		first=True
 		for obj_order in results_list:
 			html_text=(
 				f"{html_text}\n"
-				f"{write_html_order_as_item(lang,results_list.pop(),authorized)}"
+				f"{write_html_order_as_item(lang,results_list.pop(),authorized,focus=first)}"
 			)
+			if first:
+				first=False
 
 	html_text=(
 				f"{html_text}\n"
@@ -443,12 +448,11 @@ async def route_fgmt_order_details(
 		request:Request
 	)->Union[Response,json_response]:
 
-	# GET: /fgmt/orders/current/{order_id}/details
+	# GET: /fgmt/orders/pool/{order_id}/details
 	# hx-target: #messages
 
 	ct=request[_REQ_CLIENT_TYPE]
-	if not assert_referer(ct,request,_ROUTE_PAGE):
-		return Response(status=406)
+	assert_referer(request,ct,_ROUTE_PAGE)
 
 	lang=request[_REQ_LANGUAGE]
 
@@ -565,13 +569,18 @@ async def route_api_update_asset_in_order(
 		request:Request
 	)->Union[json_response,Response]:
 
-	# POST:/api/orders/current/{order_id}/update-asset
-	# POST:/api/orders/current/{order_id}/add-asset
+	# POST:/api/orders/pool/{order_id}/update-asset
+	# POST:/api/orders/pool/{order_id}/add-asset
 	# hx-target: #messages
 
+	# POST:/api/orders/add-or-update-asset
+
 	ct=request[_REQ_CLIENT_TYPE]
-	if not assert_referer(ct,request,_ROUTE_PAGE):
-		return Response(status=406)
+	if ct==_TYPE_BROWSER:
+		if not request.path.startswith("/api/orders/pool/"):
+			return Response(status=403)
+
+	assert_referer(request,ct,_ROUTE_PAGE)
 
 	lang=request[_REQ_LANGUAGE]
 	reqdata=await get_request_body_dict(ct,request)
@@ -582,7 +591,20 @@ async def route_api_update_asset_in_order(
 			ct,406
 		)
 
-	order_id=request.match_info[_KEY_ORDER]
+	order_id:Optional[str]=None
+	if ct==_TYPE_BROWSER:
+		order_id=request.match_info[_KEY_ORDER]
+
+	if ct==_TYPE_CUSTOM:
+		order_id=util_valid_str(
+			reqdata.get(_KEY_ORDER)
+		)
+	if order_id is None:
+		return response_errormsg(
+			_ERR_TITLE_ADD_ORDER_UPDATE[lang],
+			f"'{_KEY_ORDER}'?",
+			ct,406
+		)
 
 	result_islock=await dbi_orders_IsItLocked(
 		request.app[_APP_RDBC],
@@ -712,21 +734,39 @@ async def route_api_remove_asset_from_order(
 		request:Request
 	)->Union[json_response,Response]:
 
-	# DELETE:/api/orders/current/{order_id}/update
+	# DELETE:/api/orders/pool/{order_id}/remove-asset
+	# hx-target: #messages
+
+	# DELETE /api/orders/remove-asset
 
 	ct=request[_REQ_CLIENT_TYPE]
-	if not assert_referer(ct,request,_ROUTE_PAGE):
-		return Response(status=406)
+	if ct==_TYPE_BROWSER:
+		if not request.path.startswith("/api/orders/pool/"):
+			return Response(status=403)
+
+	assert_referer(request,ct,_ROUTE_PAGE)
 
 	lang=request[_REQ_LANGUAGE]
-
-	order_id=request.match_info[_KEY_ORDER]
 
 	reqdata=await get_request_body_dict(ct,request)
 	if reqdata is None:
 		return response_errormsg(
 			_ERR_TITLE_ADD_ORDER_UPDATE[lang],
 			_ERR_DETAIL_DATA_NOT_VALID[lang],
+			ct,406
+		)
+
+	order_id:Optional[str]=None
+	if ct==_TYPE_BROWSER:
+		order_id=request.match_info[_KEY_ORDER]
+	if ct==_TYPE_CUSTOM:
+		order_id=util_valid_str(
+			reqdata.get(_KEY_ORDER)
+		)
+	if order_id is None:
+		return response_errormsg(
+			_ERR_TITLE_ADD_ORDER_UPDATE[lang],
+			f"'{_KEY_ORDER}'?",
 			ct,406
 		)
 
@@ -810,7 +850,7 @@ async def route_api_list_orders(
 	if not ct==_TYPE_CUSTOM:
 		return Response(status=406)
 
-	req_data=get_request_body_dict(ct,request)
+	req_data=await get_request_body_dict(ct,request)
 	if req_data is None:
 		return Response(status=406)
 
@@ -852,19 +892,45 @@ async def route_api_delete_order(
 		request:Request
 	)->Union[Response,json_response]:
 
-	# DELETE: /api/orders/current/{order_id}/drop
+	# DELETE: /api/orders/pool/{order_id}/drop
+	# hx-target: #messages
+
+	# DELETE: /api/orders/drop
 
 	ct=request[_REQ_CLIENT_TYPE]
-	if not assert_referer(ct,request,_ROUTE_PAGE):
-		return Response(status=406)
+	assert_referer(request,ct,_ROUTE_PAGE)
 
-	request_data=await get_request_body_dict(ct,request)
-	if request_data is None:
-		return Response(status=406)
+	browser_only=request.path.startswith("/api/orders/pool/")
 
 	lang=request[_REQ_LANGUAGE]
 
-	order_id=request.match_info[_KEY_ORDER]
+	order_id:Optional[str]=None
+	delete_as_item=False
+
+	if not browser_only:
+
+		# Browser and custom client
+
+		request_data=await get_request_body_dict(ct,request)
+		if not request_data:
+			return response_errormsg(
+				_ERR_TITLE_DROP_ORDER[lang],
+				_ERR_DETAIL_DATA_NOT_VALID[lang],
+				ct,status_code=406
+			)
+
+		order_id=util_valid_str(
+			request_data.get(_KEY_ORDER)
+		)
+		if ct==_TYPE_BROWSER:
+			delete_as_item=util_valid_bool(
+				request_data.get(_KEY_DELETE_AS_ITEM),
+				False
+			)
+
+	if browser_only:
+
+		order_id=request.match_info[_KEY_ORDER]
 
 	result:Mapping=await dbi_orders_DropOrder(
 		request.app[_APP_RDBC],
@@ -884,9 +950,9 @@ async def route_api_delete_order(
 	if ct==_TYPE_CUSTOM:
 		return json_response(data={})
 
-	delete_item=util_valid_bool(
-		request_data.get(_KEY_DELETE_ITEM),False
-	)
+	# delete_as_item=util_valid_bool(
+	# 	request_data.get(_KEY_DELETE_AS_ITEM),False
+	# )
 
 	tl={
 		_LANG_EN:"Order deleted",
@@ -894,7 +960,7 @@ async def route_api_delete_order(
 	}[lang]
 	html_text=write_popupmsg(f"<h2>{tl}</h2>")
 
-	if delete_item:
+	if delete_as_item:
 
 		# Deleting from order list or order creation form
 
@@ -906,7 +972,7 @@ async def route_api_delete_order(
 			"</div>"
 		)
 
-	if not delete_item:
+	if not delete_as_item:
 
 		# Deleting from order full view
 
@@ -931,24 +997,47 @@ async def route_api_run_order(
 		request:Request
 	)->Union[json_response,Response]:
 
-	# POST: /api/orders/current/{order_id}/run
+	# POST: /api/orders/pool/{order_id}/run
+
+	# POST: /api/orders/run-order
 
 	ct=request[_REQ_CLIENT_TYPE]
-	if not assert_referer(ct,request,_ROUTE_PAGE):
-		return Response(status=406)
+	if ct==_TYPE_BROWSER:
+		if not request.path.startswith("/api/orders/pool/"):
+			return Response(status=403)
 
-	request_data=await get_request_body_dict(ct,request)
+	assert_referer(request,ct,_ROUTE_PAGE)
 
 	lang=request[_REQ_LANGUAGE]
 
-	order_id=request.match_info[_KEY_ORDER]
-
+	order_id:Optional[str]=None
 	order_keep=True
-	if request_data is not None:
+
+	request_data=await get_request_body_dict(ct,request)
+	request_data_boken=(request_data is None)
+	if request_data_boken:
+
+		if ct==_TYPE_CUSTOM:
+			return response_errormsg(
+				_ERR_TITLE_RUN_ORDER[lang],
+				_ERR_DETAIL_DATA_NOT_VALID[lang],
+				ct,400
+			)
+
+	if not request_data_boken:
 		order_keep=util_valid_bool(
 			request_data.get(_KEY_ORDER_KEEP),
 			True
 		)
+
+	if ct==_TYPE_BROWSER:
+		order_id=request.match_info[_KEY_ORDER]
+
+	if ct==_TYPE_CUSTOM:
+		order_id=util_valid_str(
+			request_data.get(_KEY_ORDER)
+		)
+
 	userid:Optional[str]=None
 	if order_keep:
 		userid=request[_REQ_USERID]
@@ -964,13 +1053,13 @@ async def route_api_run_order(
 	)
 	if msg_err is not None:
 		return response_errormsg(
-			_ERR_TITLE_EXECUTE_ORDER[lang],
+			_ERR_TITLE_RUN_ORDER[lang],
 			f"{_ERR_DETAIL_DBI_FAIL[lang]}; {msg_err}",
 			ct,400
 		)
 
 	if ct==_TYPE_CUSTOM:
-		return json_response(data={})
+		return json_response(data=result_apply)
 
 	tl={
 		_LANG_EN:"Applied changes to the involved assets",
@@ -999,16 +1088,38 @@ async def route_api_revert_order(
 		request:Request
 	)->Union[Response,json_response]:
 
-	# POST: /api/orders/current/{order_id}/revert
-	# hx-target: #messages
+	# POST: /api/orders/pool/{order_id}/revert
+
+	# POST: /api/orders/revert-order
 
 	ct=request[_REQ_CLIENT_TYPE]
-	if not assert_referer(ct,request,_ROUTE_PAGE):
-		return Response(status=406)
+	if ct==_TYPE_BROWSER:
+		if request.path.startswith("/api/orders/pool/"):
+			return Response(status=403)
+
+	assert_referer(request,ct,_ROUTE_PAGE)
 
 	lang=request[_REQ_LANGUAGE]
 
-	order_id=request.match_info[_KEY_ORDER]
+	order_id:Optional[str]=None
+
+	if ct==_TYPE_CUSTOM:
+
+		request_data=await get_request_body_dict(ct,request)
+		if request_data is None:
+			return response_errormsg(
+				_ERR_TITLE_REVERT_ORDER[lang],
+				_ERR_DETAIL_DATA_NOT_VALID[lang],
+				ct,400
+			)
+
+		order_id=util_valid_str(
+			request_data.get(_KEY_ORDER)
+		)
+
+	if ct==_TYPE_BROWSER:
+
+		order_id=request.match_info[_KEY_ORDER]
 
 	result_rev=await dbi_Orders_RevertOrder(
 		request.app[_APP_RDBC],
@@ -1021,13 +1132,13 @@ async def route_api_revert_order(
 	)
 	if msg_err is not None:
 		return response_errormsg(
-			_ERR_TITLE_EXECUTE_ORDER[lang],
+			_ERR_TITLE_RUN_ORDER[lang],
 			f"{_ERR_DETAIL_DBI_FAIL[lang]}; {msg_err}",
 			ct,400
 		)
 
 	if ct==_TYPE_CUSTOM:
-		return json_response(data={})
+		return json_response(data=result_rev)
 
 	tl={
 		_LANG_EN:"The order has been fully reversed",

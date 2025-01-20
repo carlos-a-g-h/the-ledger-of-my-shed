@@ -96,6 +96,12 @@ button.popup-button:hover:enabled {
 	cursor:pointer;
 }
 
+div.anchor-as-button {
+	min-width:96px;
+	max-width:192px;
+	text-align: center;
+}
+
 a.common:active:enabled,
 button.nav:active:enabled,
 button.common:active:enabled,

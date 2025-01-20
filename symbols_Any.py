@@ -42,11 +42,13 @@ _MIMETYPE_HTML="text/html"
 _MIMETYPE_JS="application/javascript"
 _MIMETYPE_JSON="application/json"
 _MIMETYPE_FORM="application/x-www-form-urlencoded"
+_MIMETYPE_EXCEL="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 # HTTP Headers
 
 _HEADER_ACCEPT="Accept"
 _HEADER_CONTENT_TYPE="Content-Type"
+_HEADER_CONTENT_DISPOSITION="Content-Disposition"
 _HEADER_REFERER="Referer"
 _HEADER_USER_AGENT="User-Agent"
 
@@ -107,6 +109,6 @@ _KEY_TAG="tag"
 _KEY_COMMENT="comment"
 _KEY_DATE="date"
 
-_KEY_DELETE_ITEM="delete_item"
+_KEY_DELETE_AS_ITEM="delete_as_item"
 _KEY_VERBOSE="verbose"
 _KEY_VLEVEL="vlevel"

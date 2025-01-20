@@ -41,7 +41,7 @@ def write_form_search_assets(
 	order_specific=isinstance(order_id,str)
 
 	the_route={
-		True:f"/api/orders/current/{order_id}/search-assets",
+		True:f"/api/orders/pool/{order_id}/search-assets",
 		False:"/api/assets/search-assets"
 	}[order_specific]
 

@@ -11,6 +11,7 @@ from aiohttp.web import (
 	Request,
 	Response,json_response,
 	HTTPNotAcceptable,
+	HTTPError
 )
 
 from yarl import URL as yarl_URL
@@ -175,24 +176,49 @@ def get_client_type(request:Request)->Optional[str]:
 	return None
 
 def assert_referer(
-		ct:str,request:Request,
-		url_path:str
-	)->bool:
+		request:Request,
+		ct:str,url_path:str,
+		explode:bool=True,
+	)->Optional[bool]:
 
 	if ct==_TYPE_CUSTOM:
+		if explode:
+			return None
 		return True
 
 	referer=util_valid_str(
 		request.headers.get(_HEADER_REFERER)
 	)
 	if not isinstance(referer,str):
+		if explode:
+			raise HTTPError("No referer?")
+
 		return False
 
-	referer_path=yarl_URL(referer).path
+	referer_path=referer
+	if not referer.startswith("/"):
+		try:
+			referer_path=yarl_URL(referer).path
+		except Exception as exc:
+			if explode:
+				raise HTTPError(body=f"{exc}")
 
-	return (
-		Path(referer_path)==Path(url_path)
-	)
+			print(exc)
+			return False
+
+	if not Path(referer_path)==Path(url_path):
+		if explode:
+			raise HTTPNotAcceptable(body=f"{referer_path} != {url_path}")
+
+		return False
+
+	# All good
+
+	if explode:
+		return None
+
+	return True
+
 
 def is_root_local_autologin_allowed(request:Request)->bool:
 
@@ -461,7 +487,7 @@ async def the_middleware_factory(app,handler):
 
 			request.path=="/api/assets/change-metadata" or
 			request.path=="/api/assets/drop" or
-			request.path.startswith("/fgmt/assets/panel/") or
+			request.path.startswith("/fgmt/assets/pool/") or
 			request.path.startswith("/fgmt/assets/history/") or
 			request.path.startswith("/api/assets/history/") or
 			request.path.startswith("/fgmt/orders/") or
@@ -486,12 +512,14 @@ async def the_middleware_factory(app,handler):
 						},
 						status=501
 					)
-					# 501 == Not implemented
+					# NOTE: 501 == Not implemented
 
 				if (
 					request.path=="/" or
 					url_is_page or
-					request.path.startswith("/fgmt/")
+					request.path.startswith("/fgmt/") or
+					request.path.startswith("/api/assets/pool/") or
+					request.path.startswith("/api/orders/pool/")
 				):
 					return json_response(data={})
 

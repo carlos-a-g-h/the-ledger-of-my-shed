@@ -4,7 +4,7 @@ from typing import Optional
 
 from aiohttp.web import Request
 
-from dbi_accounts import (
+from symbols_accounts import (
 	_KEY_EMAIL,_KEY_TELEGRAM,
 	_KEY_VM,_KEY_OTP,_KEY_USERNAME
 )

@@ -13,7 +13,8 @@ from typing import (
 from aiohttp.web import (
 	Application,
 	Request,
-	Response,json_response
+	Response,json_response,
+	FileResponse
 )
 
 from control_Any import (
@@ -43,6 +44,8 @@ from dbi_assets import (
 	dbi_assets_History_AddRecord,
 	dbi_assets_History_GetSingleRecord
 )
+
+from exex_assets import main as export_assets_as_excel_file
 
 from frontend_Any import (
 
@@ -79,6 +82,8 @@ from frontend_assets import (
 	write_button_nav_new_asset,
 	write_button_nav_search_assets,
 
+	write_anchor_export_assets_as_excel,
+
 	write_form_new_asset,
 	write_html_asset_info,
 	write_html_asset_as_item,
@@ -109,11 +114,15 @@ from symbols_Any import (
 	_LANG_EN,_LANG_ES,
 	_APP_CACHE_ASSETS,
 	# _APP_ROOT_USERID,
-	# _APP_PROGRAMDIR,
+	_APP_PROGRAMDIR,
 
 	_TYPE_BROWSER,_TYPE_CUSTOM,
 
 	_MIMETYPE_HTML,
+	_MIMETYPE_EXCEL,
+
+	_HEADER_CONTENT_TYPE,
+	_HEADER_CONTENT_DISPOSITION,
 
 	_APP_RDBC,_APP_RDBN,
 
@@ -124,7 +133,7 @@ from symbols_Any import (
 	_KEY_SIGN,_KEY_SIGN_UNAME,
 	_KEY_COMMENT,
 	_KEY_VLEVEL,
-	_KEY_DELETE_ITEM,
+	_KEY_DELETE_AS_ITEM,
 	# _KEY_DATE,
 )
 
@@ -167,6 +176,11 @@ _ERR_TITLE_DROP_ASSET={
 	_LANG_EN:"Asset deletion error",
 	_LANG_ES:"Error de eliminación de activo"
 }
+_ERR_TITLE_GET_ASSET_HR={
+	_LANG_EN:"Failed to retrieve the record from history",
+	_LANG_ES:"Error al recuperar registro del historial"
+}
+
 
 def util_convert_asset_to_kv(
 		data:Optional[Any]
@@ -223,11 +237,11 @@ async def route_fgmt_new_asset(
 	# /fgmt/assets/new
 	# hx-target: #messages
 
-	if not assert_referer(
-		_TYPE_BROWSER,request,
+	assert_referer(
+		request,
+		_TYPE_BROWSER,
 		_ROUTE_PAGE
-	):
-		return Response(status=406)
+	)
 
 	lang=request[_REQ_LANGUAGE]
 
@@ -254,8 +268,7 @@ async def route_api_new_asset(
 	# hx-target: #messages
 
 	ct=request[_REQ_CLIENT_TYPE]
-	if not assert_referer(ct,request,_ROUTE_PAGE):
-		return Response(status=406)
+	assert_referer(request,ct,_ROUTE_PAGE)
 
 	lang=request[_REQ_LANGUAGE]
 	userid=request[_REQ_USERID]
@@ -414,10 +427,11 @@ async def route_fgmt_search_assets(
 	# GET: /fgmt/assets/search-assets
 	# hx-target: #messages
 
-	ct=request[_REQ_LANGUAGE]
-
-	if not assert_referer(ct,request,_ROUTE_PAGE):
-		return Response(status=406)
+	assert_referer(
+		request,
+		_TYPE_BROWSER,
+		_ROUTE_PAGE
+	)
 
 	lang=request[_REQ_LANGUAGE]
 
@@ -440,16 +454,18 @@ async def route_fgmt_search_assets(
 		content_type=_MIMETYPE_HTML
 	)
 
-async def route_fgmt_asset_panel(
+async def route_fgmt_asset_details(
 		request:Request
 	)->Union[json_response,Response]:
 
-	# GET /fgmt/assets/panel/{asset_id}
+	# GET /fgmt/assets/pool/{asset_id}
 	# hx-target: #messages
 
-	ct=request[_REQ_CLIENT_TYPE]
-	if not assert_referer(ct,request,_ROUTE_PAGE):
-		return Response(status=406)
+	assert_referer(
+		request,
+		_TYPE_BROWSER,
+		_ROUTE_PAGE
+	)
 
 	authorized=request[_REQ_HAS_SESSION]
 
@@ -466,26 +482,19 @@ async def route_fgmt_asset_panel(
 				_LANG_EN:"Asset Id not valid",
 				_LANG_ES:"Id de activo no válido"
 			}[lang],
-			ct,status_code=406
+			_TYPE_BROWSER,status_code=406
 		)
-
-	inc_sign=True
-	inc_tag=True
-	inc_comment=True
-	inc_history=True
-	inc_total=True
-	inc_value=True
 
 	result_aq=await dbi_assets_AssetQuery(
 		request.app[_APP_RDBC],
 		request.app[_APP_RDBN],
 		asset_id=asset_id,
-		get_sign=inc_sign,
-		get_tag=inc_tag,
-		get_comment=inc_comment,
-		get_total=inc_total,
-		get_history=inc_history,
-		get_value=inc_value
+		get_sign=True,
+		get_tag=True,
+		get_comment=True,
+		get_total=True,
+		get_history=True,
+		get_value=True
 	)
 
 	error_msg:Optional[str]=result_aq.get(_ERR)
@@ -493,11 +502,10 @@ async def route_fgmt_asset_panel(
 		return response_errormsg(
 			_ERR_TITLE_GET_ASSET[lang],
 			f"{_ERR_DETAIL_DBI_FAIL[lang]}: {error_msg}",
-			ct,status_code=400
+			_TYPE_BROWSER,status_code=400
 		)
 
 	await util_patch_doc_with_username(request,result_aq)
-
 
 	tl=write_ul(
 		[
@@ -514,15 +522,11 @@ async def route_fgmt_asset_panel(
 		"</section>\n"
 	)
 
-	# tl={
-	# 	_LANG_EN:"Asset info",
-	# 	_LANG_ES:"Información del activo"
-	# }[lang]
 	html_text=(
 		f"{html_text}\n"
 
 		f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
-			# f"<h3>{tl}</h3>\n"
+
 			f"""<div id="{_ID_MAIN_ONE}">""" "\n"
 				f"{write_html_asset_details(lang,result_aq,authorized)}\n"
 			"</div>\n"
@@ -544,21 +548,27 @@ async def route_api_select_asset(
 
 	# NOTE: For custom clients only....?
 
-	# POST /api/assets/select/{asset_id}
+	# POST /api/assets/select-asset
 
 	ct=request[_REQ_CLIENT_TYPE]
 	if not ct==_TYPE_CUSTOM:
 		return Response(status=406)
-
-	asset_id=util_valid_str(
-		request.match_info[_KEY_ASSET]
-	)
 
 	request_data=await get_request_body_dict(ct,request)
 	if not isinstance(request_data,Mapping):
 		return response_errormsg(
 			_ERR_TITLE_GET_ASSET[_LANG_EN],
 			_ERR_DETAIL_DATA_NOT_VALID[_LANG_EN],
+			ct,status_code=406
+		)
+
+	asset_id=util_valid_str(
+		request_data.get(_KEY_ASSET)
+	)
+	if not asset_id:
+		return response_errormsg(
+			_ERR_TITLE_GET_ASSET[_LANG_EN],
+			f"Check the '{_KEY_ASSET}' field",
 			ct,status_code=406
 		)
 
@@ -606,12 +616,19 @@ async def route_api_asset_change_metadata(
 		request:Request
 	)->Union[json_response,Response]:
 
+	# POST /api/assets/pool/{asset_id}/change-metadata
 	# POST /api/assets/change-metadata
 
 	ct=request[_REQ_CLIENT_TYPE]
 
-	if not assert_referer(ct,request,_ROUTE_PAGE):
-		return Response(status=406)
+	if ct==_TYPE_BROWSER:
+		if not request.path.startswith("/api/assets/pool/"):
+			return Response(status=403)
+
+	assert_referer(
+		request,ct,
+		_ROUTE_PAGE
+	)
 
 	lang=request[_REQ_LANGUAGE]
 
@@ -623,15 +640,21 @@ async def route_api_asset_change_metadata(
 			ct,status_code=406
 		)
 
-	asset_id=util_valid_str(
-		request_data.get(_KEY_ASSET)
-	)
-	if asset_id is None:
-		return response_errormsg(
-			_ERR_TITLE_METADATA_CHANGE[lang],
-			_ERR_DETAIL_DATA_NOT_VALID[lang],
-			ct,status_code=406
+	asset_id:Optional[str]=None
+
+	if ct==_TYPE_BROWSER:
+		asset_id=request.match_info[_KEY_ASSET]
+
+	if ct==_TYPE_CUSTOM:
+		asset_id=util_valid_str(
+			request_data.get(_KEY_ASSET)
 		)
+		if asset_id is None:
+			return response_errormsg(
+				_ERR_TITLE_METADATA_CHANGE[lang],
+				_ERR_DETAIL_DATA_NOT_VALID[lang],
+				ct,status_code=406
+			)
 
 	asset_name=util_valid_str(
 		request_data.get(_KEY_NAME)
@@ -725,26 +748,60 @@ async def route_api_drop_asset(
 		request:Request
 	)->Union[json_response,Response]:
 
+	# DELETE /api/assets/pool/{asset_id}/drop
+	# hx-target: #messages
+
 	# DELETE /api/assets/drop
 
 	ct=request[_REQ_CLIENT_TYPE]
-	if not assert_referer(ct,request,_ROUTE_PAGE):
-		return Response(status=406)
+	assert_referer(
+		request,ct,
+		_ROUTE_PAGE
+	)
+
+	browser_only=request.path.startswith("/api/assets/pool/")
 
 	lang=request[_REQ_LANGUAGE]
 
-	request_data=await get_request_body_dict(ct,request)
-	print("DELETE",request_data)
-	if not request_data:
-		return response_errormsg(
-			_ERR_TITLE_DROP_ASSET[lang],
-			_ERR_DETAIL_DATA_NOT_VALID[lang],
-			ct,status_code=406
-		)
+	vlevel=0
+	delete_as_item=False
+	asset_id:Optional[str]=None
 
-	asset_id=util_valid_str(
-		request_data.get(_KEY_ASSET)
-	)
+	if not browser_only:
+
+		# Browser and custom client
+
+		request_data=await get_request_body_dict(ct,request)
+		if not request_data:
+			return response_errormsg(
+				_ERR_TITLE_DROP_ASSET[lang],
+				_ERR_DETAIL_DATA_NOT_VALID[lang],
+				ct,status_code=406
+			)
+
+		asset_id=util_valid_str(
+			request_data.get(_KEY_ASSET)
+		)
+		if ct==_TYPE_CUSTOM:
+			vlevel=util_valid_int(
+				request_data.get("v"),
+				fallback=2,
+				minimum=0,
+				maximum=2
+			)
+
+		if ct==_TYPE_BROWSER:
+			delete_as_item=util_valid_bool(
+				request_data.get(_KEY_DELETE_AS_ITEM),
+				False
+			)
+
+	if browser_only:
+
+		# Browser only
+
+		asset_id=request.match_info[_KEY_ASSET]
+
 	if not isinstance(asset_id,str):
 		return response_errormsg(
 			_ERR_TITLE_DROP_ASSET[lang],
@@ -755,19 +812,10 @@ async def route_api_drop_asset(
 			ct,status_code=406
 		)
 
-	outverb=0
-	if ct==_TYPE_CUSTOM:
-		outverb=util_valid_int(
-			request_data.get("v"),
-			fallback=2,
-			minimum=0,
-			maximum=2
-		)
-
 	dbi_result=await dbi_assets_DropAsset(
 		request.app[_APP_RDBC],
 		request.app[_APP_RDBN],
-		asset_id,outverb=outverb
+		asset_id,outverb=vlevel
 	)
 	error_msg:Optional[str]=dbi_result.get(_ERR)
 	if error_msg is not None:
@@ -784,19 +832,13 @@ async def route_api_drop_asset(
 	if ct==_TYPE_CUSTOM:
 		return json_response(data=dbi_result)
 
-	# NOTE: By deleting as an entry, you do not jump towards the asset at its initial state
-	delete_entry=util_valid_bool(
-		request_data.get(_KEY_DELETE_ITEM),
-		False
-	)
-
 	tl={
 		_LANG_EN:"Asset deleted",
 		_LANG_ES:"Activo eliminado"
 	}[lang]
 	html_text=write_popupmsg(f"<h2>{tl}</h2>")
 
-	if delete_entry:
+	if delete_as_item:
 
 		html_text=(
 			f"{html_text}\n"
@@ -807,7 +849,7 @@ async def route_api_drop_asset(
 
 		)
 
-	if not delete_entry:
+	if not delete_as_item:
 
 		html_text=(
 			f"{html_text}\n"
@@ -831,13 +873,19 @@ async def route_api_add_record(
 		request:Request
 	)->Union[json_response,Response]:
 
-	# POST /api/assets/history/{asset_id}/add
+	# POST /api/assets/pool/{asset_id}/history/add
+	# POST /api/assets/add-record
 
 	ct=request[_REQ_CLIENT_TYPE]
-	if not assert_referer(ct,request,_ROUTE_PAGE):
-		return Response(status=406)
+	if ct==_TYPE_BROWSER:
+		if not request.path.startswith("/api/assets/pool/"):
+			return Response(status=403)
+
+	assert_referer(request,ct,_ROUTE_PAGE)
 
 	lang=request[_REQ_LANGUAGE]
+
+
 	userid=request[_REQ_USERID]
 	username=await get_username(request)
 	is_root=(username==_ROOT_USER)
@@ -850,15 +898,22 @@ async def route_api_add_record(
 			ct,status_code=406
 		)
 
-	asset_id=util_valid_str(
-		request.match_info[_KEY_ASSET]
-	)
+	asset_id:Optional[str]=None
+
+	if ct==_TYPE_BROWSER:
+		asset_id=util_valid_str(
+			request.match_info[_KEY_ASSET]
+		)
+	if ct==_TYPE_CUSTOM:
+		asset_id=util_valid_str(
+			request_data.get(_KEY_ASSET)
+		)
 	if not isinstance(asset_id,str):
 		return response_errormsg(
 			_ERR_TITLE_RECORD_MOD[lang],
 			{
-				_LANG_EN:"Asset Id not valid",
-				_LANG_ES:"Id de activo no válido"
+				_LANG_EN:"Asset ID missing or not valid",
+				_LANG_ES:"El ID de activo falta o no válido"
 			}[lang],
 			ct,status_code=406
 		)
@@ -996,16 +1051,52 @@ async def route_api_get_record(
 		request:Request
 	)->Union[json_response,Response]:
 
-	# GET /api/assets/history/{asset_id}/records/{record_id}
+	# GET /fgmt/assets/pool/{asset_id}/history/records/{record_id}
+	# POST /api/assets/get-history-record
 
 	ct=request[_REQ_CLIENT_TYPE]
-	if not assert_referer(ct,request,_ROUTE_PAGE):
-		return Response(status=406)
+	if ct==_TYPE_BROWSER:
+		if not request.path.startswith("/api/assets/pool/"):
+			return Response(status=403)
+
+	assert_referer(request,ct,_ROUTE_PAGE)
 
 	lang=request[_REQ_LANGUAGE]
 
-	asset_id=request.match_info[_KEY_ASSET]
-	record_uid=request.match_info[_KEY_RECORD_UID]
+	asset_id:Optional[str]=None
+	record_uid:Optional[str]=None
+
+	if ct==_TYPE_BROWSER:
+		asset_id=request.match_info[_KEY_ASSET]
+		record_uid=request.match_info[_KEY_RECORD_UID]
+
+	if ct==_TYPE_CUSTOM:
+		request_data=await get_request_body_dict(ct,request)
+		if not request_data:
+			return response_errormsg(
+				_ERR_TITLE_NEW_ASSET[lang],
+				_ERR_DETAIL_DATA_NOT_VALID[lang],
+				ct,status_code=406
+			)
+
+	asset_id=util_valid_str(
+		request_data.get(_KEY_ASSET)
+	)
+	if not asset_id:
+		return response_errormsg(
+			_ERR_TITLE_GET_ASSET_HR[lang],
+			f"{_KEY_ASSET}?",
+			ct,status_code=400
+		)
+	record_uid=util_valid_str(
+		request_data.get(_KEY_RECORD_UID)
+	)
+	if not record_uid:
+		return response_errormsg(
+			_ERR_TITLE_GET_ASSET_HR[lang],
+			f"{_KEY_RECORD_UID}?",
+			ct,status_code=400
+		)
 
 	dbi_result=await dbi_assets_History_GetSingleRecord(
 		request.app[_APP_RDBC],
@@ -1016,7 +1107,7 @@ async def route_api_get_record(
 	error_msg:Optional[str]=dbi_result.get(_ERR)
 	if error_msg is not None:
 		return response_errormsg(
-			_ERR_TITLE_GET_ASSET[lang],
+			_ERR_TITLE_GET_ASSET_HR[lang],
 			f"{_ERR_DETAIL_DBI_FAIL[lang]}: {error_msg}",
 			ct,status_code=400
 		)
@@ -1025,15 +1116,6 @@ async def route_api_get_record(
 		return json_response(data=dbi_result)
 
 	await util_patch_doc_with_username(request,dbi_result)
-
-	# record_sign_uname:Optional[str]=await get_username(
-	# 	request,explode=False,
-	# 	userid=dbi_result[_KEY_SIGN]
-	# )
-	# if record_sign_uname is not None:
-	# 	dbi_result.update(
-	# 		{_KEY_SIGN_UNAME:record_sign_uname}
-	# 	)
 
 	html_text=write_popupmsg(
 		write_html_record_detailed(
@@ -1044,6 +1126,35 @@ async def route_api_get_record(
 	return Response(
 		body=html_text,
 		content_type=_MIMETYPE_HTML
+	)
+
+async def route_api_excel_export(
+		request:Request
+	)->Union[json_response,Response]:
+
+	# /api/assets/export-as-excel
+
+	lang=request[_REQ_LANGUAGE]
+
+	# TODO: we need better error handling
+
+	the_file=await export_assets_as_excel_file(
+		request.app[_APP_PROGRAMDIR],
+		request.app[_APP_RDBC],
+		request.app[_APP_RDBN],
+		lang=lang
+	)
+
+	the_name={
+		_LANG_EN:"Assets",
+		_LANG_ES:"Activos"
+	}[lang]
+	return FileResponse(
+		the_file,
+		headers={
+			_HEADER_CONTENT_TYPE:_MIMETYPE_EXCEL,
+			_HEADER_CONTENT_DISPOSITION:f"filename={the_name}.xlsx"
+		}
 	)
 
 async def route_main(
@@ -1088,10 +1199,25 @@ async def route_main(
 			f"{tl}\n"
 		"</section>\n"
 
-		f"""<section id="{_ID_MAIN}">""" "\n"
-			"<!-- EMPTY AT THE MOMENT -->\n"
+		f"""<section id="{_ID_MAIN}">"""
+	)
+
+	if request[_REQ_HAS_SESSION]:
+
+		html_text=(
+			f"{html_text}\n"
+				"<div>\n"
+					"<!-- CENTERED -->"
+					f"{write_anchor_export_assets_as_excel(lang)}\n"
+				"</div>"
+		)
+
+	html_text=(
+			f"{html_text}\n"
 		"</section>"
 	)
+
+
 
 	return Response(
 		body=write_fullpage(

@@ -12,7 +12,7 @@ from symbols_Any import (
 	_APP_LANG,_LANG_EN,_LANG_ES,
 	_APP_PROGRAMDIR,
 	_MIMETYPE_HTML,
-	_TYPE_CUSTOM,
+	_TYPE_CUSTOM,_TYPE_BROWSER,
 	_CFG_LANG,_CFG_PORT,
 	_REQ_LANGUAGE,_REQ_USERID,
 	_CFG_PORT_MIN,_CFG_PORT_MAX,
@@ -24,20 +24,28 @@ from symbols_Any import (
 
 from frontend_Any import (
 
-	_ID_NAVIGATION,_ID_MAIN,_ID_MESSAGES,
+	_ID_NAV_ONE,
+	_ID_NAV_TWO,_ID_NAV_TWO_OPTS,
+	_ID_MAIN,_ID_MAIN_ONE,_ID_MAIN_TWO,
+	_ID_MESSAGES,
+
+	_CSS_CLASS_NAV,
 
 	_STYLE_CUSTOM,_STYLE_POPUP,
 	_SCRIPT_HTMX,
 
 	write_fullpage,
 	write_popupmsg,
-	write_link_homepage,
 	write_ul,
+	write_html_nav_pages
 )
 
 # from frontend_accounts import write_html_user_section
 
+from frontend_accounts import render_html_user_section
+
 from frontend_admin import (
+
 	write_form_update_config,
 	write_button_update_known_asset_names,
 	write_button_nav_users,
@@ -83,28 +91,32 @@ async def route_fgmt_section_users(
 
 	# GET: /fgmt/admin/users
 
-	ct=get_client_type(request)
-	if not assert_referer(ct,request,_ROUTE_PAGE):
-		return Response(status=406)
+	assert_referer(
+		request,
+		_TYPE_BROWSER,
+		_ROUTE_PAGE
+	)
 
 	lang=request[_REQ_LANGUAGE]
 
-	# tl={
-	# 	_LANG_EN:"Users control panel",
-	# 	_LANG_ES:"Panel de control de usuarios"
-	# }[lang]
-
 	return Response(
 		body=(
-			f"""<section hx-swap-oob="innerHTML:#{_ID_NAVIGATION}">""" "\n"
+			f"""<section hx-swap-oob="innerHTML:#{_ID_NAV_TWO_OPTS}">""" "\n"
 				f"{write_ul([write_button_nav_misc_settings(lang)])}\n"
 			"</section>\n"
 
 			f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
+
 				"<!-- USER SETTINGS -->\n"
-				""
-				f"{write_form_create_user(lang)}\n"
-				f"{write_form_search_users(lang)}\n"
+
+				f"""<div id="{_ID_MAIN_ONE}">""" "\n"
+					f"{write_form_create_user(lang)}\n"
+				"</div>\n"
+
+				f"""<div id="{_ID_MAIN_TWO}">""" "\n"
+					f"{write_form_search_users(lang)}\n"
+				"</div>\n"
+
 			"</section>"
 		),
 		content_type=_MIMETYPE_HTML
@@ -116,15 +128,17 @@ async def route_fgmt_section_misc(
 
 	# GET: /fgmt/admin/misc
 
-	ct=get_client_type(request)
-	if not assert_referer(ct,request,_ROUTE_PAGE):
-		return Response(status=406)
+	assert_referer(
+		request,
+		_TYPE_BROWSER,
+		_ROUTE_PAGE
+	)
 
 	lang=request[_REQ_LANGUAGE]
 
 	return Response(
 		body=(
-			f"""<section hx-swap-oob="innerHTML:#{_ID_NAVIGATION}">""" "\n"
+			f"""<section hx-swap-oob="innerHTML:#{_ID_NAV_TWO_OPTS}">""" "\n"
 				f"{write_ul([write_button_nav_users(lang)])}\n"
 			"</section>\n"
 
@@ -149,8 +163,7 @@ async def route_api_change_config(
 	# }
 
 	ct=get_client_type(request)
-	if not assert_referer(ct,request,_ROUTE_PAGE):
-		return Response(status=406)
+	assert_referer(request,ct,_ROUTE_PAGE)
 
 	lang=request[_REQ_LANGUAGE]
 
@@ -183,7 +196,7 @@ async def route_api_change_config(
 	changed_language=False
 	new_lang:Optional[str]=None
 	change_lang=util_valid_bool(
-		request_data.get("change-lang"),False
+		request_data.get(f"change-{_CFG_LANG}"),False
 	)
 	if change_lang:
 		new_lang=util_valid_str_inrange(
@@ -210,7 +223,7 @@ async def route_api_change_config(
 
 	new_port:Optional[str]=None
 	change_port=util_valid_bool(
-		request_data.get("change-port"),False
+		request_data.get(f"change-{_CFG_PORT}"),False
 	)
 	if change_port:
 		new_port=util_valid_int_inrange(
@@ -322,8 +335,7 @@ async def route_api_update_known_asset_names(
 	# POST: /api/admin/misc/update-known-assets
 
 	ct=get_client_type(request)
-	if not assert_referer(ct,request,_ROUTE_PAGE):
-		return Response(status=406)
+	assert_referer(request,ct,_ROUTE_PAGE)
 
 	lang=request[_REQ_LANGUAGE]
 
@@ -356,7 +368,7 @@ async def route_api_update_known_asset_names(
 	)
 
 	return Response(
-	body=write_popupmsg(html_text),
+		body=write_popupmsg(html_text),
 		content_type=_MIMETYPE_HTML
 	)
 
@@ -365,7 +377,6 @@ async def route_main(
 	)->Union[json_response,Response]:
 
 	userid:Optional[str]=request[_REQ_USERID]
-	has_session=isinstance(userid,str)
 	is_admin=(userid==_ROOT_USER_ID)
 
 	lang=request[_REQ_LANGUAGE]
@@ -375,67 +386,40 @@ async def route_main(
 		_LANG_ES:"Administración del sistema"
 	}[lang]
 
-	tl={
-		False:{
-			_LANG_EN:"This page is for admin(s) only",
-			_LANG_ES:"Esta página es solo para administradores"
-		}[lang],
-		True:{
-			_LANG_EN:"Manage users and server settings",
-			_LANG_ES:"Administra usuarios y ajustes del servidor"
-		}[lang]
-	}[is_admin]
-	html_text=(
-		f"<h1>{tl_title}</h1>\n"
-		f"<h3>{tl}</h3>"
-		f"{write_link_homepage(lang)}\n"
-	)
 
-	if not is_admin:
-
-		tl={
-			_LANG_EN:"Nothing to see here",
-			_LANG_ES:"Nada que ver aquí"
-		}[lang]
-		html_text=(
-			f"{html_text}\n"
-			f"<h2>{tl}</h2>"
-		)
-
-		tl={
-			True:{
-				_LANG_EN:"You are not authorized to be here",
-				_LANG_ES:"Usted no está autorizado para estar aquí"
-			}[lang],
-			False:{
-				_LANG_EN:"You are not supposed to be here",
-				_LANG_ES:"Usted no debería estar aquí"
-			}[lang],
-		}[has_session]
-
-		html_text=(
-			f"{html_text}\n"
-			f"<p>{tl}</p>"
-		)
-
-	if is_admin:
-		html_text=(
-			f"{html_text}\n"
-
-			f"""<section id="{_ID_NAVIGATION}">""" "\n"
-				f"{write_ul([write_button_nav_users(lang),write_button_nav_misc_settings(lang)])}\n"
-			"</section>\n"
-
-			f"""<section id="{_ID_MAIN}">""" "\n"
-				"<!-- ADMIN PAGE -->\n"
-			"</section>"
-		)
+	tl=await render_html_user_section(request,lang,userid)
 
 	html_text=(
-		f"{html_text}\n"
-
 		f"""<section id="{_ID_MESSAGES}">""" "\n"
 			"<!-- MESSAGES GO HERE -->\n"
+		"</section>\n"
+
+		f"""<section id="{_ID_NAV_ONE}">""" "\n"
+			f"<div>SHLED / {tl_title}</div>\n"
+			f"{write_html_nav_pages(lang,3)}\n"
+		"</section>\n"
+
+		f"""<section id="{_ID_NAV_TWO}">""" "\n"
+			f"{tl}\n"
+	)
+
+	if is_admin:
+		tl=write_ul(
+			[
+				write_button_nav_users(lang),
+				write_button_nav_misc_settings(lang),
+			],
+			ul_id=_ID_NAV_TWO_OPTS,
+			ul_classes=[_CSS_CLASS_NAV]
+		)
+		html_text=f"{html_text}\n{tl}"
+
+	html_text=(
+			f"{html_text}\n"
+		"</section>\n"
+
+		f"""<section id="{_ID_MAIN}">""" "\n"
+			"<!-- EMPTY AT THE MOMENT -->\n"
 		"</section>"
 	)
 

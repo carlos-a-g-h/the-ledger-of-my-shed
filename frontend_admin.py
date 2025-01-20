@@ -6,11 +6,34 @@ from symbols_Any import (
 	_CFG_LANG,_CFG_PORT
 )
 
-from frontend_Any import (
-	_CSS_CLASS_COMMON,_CSS_CLASS_CONTROLS,
-	_CSS_CLASS_HORIZONTAL,
-	_CSS_CLASS_VER,
+from symbols_accounts import (
+	_KEY_USERID,
+	_KEY_USERNAME,
+
+	_KEY_EMAIL,
+	_KEY_TELEGRAM
 )
+
+from frontend_Any import (
+
+	_CSS_CLASS_COMMON,
+	_CSS_CLASS_CONTROLS,
+
+	_CSS_CLASS_IG_FIELDS,
+
+	write_button_submit,
+
+	write_html_input_radio,
+	write_html_input_string,
+	write_html_input_checkbox,
+	write_html_input_number
+)
+
+_ID_CREATE_USER="admin-create-user"
+_ID_SEARCH_USER="admin-search-users"
+
+_ID_MISC_SETTINGS="admin-misc-settings"
+_ID_UPDATE_ASSET_NAMES="admin-update-asset-names"
 
 def write_button_nav_users(lang:str)->str:
 	tl={
@@ -47,14 +70,14 @@ def write_form_create_user(
 	# POST: /api/admin/users/new-user
 
 	html_text=(
-		# f"""<div class="{_CSS_CLASS_VDOWN}"><strong>{tl}</strong></div>""" "\n"
 		"<form "
 			"""hx-post="/api/admin/users/new-user" """
 			"""hx-trigger="submit" """
 			"""hx-target="#messages" """
 			"""hx-swap="innerHTML" """
 			">\n"
-			"<div>"
+
+			f"""<div class="{_CSS_CLASS_IG_FIELDS}">"""
 	)
 
 	tl={
@@ -63,14 +86,7 @@ def write_form_create_user(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-			f"""<label class="{_CSS_CLASS_COMMON}" for="username">{tl}</label>""" "\n"
-				f"""<input class="{_CSS_CLASS_COMMON}" """
-					"""name="username" """
-					"""type="text" """
-					"""max-length=16 """
-					"required>\n"
-		"</div>"
+		f"{write_html_input_string(_KEY_USERNAME,label=tl,maxlen=24,inpuy_type=1)}"
 	)
 
 	tl={
@@ -79,14 +95,7 @@ def write_form_create_user(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-			f"""<label class="{_CSS_CLASS_COMMON}" for="email">{tl}</label>""" "\n"
-				f"""<input class="{_CSS_CLASS_COMMON}" """
-					"""name="email" """
-					"""type="email" """
-					"""max-length=16 """
-					"required>\n"
-		"</div>"
+		f"{write_html_input_string(_KEY_EMAIL,label=tl,maxlen=24,inpuy_type=1)}"
 	)
 
 	tl={
@@ -95,14 +104,7 @@ def write_form_create_user(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-			f"""<label class="{_CSS_CLASS_COMMON}" for="telegram">{tl}</label>""" "\n"
-				f"""<input class="{_CSS_CLASS_COMMON}" """
-					"""name="telegram" """
-					"""type="text" """
-					"""max-length=32 """
-					"required>\n"
-		"</div>"
+		f"{write_html_input_string(_KEY_TELEGRAM,label=tl,maxlen=24)}"
 	)
 
 	tl={
@@ -112,11 +114,9 @@ def write_form_create_user(
 	html_text=(
 				f"{html_text}\n"
 			"</div>\n"
+
 			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
-				f"""<button type="submit" """
-					f"""class="{_CSS_CLASS_COMMON}">""" "\n"
-						f"{tl}\n"
-				"</button>" "\n"
+				f"{write_button_submit(tl)}\n"
 			"</div>\n"
 		"</form>"
 	)
@@ -127,11 +127,16 @@ def write_form_create_user(
 			_LANG_ES:"Creación de usuario"
 		}[lang]
 		html_text=(
-			f"<h3>{tl}</h3>\n"
-			"""<div id="user-creation">""" "\n"
-				f"{html_text}\n"
+			"<div>\n"
+				f"<h3>{tl}</h3>\n"
+
+				"""<p style="color:red;">THIS FEATURE IS NOT READY YET</p>""" "\n"
+
+				f"""<div id="{_ID_CREATE_USER}">""" "\n"
+					f"{html_text}\n"
+				"</div>\n"
 			"</div>\n"
-			"""<div id="user-creation-result">""" "\n"
+			f"""<div id="{_ID_CREATE_USER}-results">""" "\n"
 				"<!-- CREATED USERS GO HERE -->\n"
 			"</div>"
 		)
@@ -139,7 +144,8 @@ def write_form_create_user(
 	return html_text
 
 def write_form_search_users(
-		lang:str,full:bool=True
+		lang:str,
+		full:bool=True
 	)->str:
 
 	# POST: /api/admin/users/search
@@ -151,7 +157,7 @@ def write_form_search_users(
 			"""hx-target="#messages" """
 			"""hx-swap="innerHTML" """
 			">\n"
-			"<div>"
+			f"""<div class="{_CSS_CLASS_IG_FIELDS}">"""
 	)
 
 	tl={
@@ -160,14 +166,7 @@ def write_form_search_users(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-			f"""<label class="{_CSS_CLASS_COMMON}" for="username">{tl}</label>""" "\n"
-				f"""<input class="{_CSS_CLASS_COMMON}" """
-					"""name="username" """
-					"""type="text" """
-					"""max-length=16 """
-					"required>\n"
-		"</div>"
+		f"{write_html_input_string(_KEY_USERNAME,label=tl,maxlen=24,inpuy_type=1)}"
 	)
 
 	tl={
@@ -176,14 +175,7 @@ def write_form_search_users(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-			f"""<label class="{_CSS_CLASS_COMMON}" for="email">{tl}</label>""" "\n"
-				f"""<input class="{_CSS_CLASS_COMMON}" """
-					"""name="email" """
-					"""type="email" """
-					"""max-length=16 """
-					"required>\n"
-		"</div>"
+		f"{write_html_input_string(_KEY_EMAIL,label=tl,maxlen=24,inpuy_type=1)}"
 	)
 
 	tl={
@@ -192,14 +184,7 @@ def write_form_search_users(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-			f"""<label class="{_CSS_CLASS_COMMON}" for="telegram">{tl}</label>""" "\n"
-				f"""<input class="{_CSS_CLASS_COMMON}" """
-					"""name="telegram" """
-					"""type="text" """
-					"""max-length=32 """
-					"required>\n"
-		"</div>"
+		f"{write_html_input_string(_KEY_TELEGRAM,label=tl,maxlen=24)}"
 	)
 
 	tl={
@@ -209,11 +194,9 @@ def write_form_search_users(
 	html_text=(
 				f"{html_text}\n"
 			"</div>\n"
+
 			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
-				f"""<button type="submit" """
-					f"""class="{_CSS_CLASS_COMMON}">""" "\n"
-						f"{tl}\n"
-				"</button>\n"
+				f"{write_button_submit(tl)}\n"
 			"</div>\n"
 		"</form>"
 	)
@@ -221,25 +204,24 @@ def write_form_search_users(
 	if full:
 		tl={
 			_LANG_EN:"User search",
-			_LANG_ES:"Búsqueda de usuarios"
+			_LANG_ES:"Buscador de usuario(s)"
 		}[lang]
 		html_text=(
-			f"<h3>{tl}</h3>\n"
-			"""<div id="user-search">""" "\n"
-				f"{html_text}\n"
+			"<div>\n"
+				f"<h3>{tl}</h3>\n"
+
+				"""<p style="color:red;">THIS FEATURE IS NOT READY YET</p>""" "\n"
+
+				f"""<div id="{_ID_SEARCH_USER}">""" "\n"
+					f"{html_text}\n"
+				"</div>\n"
 			"</div>\n"
-			"""<div id="user-search-result">""" "\n"
+			f"""<div id="{_ID_SEARCH_USER}-result">""" "\n"
 				"<!-- USERS FOUND GO HERE -->\n"
 			"</div>"
 		)
 
 	return html_text
-
-
-
-
-
-
 
 def write_form_update_config(
 		lang:str,
@@ -263,44 +245,24 @@ def write_form_update_config(
 			">\n"
 	)
 
+	lang_radio_opts=[
+		(_LANG_EN,"English"),
+		(_LANG_ES,"Español")
+	]
 	tl={
 		_LANG_EN:"Language",
 		_LANG_ES:"Idioma"
 	}[lang]
+	tl_ch=f"change-{_CFG_LANG}"
 	html_text=(
 		f"{html_text}\n"
+
 		"<!-- LANG CONFIG -->\n"
-		f"""<div class={_CSS_CLASS_VER}>""" "\n"
-			"<div>\n"
-				f"""<input name="change-lang" type=checkbox>""" "\n"
-				f"""<label for=change-lang>{tl}</label>""" "\n"
-			"</div>\n"
-			"<div>"
-	)
 
-	for row in [
-		(_LANG_EN,"English"),
-		(_LANG_ES,"Español")
-	]:
-		chk=""
-		if lang==row[0]:
-			chk=" checked"
-
-		html_text=(
-			f"{html_text}\n"
-			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-				f"""<input id="lang-{row[0]}" """
-					f"""name="{_CFG_LANG}" """
-					f"""value="{row[0]}" """
-					f"""type="radio"{chk} """
-					">\n"
-				f"""<label for="lang-{row[0]}">{row[1]}</label>""" "\n"
-			"</div>"
-		)
-
-	html_text=(
-				f"{html_text}\n"
-			"</div>"
+		# f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
+		"<div>\n"
+			f"{write_html_input_checkbox(tl_ch,tl)}\n"
+			f"{write_html_input_radio(_CFG_LANG,lang_radio_opts)}"
 		"</div>"
 	)
 
@@ -308,26 +270,19 @@ def write_form_update_config(
 		_LANG_EN:"Port number",
 		_LANG_ES:"Puerto"
 	}[lang]
+	tl_ch=f"change-{_CFG_PORT}"
 	html_text=(
 		f"{html_text}\n"
 
 		"<!-- PORT CONFIG -->\n"
 
-		f"""<div class={_CSS_CLASS_VER}>""" "\n"
+		# f"""<div class="{_CSS_CLASS_COMMON}">"""
+		"<div>\n"
+			f"{write_html_input_checkbox(tl_ch,tl)}\n"
 			"<div>\n"
-				f"""<input name="change-port" type=checkbox>""" "\n"
-				f"""<label for=change-port>{tl}</label>""" "\n"
+				f"{write_html_input_number(_CFG_PORT,value=_CFG_PORT_MIN,minimum=_CFG_PORT_MIN,maximum=_CFG_PORT_MAX)}\n"
 			"</div>\n"
-			"<div>\n"
-				f"""<input class="{_CSS_CLASS_COMMON}" """
-					f""" name="{_CFG_PORT}" """
-					"""type="number" """
-					"""value=1024 """
-					f"""min={_CFG_PORT_MIN} """
-					f"""max={_CFG_PORT_MAX} """
-					">\n"
-			"</div>"
-		"</div>\n"
+		"</div>"
 	)
 
 	tl={
@@ -340,12 +295,9 @@ def write_form_update_config(
 
 			"<!-- APPLY CHANGES -->\n"
 
-			"""<button """
-				"""type="submit" """
-				f"""class="{_CSS_CLASS_COMMON}" """
-				">"
-				f"{tl}"
-			"</button>" "\n"
+			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
+				f"{write_button_submit(tl)}\n"
+			"</div>\n"
 
 		"</form>"
 	)

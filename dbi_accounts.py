@@ -20,23 +20,19 @@ from symbols_Any import (
 	_ROOT_USER,_ROOT_USER_ID
 )
 
+from symbols_accounts import (
+
+	_KEY_USERID,_KEY_USERNAME,
+
+	_KEY_EMAIL,_KEY_TELEGRAM,
+)
+
+
 from internals import (
 	util_hash_sha256,util_rnow
 )
 
 _MONGO_COL_USERS="users"
-
-_KEY_EMAIL="email"
-_KEY_TELEGRAM="telegram"
-_KEY_USERID="userid"
-_KEY_USERNAME="username"
-
-_KEY_OTP="otp"
-_KEY_DATE="date"
-# _MS_UA="user_agent"
-# _MS_IP="ip_address"
-_KEY_AKEY="access_key"
-_KEY_VM="vmethod"
 
 _SQL_FILE_SESSIONS="ldb_sessions.db"
 _SQL_FILE_USERS="ldb_users.db"

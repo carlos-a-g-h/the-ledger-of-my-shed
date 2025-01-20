@@ -1,0 +1,206 @@
+#!/usr/bin/python3.9
+
+from asyncio import to_thread as async_run_block
+from pathlib import Path
+from secrets import token_hex
+from typing import Optional,Mapping
+
+from motor.motor_asyncio import AsyncIOMotorClient
+from openpyxl import Workbook
+from openpyxl.cell.cell import Cell
+from openpyxl.comments import Comment
+from openpyxl.worksheet.worksheet import Worksheet
+
+from symbols_Any import (
+	_LANG_EN,_LANG_ES,
+	_KEY_DATE,_KEY_COMMENT,
+	_KEY_TAG,
+	_KEY_SIGN
+)
+
+from symbols_assets import (
+	_KEY_ASSET,_KEY_NAME,_KEY_VALUE,_KEY_HISTORY,
+	_KEY_RECORD_UID,_KEY_RECORD_MOD
+)
+
+from dbi_assets import dbi_assets_AssetQuery
+from internals import (
+	util_valid_int,
+	util_valid_str,
+	util_valid_date,
+	util_excel_dectocol
+)
+
+_ExExErr="E.E. Error"
+_ExExWarn="E.E. Warning"
+
+def conversion_process(
+		path_base:Path,
+		list_of_assets:list,
+		lang:str,
+	)->Optional[Path]:
+
+	path_output=path_base.joinpath("temp").joinpath(f"assets_x{token_hex(8)}.xlsx")
+	path_output.parent.mkdir(parents=True,exist_ok=True)
+
+	wb:Workbook=Workbook()
+	ws:Worksheet=wb.active
+	ws.title="Assets"
+
+	# A, B, C, D
+	col_headers=[
+		# _KEY_ASSET,
+		{_LANG_EN:"Asset ID",_LANG_ES:"ID de activo"}[lang],
+
+		# _KEY_NAME,
+		{_LANG_EN:"Name",_LANG_ES:"Nombre"}[lang],
+
+		# _KEY_VALUE,
+		{_LANG_EN:"Valor",_LANG_ES:"Valor"}[lang],
+
+		# _KEY_TOTAL
+		{_LANG_EN:"Supply",_LANG_ES:"Suministro"}[lang]
+	]
+	col_h_start=len(col_headers)+1
+
+	# Taking the first row as column headers
+	ws.append(col_headers)
+	row=1
+
+	# Each row is an asset
+	for asset in list_of_assets:
+		row=row+1
+
+		print(asset)
+
+		asset_name=asset.get(_KEY_NAME)
+		asset_id=asset.get(_KEY_ASSET)
+		asset_value=asset.get(_KEY_VALUE)
+
+		ws[f"A{row}"]=asset_id
+		ws[f"B{row}"]=asset_name
+		ws[f"C{row}"]=asset_value
+
+		if not isinstance(asset.get(_KEY_HISTORY),Mapping):
+			print(_ExExWarn,f"{asset_id} has no history")
+			continue
+
+		asset_history_size=len(asset[_KEY_HISTORY])
+		if asset_history_size==0:
+			print(_ExExWarn,f"{asset_id} has history of lengh zero")
+
+		col_h_end=col_h_start+asset_history_size-1
+
+		# Row D: the current ammount of the asset
+
+		ws[f"D{row}"]=(
+			f"=SUM({util_excel_dectocol(col_h_start)}{row}:{util_excel_dectocol(col_h_end)}{row})"
+		)
+
+		# C
+
+		col_idx=-1
+
+		for uid in asset[_KEY_HISTORY]:
+
+			col_idx=col_idx+1
+
+			record_mod=util_valid_int(
+				asset[_KEY_HISTORY][uid].get(_KEY_RECORD_MOD)
+			)
+
+			record_comment=util_valid_str(
+				asset[_KEY_HISTORY][uid].get(_KEY_COMMENT)
+			)
+
+			record_date=util_valid_date(
+				asset[_KEY_HISTORY][uid].get(_KEY_DATE)
+			)
+
+			cell_comment=(
+				f"UID:\n"
+				f"{uid}"
+			)
+
+			if record_date is not None:
+				cell_comment=(
+					f"{cell_comment}\n"
+					f"DATE:\n"
+					f"{record_date}"
+				)
+
+			if record_comment is not None:
+				cell_comment=(
+					f"{cell_comment}" "\n\n"
+					f"{record_comment}"
+				)
+
+			if record_mod is None:
+				cell_comment=(
+					f"{cell_comment}\n\n(WARNING)"
+				)
+
+			tgt_cell:Cell=ws[f"{util_excel_dectocol(col_h_start+col_idx)}{row}"]
+			tgt_cell.value=record_mod
+			tgt_cell.comment=Comment(
+				cell_comment,
+				"?",
+				height=160,width=160
+			)
+	try:
+		wb.save(path_output)
+	except Exception as exc:
+		print(_ExExErr,exc)
+		return None
+
+	return path_output
+
+async def main(
+		path_base:Path,
+		rdbc:AsyncIOMotorClient,
+		rdbn:str,lang="en"
+	)->Optional[Path]:
+
+	result_aq=await dbi_assets_AssetQuery(
+		rdbc,rdbn,
+		get_value=True,
+		get_history=True
+	)
+	if len(result_aq)==0:
+		print(_ExExErr,"there are no assets")
+		return None
+
+	return (
+		await async_run_block(
+			conversion_process,
+			path_base,result_aq,lang
+		)
+	)
+
+if __name__=="__main__":
+
+	# NOTE: This is how you test it
+
+	from asyncio import run as async_run
+	from sys import argv as sys_argv
+	from sys import exit as sys_exit
+
+	rdbc=AsyncIOMotorClient()
+	rdbn="my-inventory"
+
+	all_assets=async_run(
+		dbi_assets_AssetQuery(
+			rdbc,rdbn,
+			get_value=True,
+			get_history=True
+		)
+	)
+
+	if len(all_assets)==0:
+		print(_ExExErr,"You have no assets")
+		sys_exit(1)
+
+	conversion_process(
+		Path(sys_argv[0]).parent,
+		all_assets
+	)

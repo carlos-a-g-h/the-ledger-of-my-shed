@@ -6,7 +6,7 @@ _COL_ASSETS="assets"
 
 _KEY_NAME="name"
 _KEY_ASSET="asset_id"
-_KEY_TOTAL="total"
+_KEY_SUPPLY="total"
 _KEY_VALUE="value"
 
 _KEY_HISTORY="history"

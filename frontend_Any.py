@@ -23,9 +23,12 @@ _CSS_CLASS_CONTENT="content"
 _CSS_CLASS_IG_CHECKBOXES="ig-checkboxes"
 _CSS_CLASS_IG_FIELDS="ig-fields"
 
-
 _CSS_CLASS_ASSET_HISTORY="asset-history"
+
+_CSS_CLASS_ANCHOR_AS_BUTTON="anchor-as-button"
+
 _CSS_CLASS_INPUT_CHECKBOX="input-checkbox"
+_CSS_CLASS_INPUT_RADIO="input-radio"
 _CSS_CLASS_INPUT_FIELD="input-field"
 _CSS_CLASS_INPUT_TEXTBOX="input-textbox"
 _CSS_CLASS_INPUT_GUARDED="input-guarded"
@@ -147,6 +150,52 @@ def write_html_input_checkbox(
 			f"""<label class="{_CSS_CLASS_COMMON}">{label}</label>""" "\n"
 		"</div>"
 	)
+
+def write_html_input_radio(
+		name:str,
+		options:list=[("value","Label")],
+		check:int=0
+	)->str:
+
+	# Pairs: Tubple( value , label )
+
+	html_text=f"""<div class="{_CSS_CLASS_INPUT_RADIO}">"""
+
+	check_ok=check
+	if check_ok<0:
+		check_ok=0
+
+	count=-1
+
+	for pair in options:
+
+		count=count+1
+
+		tail=""
+		if (count==check_ok):
+			tail="checked"
+
+		value,label=pair
+
+		unique_id=f"{name}-radio-{count}"
+		html_text=(
+			f"{html_text}\n"
+
+			"<div>"
+				f"""<input type=radio id="{unique_id}" """
+					f"""name="{name}" """
+					f"""value="{value}" """
+					f"{tail}>\n"
+				f"""<label for="{unique_id}">{label}</label>"""
+			"</div>"
+		)
+
+	html_text=(
+			f"{html_text}\n"
+		"</div>"
+	)
+
+	return html_text
 
 def write_html_input_string(
 		name:str,label:Optional[str]=None,

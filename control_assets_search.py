@@ -79,7 +79,7 @@ from symbols_assets import (
 
 	_KEY_ASSET,
 	_KEY_NAME,
-	_KEY_TOTAL,
+	_KEY_SUPPLY,
 
 	_ID_FORM_SEARCH_ASSETS,
 	_ID_RESULT_SEARCH_ASSETS,
@@ -233,15 +233,24 @@ async def util_search_assets(
 
 	return search_results
 
-# TODO: figure out how to clean this sh1t up
 async def route_api_search_assets(
 		request:Request
 	)->Union[json_response,Response]:
 
 	ct=request[_REQ_CLIENT_TYPE]
 
-	in_assets_page=assert_referer(ct,request,_ROUTE_PAGE_ASSETS)
-	in_orders_page=assert_referer(ct,request,_ROUTE_PAGE_ORDERS)
+	in_assets_page=assert_referer(
+		request,ct,
+		_ROUTE_PAGE_ASSETS,
+		False
+	)
+
+	in_orders_page=assert_referer(
+		request,ct,
+		_ROUTE_PAGE_ORDERS,
+		False
+	)
+
 	if not (in_assets_page or in_orders_page):
 		return Response(status=406)
 

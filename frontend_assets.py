@@ -15,6 +15,8 @@ from frontend_Any import (
 	_CSS_CLASS_CONTROLS,
 	_CSS_CLASS_HORIZONTAL,
 
+	_CSS_CLASS_ANCHOR_AS_BUTTON,
+
 	_CSS_CLASS_ASSET_HISTORY,
 
 	# _CSS_CLASS_IG_CHECKBOXES,
@@ -41,7 +43,7 @@ from symbols_assets import (
 	_KEY_ASSET,
 	_KEY_NAME,
 	_KEY_VALUE,
-	_KEY_TOTAL,
+	_KEY_SUPPLY,
 
 	_KEY_HISTORY,
 	_KEY_RECORD_UID,
@@ -61,7 +63,7 @@ from symbols_Any import (
 	_KEY_SIGN,_KEY_SIGN_UNAME,
 	_KEY_COMMENT,
 
-	_KEY_DELETE_ITEM,
+	# _KEY_DELETE_AS_ITEM,
 	_KEY_DATE,
 )
 
@@ -193,12 +195,12 @@ def write_form_edit_asset_metadata(
 	html_text=(
 		"<!-- ASSET METADATA EDITOR -->\n"
 		f"<summary>{tl}</summary>\n"
-		f"""<form hx-post="/api/assets/change-metadata" """ "\n"
+		f"""<form hx-post="/api/assets/pool/{asset_id}/change-metadata" """ "\n"
 			"""hx-swap="innerHTML" """ "\n"
 			f"""hx-target="#{_ID_MESSAGES}" """ "\n"
 			">\n"
 
-			f"""<input name="{_KEY_ASSET}" type=hidden value="{asset_id}" required>""" "\n"
+			# f"""<input name="{_KEY_ASSET}" type=hidden value="{asset_id}" required>""" "\n"
 
 			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
 
@@ -301,7 +303,7 @@ def write_button_asset_fullview_or_update(
 
 	return (
 		f"""<button class="{_CSS_CLASS_COMMON}" """
-			f"""hx-get="/fgmt/assets/panel/{asset_id}" """
+			f"""hx-get="/fgmt/assets/pool/{asset_id}" """
 			f"""hx-target="#{_ID_MESSAGES}" """
 			"""hx-swap="innerHTML" """
 			">"
@@ -309,36 +311,40 @@ def write_button_asset_fullview_or_update(
 		"</button>"
 	)
 
-def write_form_delete_asset(
+def write_form_drop_asset(
 		lang:str,
 		asset_id:str,
 		delete_entry:bool=True,
 	)->str:
+
+	the_path={
+		True:"/api/assets/drop",
+		False:f"/api/assets/pool/{asset_id}/drop"
+	}[delete_entry]
+
 
 	tl={
 		_LANG_EN:"Are you sure you want to delete this asset?",
 		_LANG_ES:"¿Está seguro de que quiere eliminar este activo?"
 	}[lang]
 	html_text=(
-		"""<form hx-delete="/api/assets/drop" """
+		f"""<form hx-delete="{the_path}" """
 			"""hx-trigger="submit" """
 			f"""hx-target="#{_ID_MESSAGES}" """
 			"""hx-swap="innerHTML" """
 			f"""hx-confirm="{tl}" """
 			">\n"
-
-			f"""<input name="{_KEY_ASSET}" type="hidden" value="{asset_id}">"""
 	)
 
 	if delete_entry:
 		html_text=(
 			f"{html_text}\n"
-			f"""<input name="{_KEY_DELETE_ITEM}" type="hidden" value="true">"""
+			f"""<input name="{_KEY_ASSET}" type="hidden" value="{asset_id}">"""
 		)
 
 	tl={
-		_LANG_EN:"Delete this asset",
-		_LANG_ES:"Eliminar este activo"
+		_LANG_EN:"Delete",
+		_LANG_ES:"Eliminar"
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
@@ -351,16 +357,16 @@ def write_form_delete_asset(
 def write_form_add_record(lang:str,asset_id:str)->str:
 
 	html_text=(
-		f"""<form hx-post="/api/assets/history/{asset_id}/add" """
+		f"""<form hx-post="/api/assets/pool/{asset_id}/history/add" """
 			f"""hx-target="#{_ID_MESSAGES}" """
 			"""hx-swap="innerHTML" """
 			">\n"
 
 			# WARN: HIDDEN INPUT
-			f"""<input name="{_KEY_ASSET}" """
-				"""type="hidden" """
-				f"""value="{asset_id}" """
-				"required>\n"
+			# f"""<input name="{_KEY_ASSET}" """
+			# 	"""type="hidden" """
+			# 	f"""value="{asset_id}" """
+			# 	"required>\n"
 
 			f"""<div class={_CSS_CLASS_IG_FIELDS}>"""
 				# conventional fields {
@@ -427,7 +433,7 @@ def write_button_record_details(
 
 	return (
 		f"""<button class="{_CSS_CLASS_COMMON}" """
-			f"""hx-get="/api/assets/history/{asset_id}/records/{record_uid}" """
+			f"""hx-get="/fgmt/assets/pool/{asset_id}/history/records/{record_uid}" """
 			f"""hx-target="#{_ID_MESSAGES}" """
 			"""hx-swap="innerHTML" """
 			">"
@@ -733,7 +739,7 @@ def write_html_asset_info(
 			f"<div>{tl}: <code>{asset_value}</code></div>"
 		)
 
-	asset_total=util_valid_int(the_asset.get(_KEY_TOTAL))
+	asset_total=util_valid_int(the_asset.get(_KEY_SUPPLY))
 	if isinstance(asset_total,int):
 		tl={
 			_LANG_EN:"Current amount",
@@ -781,7 +787,7 @@ def write_html_asset_as_item(
 		html_text=(
 			f"{html_text}\n"
 			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-				f"{write_form_delete_asset(lang,asset_id)}\n"
+				f"{write_form_drop_asset(lang,asset_id)}\n"
 			"</div>"
 		)
 
@@ -842,7 +848,7 @@ def write_html_asset_details(
 	if authorized:
 		html_text=(
 			f"{html_text}\n"
-			f"{write_form_delete_asset(lang,asset_id,False)}"
+			f"{write_form_drop_asset(lang,asset_id,False)}"
 		)
 
 	html_text=(
@@ -924,3 +930,24 @@ def write_html_asset_history(
 	)
 
 	return html_text
+
+def write_anchor_export_assets_as_excel(lang:str):
+
+	tl={
+		_LANG_EN:"Export the assets to excel",
+		_LANG_ES:"Exportar los activos a excel"
+	}[lang]
+
+	return (
+		# f"""<button class="{_CSS_CLASS_COMMON}" """
+		# 	"""onclick="open('/api/assets/export-as-excel')" """
+		# 	">"
+		# 		f"{tl}"
+		# "</button>"
+
+		f"""<div class="{_CSS_CLASS_COMMON} {_CSS_CLASS_ANCHOR_AS_BUTTON}">""" "\n"
+			"""<a href="/api/assets/export-as-excel">""" "\n"
+				f"{tl}\n"
+			"</a>\n"
+		"</div>"
+	)
