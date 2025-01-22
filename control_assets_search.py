@@ -149,7 +149,7 @@ async def util_search_assets(
 		by_tag:Optional[str],
 
 		grab_value:bool=False,
-		grab_total:bool=False,
+		grab_supply:bool=False,
 
 	)->list:
 
@@ -206,7 +206,7 @@ async def util_search_assets(
 				app[_APP_RDBN],
 				asset_tag=by_tag,
 				asset_sign=by_sign,
-				get_total=grab_total,
+				get_supply=grab_supply,
 				get_value=grab_value
 			)
 		)
@@ -297,7 +297,7 @@ async def route_api_search_assets(
 			by_tag=search_tag,
 
 			grab_value=grab_value,
-			grab_total=grab_total
+			grab_supply=grab_total
 		)
 	)
 	empty=(len(search_results)==0)

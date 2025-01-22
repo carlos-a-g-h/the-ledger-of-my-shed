@@ -404,7 +404,7 @@ def write_form_add_record(lang:str,asset_id:str)->str:
 
 	html_text=(
 		f"{html_text}\n"
-		f"{write_html_input_number(_KEY_TAG,label=tl,value=0,required=True)}"
+		f"{write_html_input_string(_KEY_TAG,label=tl)}"
 	)
 
 	tl={
@@ -754,15 +754,15 @@ def write_html_asset_info(
 			f"<div>{tl}: <code>{asset_value}</code></div>"
 		)
 
-	asset_total=util_valid_int(the_asset.get(_KEY_SUPPLY))
-	if isinstance(asset_total,int):
+	asset_supply=util_valid_int(the_asset.get(_KEY_SUPPLY))
+	if isinstance(asset_supply,int):
 		tl={
 			_LANG_EN:"Current amount",
 			_LANG_ES:"Cantidad actual"
 		}[lang]
 		html_text=(
 			f"{html_text}\n"
-			f"""<div>{tl}: <code id="{html_id_asset(asset_id,total=True)}">{asset_total}</code></div>"""
+			f"""<div>{tl}: <code id="{html_id_asset(asset_id,supply=True)}">{asset_supply}</code></div>"""
 		)
 
 	asset_comment=util_valid_str(the_asset.get(_KEY_COMMENT))
@@ -954,15 +954,8 @@ def write_anchor_export_assets_as_excel(lang:str):
 	}[lang]
 
 	return (
-		# f"""<button class="{_CSS_CLASS_COMMON}" """
-		# 	"""onclick="open('/api/assets/export-as-excel')" """
-		# 	">"
-		# 		f"{tl}"
-		# "</button>"
 
-		f"""<div class="{_CSS_CLASS_COMMON} {_CSS_CLASS_ANCHOR_AS_BUTTON}">""" "\n"
-			"""<a href="/api/assets/export-as-excel">""" "\n"
-				f"{tl}\n"
-			"</a>\n"
-		"</div>"
+		f"""<a class="{_CSS_CLASS_COMMON}" href="/api/assets/export-as-excel">""" "\n"
+			f"{tl}\n"
+		"</a>\n"
 	)

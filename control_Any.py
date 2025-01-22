@@ -28,6 +28,8 @@ from frontend_Any import (
 	# _STYLE_POPUP_CONTENTS,
 	# _CSS_CLASS_TITLE_UNIQUE,
 
+	_CSS_CLASS_COMMON,
+
 	write_popupmsg,
 	write_fullpage,
 	write_button_anchor,
@@ -683,6 +685,7 @@ def create_custom_css(
 	)->Union[bool,Optional[Path]]:
 
 	path_sources:Path=path_base.joinpath("sources")
+
 	if not path_sources.exists():
 		if confirm_only:
 			return False
@@ -730,7 +733,11 @@ def create_custom_css(
 
 async def pull_custom_css(path_base:Path)->Optional[Path]:
 
-	path_file:Optional[Path]=path_base.joinpath("custom.css")
+	path_file:Optional[Path]=path_base.joinpath(
+		"temp"
+	).joinpath(
+		"custom.css"
+	)
 
 	if not path_file.is_file():
 		path_file=await async_run(
@@ -874,19 +881,28 @@ async def route_main(
 		_LANG_EN:"Assets",
 		_LANG_ES:"Activos"
 	}[lang]
-	html_text=f"{html_text}\n"+write_button_anchor(tl,"/page/assets")
+	html_text=f"{html_text}\n"+write_button_anchor(
+		tl,"/page/assets",
+		classes=[_CSS_CLASS_COMMON]
+	)
 
 	tl={
 		_LANG_EN:"Orders",
 		_LANG_ES:"Órdenes"
 	}[lang]
-	html_text=f"{html_text}\n"+write_button_anchor(tl,"/page/orders")
+	html_text=f"{html_text}\n"+write_button_anchor(
+		tl,"/page/orders",
+		classes=[_CSS_CLASS_COMMON]
+	)
 
 	tl={
 		_LANG_EN:"Account",
 		_LANG_ES:"Cuenta"
 	}[lang]
-	html_text=f"{html_text}\n"+write_button_anchor(tl,"/page/accounts")
+	html_text=f"{html_text}\n"+write_button_anchor(
+		tl,"/page/accounts",
+		classes=[_CSS_CLASS_COMMON]
+	)
 
 	# html_text=f"{html_text}{write_link_account(lang)}"
 
@@ -894,7 +910,10 @@ async def route_main(
 		_LANG_EN:"System config",
 		_LANG_ES:"Conf. del sistema"
 	}[lang]
-	html_text=f"{html_text}\n"+write_button_anchor(tl,"/page/admin")
+	html_text=f"{html_text}\n"+write_button_anchor(
+		tl,"/page/admin",
+		classes=[_CSS_CLASS_COMMON]
+	)
 
 	return Response(
 		body=write_fullpage(

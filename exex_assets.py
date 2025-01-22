@@ -48,7 +48,7 @@ def conversion_process(
 	ws:Worksheet=wb.active
 	ws.title="SHLED_ASSETS"
 
-	# A, B, C, D, E
+	# A, B, C, D, E, F
 	col_headers=[
 		{
 			_LANG_EN:"Asset ID",
@@ -58,6 +58,11 @@ def conversion_process(
 		{
 			_LANG_EN:"Name",
 			_LANG_ES:"Nombre"
+		}[lang],
+
+		{
+			_LANG_EN:"Tag",
+			_LANG_ES:"Etiqueta"
 		}[lang],
 
 		{
@@ -72,8 +77,8 @@ def conversion_process(
 
 		# Current supply - Initial supply
 		{
-			_LANG_EN:"Breakdown",
-			_LANG_ES:"Resúmen"
+			_LANG_EN:"Performance",
+			_LANG_ES:"Desempeño"
 		}[lang],
 
 		# # Net total of mods
@@ -88,7 +93,7 @@ def conversion_process(
 	row=1
 
 	# column where the supply is located
-	col_supply=4
+	col_supply=5
 
 	# column where history starts
 	col_h_start=len(col_headers)+1
@@ -101,17 +106,19 @@ def conversion_process(
 
 		asset_name=asset.get(_KEY_NAME)
 		asset_id=asset.get(_KEY_ASSET)
+		asset_tag=asset.get(_KEY_TAG)
 		asset_value=asset.get(_KEY_VALUE)
 
 		ws[f"A{row}"]=asset_id
 		ws[f"B{row}"]=asset_name
-		ws[f"C{row}"]=asset_value
+		ws[f"C{row}"]=asset_tag
+		ws[f"D{row}"]=asset_value
 
 		if not isinstance(asset.get(_KEY_HISTORY),Mapping):
 			print(_ExExWarn,f"{asset_id} has no history")
 
-			ws[f"D{row}"]=0
 			ws[f"E{row}"]=0
+			ws[f"F{row}"]=0
 
 			continue
 
@@ -119,21 +126,21 @@ def conversion_process(
 		if asset_history_size==0:
 			print(_ExExWarn,f"{asset_id} has history of lengh zero")
 
-		col_h_end=col_h_start+asset_history_size-1
+		col_h_end=col_h_start+asset_history_size
 
-		# Row D: The supply
+		# Row E: The supply
 
-		ws[f"D{row}"]=(
+		ws[f"E{row}"]=(
 			f"=SUM({util_excel_dectocol(col_h_start)}{row}:{util_excel_dectocol(col_h_end)}{row})"
 		)
 
-		# Row E: The breakdown
+		# Row F: The breakdown
 
-		ws[f"E{row}"]=(
-			f"=SUM({util_excel_dectocol(col_supply)}{row}-{util_excel_dectocol(col_h_end)}{row})"
+		ws[f"F{row}"]=(
+			f"=SUM({util_excel_dectocol(col_supply)}{row}-{util_excel_dectocol(col_h_start)}{row})"
 		)
 
-		# Row F and beyond: Full history
+		# Row G and beyond: Full history
 
 		col_idx=-1
 
@@ -157,23 +164,26 @@ def conversion_process(
 				asset[_KEY_HISTORY][uid].get(_KEY_TAG),True
 			)
 
-			cell_comment=(
-				f"UID:\n"
-				f"{uid}"
-			)
+			cell_comment=f"ID: {uid}"
 
 			if record_date is not None:
+				tl={
+					_LANG_EN:"Date",
+					_LANG_ES:"Fecha"
+				}[lang]
 				cell_comment=(
 					f"{cell_comment}\n"
-					f"DATE:\n"
-					f"{record_date}"
+					f"{tl}: {record_date}"
 				)
 
 			if record_tag is not None:
+				tl={
+					_LANG_EN:"Tag",
+					_LANG_ES:"Etiqueta"
+				}[lang]
 				cell_comment=(
 					f"{cell_comment}\n"
-					f"TAG:\n"
-					f"{record_tag}"
+					f"{tl}: {record_tag}"
 				)
 
 			if record_comment is not None:
@@ -210,6 +220,7 @@ async def main(
 
 	result_aq=await dbi_assets_AssetQuery(
 		rdbc,rdbn,
+		get_tag=True,
 		get_value=True,
 		get_history=True
 	)

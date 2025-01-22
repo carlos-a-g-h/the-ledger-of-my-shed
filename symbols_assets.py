@@ -6,7 +6,7 @@ _COL_ASSETS="assets"
 
 _KEY_NAME="name"
 _KEY_ASSET="asset_id"
-_KEY_SUPPLY="total"
+_KEY_SUPPLY="supply"
 _KEY_VALUE="value"
 
 _KEY_HISTORY="history"
@@ -23,7 +23,7 @@ _ID_RESULT_SEARCH_ASSETS="result-search-assets"
 
 def html_id_asset(
 		asset_id:str,
-		total:bool=False,
+		suply:bool=False,
 		info:bool=False,
 		editor:bool=False,
 		controls:bool=False,
@@ -32,8 +32,8 @@ def html_id_asset(
 
 	html_text=f"asset-{asset_id}"
 
-	if total:
-		return f"{html_text}-total"
+	if suply:
+		return f"{html_text}-suply"
 	if info:
 		return f"{html_text}-info"
 	if editor:

@@ -236,7 +236,7 @@ async def dbi_assets_AssetQuery(
 		get_sign:bool=False,
 		get_tag:bool=False,
 		get_comment:bool=False,
-		get_total:bool=False,
+		get_supply:bool=False,
 		get_history:bool=False,
 		get_value:bool=False,
 
@@ -264,7 +264,7 @@ async def dbi_assets_AssetQuery(
 		projection.update({_KEY_TAG:1})
 	if get_comment:
 		projection.update({_KEY_COMMENT:1})
-	if get_total or get_history:
+	if get_supply or get_history:
 		projection.update({_KEY_HISTORY:1})
 	if get_value:
 		projection.update({_KEY_VALUE:1})
@@ -288,10 +288,10 @@ async def dbi_assets_AssetQuery(
 		print(exc)
 		return []
 
-	if get_total:
+	if get_supply:
 		for asset in list_of_assets:
-			total=util_calculate_total_in_asset(asset)
-			asset.update({_KEY_SUPPLY:total})
+			supply=util_calculate_total_in_asset(asset)
+			asset.update({_KEY_SUPPLY:supply})
 
 	if only_one:
 		return list_of_assets.pop()

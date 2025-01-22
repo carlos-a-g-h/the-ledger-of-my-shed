@@ -492,7 +492,7 @@ async def route_fgmt_asset_details(
 		get_sign=True,
 		get_tag=True,
 		get_comment=True,
-		get_total=True,
+		get_supply=True,
 		get_history=True,
 		get_value=True
 	)
@@ -576,8 +576,8 @@ async def route_api_select_asset(
 		request_data.get("get_history"),
 		False
 	)
-	inc_total=util_valid_bool(
-		request_data.get("get_total"),
+	inc_supply=util_valid_bool(
+		request_data.get("get_supply"),
 		False
 	)
 	inc_comment=util_valid_bool(
@@ -594,7 +594,7 @@ async def route_api_select_asset(
 		request.app[_APP_RDBN],
 		asset_id=asset_id,
 		get_comment=inc_comment,
-		get_total=inc_total,
+		get_supply=inc_supply,
 		get_history=inc_history,
 		get_value=inc_value
 	)
@@ -725,7 +725,7 @@ async def route_api_asset_change_metadata(
 		get_sign=True,
 		get_tag=True,
 		get_value=True,
-		get_total=True,
+		get_suply=True,
 	)
 	error_msg:Optional[str]=result_nv.get(_ERR)
 	if error_msg is not None:
@@ -1038,7 +1038,7 @@ async def route_api_add_record(
 	html_text=(
 		f"{html_text}\n"
 
-		f"""<code hx-swap-oob="innerHTML:#{html_id_asset(asset_id,total=True)}">"""
+		f"""<code hx-swap-oob="innerHTML:#{html_id_asset(asset_id,suply=True)}">"""
 			"???"
 		"</code>\n"
 

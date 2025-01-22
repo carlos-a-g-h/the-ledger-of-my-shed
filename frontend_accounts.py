@@ -90,7 +90,7 @@ def write_form_login(lang:str,full:bool=True)->str:
 		f"{html_text}\n"
 		f"<div>{tl}</div>\n"
 		"<div>"
-			f"""<input name="username" type=text class={_CSS_CLASS_COMMON} required>"""
+			f"""<input name="username" type=text class={_CSS_CLASS_NAV} required>"""
 		"</div>"
 	)
 
