@@ -7,9 +7,15 @@ from typing import Optional,Union,Mapping
 
 from multidict import MultiDictProxy
 
+# from aiofiles import open as async_open
+
 from aiohttp.web import (
 	Request,
-	Response,json_response,
+
+	Response,
+	json_response,
+	FileResponse,
+
 	HTTPNotAcceptable,
 	HTTPError
 )
@@ -19,7 +25,7 @@ from yarl import URL as yarl_URL
 from frontend_Any import (
 
 	_STYLE_CUSTOM,
-	_STYLE_POPUP_CONTENTS,
+	# _STYLE_POPUP_CONTENTS,
 	# _CSS_CLASS_TITLE_UNIQUE,
 
 	write_popupmsg,
@@ -30,7 +36,11 @@ from frontend_Any import (
 # from frontend_accounts import write_link_account
 
 from internals import (
-	util_valid_str,util_valid_date,
+
+	util_valid_bool,
+	util_valid_str,
+	util_valid_date,
+
 	util_extract_from_cookies,
 	util_get_pid_from_request,
 	util_date_calc_expiration,
@@ -55,6 +65,7 @@ from symbols_Any import (
 
 	_COOKIE_AKEY,_COOKIE_USER,
 
+	_REQ_IS_HTMX,
 	_REQ_USERID,_REQ_ACCESS_KEY,_REQ_CLIENT_TYPE,
 	_REQ_HAS_SESSION,_REQ_LANGUAGE,
 
@@ -75,13 +86,13 @@ from dbi_accounts import (
 )
 
 _src_files={
-	"popup.css":{
-		"mimetype":_MIMETYPE_CSS,
-		"content":_STYLE_POPUP_CONTENTS,
+	"baked":{
+		"custom.css":{"mimetype":_MIMETYPE_CSS}
 	},
-	"hyperscript.js":{"mimetype":_MIMETYPE_JS},
-	"htmx.min.js":{"mimetype":_MIMETYPE_JS},
-	"custom.css":{"mimetype":_MIMETYPE_CSS},
+	"local":{
+		"hyperscript.js":{"mimetype":_MIMETYPE_JS},
+		"htmx.min.js":{"mimetype":_MIMETYPE_JS},
+	}
 }
 
 _ERR_DETAIL_DATA_NOT_VALID={
@@ -219,6 +230,27 @@ def assert_referer(
 
 	return True
 
+def util_get_correct_referer(
+		request:Request,
+		fallback:str="/"
+	)->str:
+
+	the_referer_raw=request.headers.get(_HEADER_REFERER)
+	the_referer:Optional[yarl_URL]=None
+	try:
+		the_referer=yarl_URL(the_referer_raw).path
+	except Exception as exc:
+		print(f"{exc}")
+		return fallback
+
+	if not isinstance(the_referer,str):
+		return fallback
+
+	if not the_referer.startswith("/page/"):
+		return fallback
+
+	return the_referer
+
 
 def is_root_local_autologin_allowed(request:Request)->bool:
 
@@ -316,7 +348,8 @@ def response_popupmsg(html_inner:str)->Response:
 def response_fullpage(
 		lang:str,
 		html_title:str,html_h1:str,
-		html_inner:str
+		html_inner:str,
+		status_code:int=200,
 	)->Response:
 
 	return Response(
@@ -325,11 +358,14 @@ def response_fullpage(
 			f"<h1>{html_h1}</h1>" "\n"
 			f"{html_inner}"
 		),
-		content_type=_MIMETYPE_HTML
+		content_type=_MIMETYPE_HTML,
+		status=status_code
 	)
 
 def response_unauthorized(
-		lang:str,client_type:str,root_access:bool=False
+		lang:str,client_type:str,
+		root_access:bool=False,
+		fallback:Optional[str]=None
 	)->Union[Response,json_response]:
 
 	lang_ok=lang
@@ -342,7 +378,7 @@ def response_unauthorized(
 			_LANG_ES:"Necesitas iniciar sesión primero"
 		}[lang_ok],
 		True:{
-			_LANG_EN:"Admin only",
+			_LANG_EN:"Admins only",
 			_LANG_ES:"Solo para administradores"
 		}[lang_ok]
 	}[root_access]
@@ -352,6 +388,32 @@ def response_unauthorized(
 			data={"error":tl},
 			status=403
 		)
+
+	if fallback is not None:
+
+		tl_title={
+			_LANG_EN:"Access error",
+			_LANG_ES:"Error de acceso"
+		}[lang]
+
+		html_text=write_button_anchor({
+				_LANG_EN:"Return",
+				_LANG_ES:"Volver"
+			}[lang],
+			fallback
+		)
+
+		html_text=(
+			f"<div>{tl}</div>\n"
+			f"<div>{html_text}</div>"
+		)
+
+		return response_fullpage(
+			lang,
+			tl_title,tl_title,
+			html_text,403
+		)
+
 
 	return response_popupmsg(f"<h3>{tl}<h3>")
 
@@ -444,6 +506,13 @@ async def the_middleware_factory(app,handler):
 
 		request[_REQ_CLIENT_TYPE]=client_type
 		request[_REQ_LANGUAGE]=lang
+
+		by_htmx=(
+			util_valid_bool(
+				request.headers.get("HX-Request"),False
+			)
+		)
+		request[_REQ_IS_HTMX]=by_htmx
 
 		# Print request information
 
@@ -562,13 +631,24 @@ async def the_middleware_factory(app,handler):
 
 				print("\nNOT ALLOWED")
 
+				the_referer:Optional[str]=None
+				if not by_htmx:
+					the_referer=util_get_correct_referer(request)
+
 				if not url_is_account:
 					if (not url_is_page) and (not has_session):
-						return response_unauthorized(lang,client_type)
+						return response_unauthorized(
+							lang,client_type,
+							fallback=the_referer
+						)
 
 				if (not url_is_page) and url_is_admin:
 					if not userid==_ROOT_USER_ID:
-						return response_unauthorized(lang,client_type,True)
+						return response_unauthorized(
+							lang,client_type,
+							root_access=True,
+							fallback=the_referer
+						)
 
 		request[_REQ_USERID]=userid
 		request[_REQ_ACCESS_KEY]=access_key
@@ -593,60 +673,183 @@ async def the_middleware_factory(app,handler):
 
 	return the_middleware
 
-# Static content
+# Static content (regulated, baked and local)
 
-async def route_src(request)->Response:
+# CSS baking
+
+def create_custom_css(
+		path_base:Path,
+		confirm_only:bool=False
+	)->Union[bool,Optional[Path]]:
+
+	path_sources:Path=path_base.joinpath("sources")
+	if not path_sources.exists():
+		if confirm_only:
+			return False
+		return None
+
+	if not path_sources.is_dir():
+		if confirm_only:
+			return False
+		return None
+
+	fse_new=path_base.joinpath("custom.css")
+
+	print("\nWriting custom.css...")
+
+	with open(fse_new,"wt") as target:
+
+		for fse in path_sources.glob("*.css"):
+			if "*" in fse.name:
+				continue
+
+			if not fse.is_file():
+				continue
+
+			if not fse.stat().st_size<_ONE_MB:
+				continue
+
+			try:
+				target.write(
+					f"/* |{fse.name}| */\n"
+					f"{fse.read_text()}\n"
+				)
+			except Exception as exc:
+				print(
+					f"Baking failed on file:\n\t{fse}\n"
+					f"\tReason: {exc}"
+				)
+				continue
+
+			print("\tAdding to custom.css:",fse.name)
+
+	if confirm_only:
+		return True
+
+	return fse_new
+
+async def pull_custom_css(path_base:Path)->Optional[Path]:
+
+	path_file:Optional[Path]=path_base.joinpath("custom.css")
+
+	if not path_file.is_file():
+		path_file=await async_run(
+			create_custom_css,
+			path_base
+		)
+		if not isinstance(path_file,Path):
+			return None
+
+	if not path_file.is_file():
+		return None
+
+	return path_file
+
+async def route_src(request:Request)->Response:
+
+	# /src/{srctype}/{filename}
 
 	srctype=request.match_info["srctype"]
-	if srctype not in ("local","baked"):
-		return Response(status=406)
+	if srctype not in _src_files.keys():
+		return Response(
+			body="Unknown source type",
+			status=404,
+		)
 
 	filename=request.match_info["filename"]
-	if filename not in _src_files.keys():
-		return Response(status=406)
-
-	type_baked=(
-		srctype=="baked" and
-		(_src_files[filename].get("content") is not None)
-	)
-	type_local=(
-		srctype=="local" and
-		(_src_files[filename].get("content") is None)
-	)
-
-	if not (type_baked or type_local):
-		return Response(status=406)
-
-	mimetype=_src_files[filename]["mimetype"]
-
-	# Baked type
-
-	if type_baked:
-
+	if filename not in _src_files[srctype].keys():
 		return Response(
-			body=_src_files[filename]["content"].strip(),
-			content_type=mimetype,
-			status=200
+			body="Unknown file",
+			status=404,
 		)
 
-	# Local type
+	mimetype=_src_files[srctype][filename].get("mimetype")
 
-	filepath=Path(
-		request.app[_APP_PROGRAMDIR].joinpath(
-			f"sources/{filename}"
+	path_base=request.app[_APP_PROGRAMDIR]
+
+	# Local files
+
+	if srctype=="local":
+		return FileResponse(
+			path=path_base.joinpath(
+				"sources"
+			).joinpath(
+				filename
+			),headers={
+				_HEADER_CONTENT_TYPE:mimetype
+			}
 		)
+
+	# Baked files
+
+	path_file:Optional[Path]=None
+
+	if filename=="custom.css":
+		path_file=await pull_custom_css(path_base)
+
+	if not isinstance(path_file,Path):
+		return Response(
+			body="Failed to get the baked file",
+			status=400
+		)
+
+	return FileResponse(
+		path=path_file,
+		headers={_HEADER_CONTENT_TYPE:mimetype}
 	)
 
-	if not filepath.is_file():
-		return Response(status=403)
+# async def route_src(request:Request)->Response:
 
-	if not filepath.stat().st_size<_ONE_MB:
-		return Response(status=403)
+# 	srctype=request.match_info["srctype"]
+# 	if srctype not in ("local","baked"):
+# 		return Response(status=406)
 
-	return Response(
-		body=filepath.read_text(),
-		content_type=mimetype,
-	)
+# 	filename=request.match_info["filename"]
+# 	if filename not in _src_files.keys():
+# 		return Response(status=406)
+
+# 	type_baked=(
+# 		srctype=="baked" and
+# 		(_src_files[filename].get("content") is not None)
+# 	)
+# 	type_local=(
+# 		srctype=="local" and
+# 		(_src_files[filename].get("content") is None)
+# 	)
+
+# 	if not (type_baked or type_local):
+# 		return Response(status=406)
+
+# 	mimetype=_src_files[filename]["mimetype"]
+
+# 	# Baked type
+
+# 	if type_baked:
+
+# 		return Response(
+# 			body=_src_files[filename]["content"].strip(),
+# 			content_type=mimetype,
+# 			status=200
+# 		)
+
+# 	# Local type
+
+# 	filepath=Path(
+# 		request.app[_APP_PROGRAMDIR].joinpath(
+# 			f"sources/{filename}"
+# 		)
+# 	)
+
+# 	if not filepath.is_file():
+# 		return Response(status=403)
+
+# 	if not filepath.stat().st_size<_ONE_MB:
+# 		return Response(status=403)
+
+# 	return Response(
+# 		body=filepath.read_text(),
+# 		content_type=mimetype,
+# 	)
 
 # Main page
 

@@ -133,7 +133,7 @@ async def dbi_assets_CreateAsset(
 	})
 	return new_asset
 
-async def dbi_assets_ChangeAssetMetadata(
+async def dbi_assets_EditAssetMetadata(
 
 		rdbc:AsyncIOMotorClient,
 
@@ -141,14 +141,14 @@ async def dbi_assets_ChangeAssetMetadata(
 		asset_id:str,
 
 		asset_name:Optional[str]=None,
+		asset_value:Optional[int]=None,
 		asset_tag:Optional[str]=None,
 		asset_comment:Optional[str]=None,
-		asset_value:Optional[int]=None,
 
 		change_name:bool=False,
+		change_value:bool=False,
 		change_tag:bool=False,
 		change_comment:bool=False,
-		change_value:bool=False
 
 	)->Mapping:
 

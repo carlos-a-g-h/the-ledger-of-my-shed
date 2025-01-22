@@ -15,9 +15,13 @@ from aiohttp.web import (
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from control_Any import (
+
 	the_middleware_factory,
 	route_src,
-	route_main as route_Home
+	route_main as route_Home,
+
+	create_custom_css,
+
 )
 
 from control_accounts import (
@@ -90,9 +94,13 @@ from symbols_Any import (
 
 	# _ROOT_USER,
 
-	_APP_LANG,_LANG_EN,_LANG_ES,
+	_APP_LANG,
+	_LANG_EN,_LANG_ES,
 
-	_APP_CACHE_ASSETS,_APP_PROGRAMDIR,_APP_ROOT_USERID,
+	_APP_CACHE_ASSETS,
+	_APP_PROGRAMDIR,
+	_APP_ROOT_USERID,
+	# _APP_BAKED_CSS,
 	_APP_RDBC,_APP_RDBN,
 
 	_CFG_PORT,_CFG_LANG,_CFG_DB_NAME,_CFG_DB_URL,_CFG_FLAGS,
@@ -102,7 +110,8 @@ from symbols_Any import (
 	# _CFG_FLAG_PUB_READ_ACCESS_TO_ORDERS,
 	# _CFG_FLAG_PVT_READ_ACCESS_TO_ASSETS,
 
-	_CFG_PORT_MIN,_CFG_PORT_MAX
+	_CFG_PORT_MIN,
+	_CFG_PORT_MAX
 )
 
 def read_config(path_config:Path)->dict:
@@ -210,11 +219,8 @@ def build_app(
 	if msg_err is not None:
 		raise Exception(f"LDBI err.2: {msg_err}")
 
-	# msg_err:Optional[str]=ldbi_save_user(
-	# 	path_programdir,_ROOT_USER,_ROOT_USER
-	# )
-	# if msg_err is not None:
-	# 	raise Exception(f"LDBI err.3: {msg_err}")
+	if not create_custom_css(path_programdir,True):
+		print("WARNING: Unable to create the custom.css file")
 
 	app=Application(
 		middlewares=[the_middleware_factory]
@@ -353,7 +359,7 @@ def build_app(
 		
 			),
 				web_POST(
-					"/fgmt/assets/pool/{asset_id}/change-metadata",
+					"/fgmt/assets/pool/{asset_id}/edit-metadata",
 					route_Assets_api_ChangeMetadata
 				),
 

@@ -44,24 +44,13 @@ _SQL_TABLE_ACTIVE_SESSIONS="ActiveSessions"
 _SQL_COL_DATE="TheDate"
 _SQL_COL_USERID="UserID"
 _SQL_COL_USERNAME="UserName"
+_SQL_COL_TGUID="TelegramUserID"
+_SQL_COL_EMAIL="Email"
 _SQL_COL_OTP="OneTimePassword"
 _SQL_COL_AKEY="AccessKey"
 _SQL_COL_SID="SessionID"
 
 # UserID + Username caching
-
-# def util_userid_to_backend(userid:str)->str:
-
-# 	if userid.startswith("0x"):
-# 		return _ROOT_USER_ID
-
-# 	return userid
-
-# def util_userid_from_backend(userid:str,userid_root:str)->str:
-# 	if userid.startswith("0x"):
-# 		return userid_root
-
-# 	return userid
 
 def ldbi_print_table(basedir:Path,table:str):
 	try:

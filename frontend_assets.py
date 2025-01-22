@@ -185,6 +185,7 @@ def write_form_new_asset(lang:str,full:bool=True)->str:
 
 def write_form_edit_asset_metadata(
 		lang:str,asset_id:str,
+		data:Mapping={},
 		full:bool=True,
 	)->str:
 
@@ -195,7 +196,7 @@ def write_form_edit_asset_metadata(
 	html_text=(
 		"<!-- ASSET METADATA EDITOR -->\n"
 		f"<summary>{tl}</summary>\n"
-		f"""<form hx-post="/api/assets/pool/{asset_id}/change-metadata" """ "\n"
+		f"""<form hx-post="/api/assets/pool/{asset_id}/edit-metadata" """ "\n"
 			"""hx-swap="innerHTML" """ "\n"
 			f"""hx-target="#{_ID_MESSAGES}" """ "\n"
 			">\n"
@@ -219,6 +220,20 @@ def write_form_edit_asset_metadata(
 			f"""<div class="{_CSS_CLASS_INPUT_GUARDED}">""" "\n"
 				f"{write_html_input_checkbox(tl_change,tl)}\n"
 				f"{write_html_input_string(_KEY_NAME)}"
+			"</div>"
+	)
+
+	tl={
+		_LANG_EN:"Value",
+		_LANG_ES:"Valor"
+	}[lang]
+	tl_change=f"change-{_KEY_VALUE}"
+	html_text=(
+		f"{html_text}\n"
+
+			f"""<div class="{_CSS_CLASS_INPUT_GUARDED}">""" "\n"
+				f"{write_html_input_checkbox(tl_change,tl)}\n"
+				f"{write_html_input_number(_KEY_VALUE,minimum=0)}"
 			"</div>"
 	)
 
@@ -835,7 +850,7 @@ def write_html_asset_details(
 	if authorized:
 		html_text=(
 			f"{html_text}\n"
-			f"{write_form_edit_asset_metadata(lang,asset_id)}"
+			f"{write_form_edit_asset_metadata(lang,asset_id,data=the_asset)}"
 		)
 
 	tl=html_id_asset(asset_id,controls=True)

@@ -11,31 +11,32 @@ from aiohttp.web import (
 	Response,json_response,
 	HTTPFound
 )
-from yarl import URL as Yurl
-
-from control_Any import (
-
-	_ERR_DETAIL_DATA_NOT_VALID,
-
-	assert_referer,
-	get_client_type,
-	# get_username,
-	get_request_body_dict,
-	response_errormsg,
-	response_popupmsg,
-	response_fullpage,
-	is_root_local_autologin_allowed,
-)
 
 from dbi_accounts import (
 
 	ldbi_get_userid,
-	ldbi_get_username,
+	# ldbi_get_username,
 	ldbi_create_session_candidate,
 	ldbi_convert_to_active_session,
 	ldbi_read_session,
 	ldbi_drop_session,
 	ldbi_create_active_session,
+)
+
+from control_Any import (
+
+	_ERR_DETAIL_DATA_NOT_VALID,
+
+	util_get_correct_referer,
+
+	# assert_referer,
+	get_client_type,
+	# get_username,
+	get_request_body_dict,
+	response_errormsg,
+	# response_popupmsg,
+	response_fullpage,
+	is_root_local_autologin_allowed,
 )
 
 from frontend_Any import (
@@ -47,10 +48,11 @@ from frontend_Any import (
 	# _CSS_CLASS_NAV,
 	# _ID_NAVIGATION,
 
-	_CSS_CLASS_COMMON,
-	_SCRIPT_HTMX,_STYLE_CUSTOM,_STYLE_POPUP,
+	# _CSS_CLASS_COMMON,
+	_SCRIPT_HTMX,_STYLE_CUSTOM,
+	# _STYLE_POPUP,
 
-	write_ul,
+	# write_ul,
 	write_button_anchor,
 	write_html_nav_pages,
 	write_fullpage,
@@ -84,7 +86,7 @@ from symbols_Any import (
 	_COOKIE_AKEY,_COOKIE_USER,
 	_REQ_LANGUAGE,_LANG_EN,_LANG_ES,
 
-	_HEADER_REFERER,
+	# _HEADER_REFERER,
 
 	_REQ_CLIENT_TYPE,_TYPE_CUSTOM,_TYPE_BROWSER,
 	_REQ_USERID,
@@ -120,24 +122,6 @@ _ERR_TITLE_LOGOUT={
 	_LANG_EN:"Logout error",
 	_LANG_ES:"Error al cerrar sesión"
 }
-
-def util_get_correct_referer(request:Request)->str:
-
-	the_referer_raw=request.headers.get(_HEADER_REFERER)
-	the_referer:Optional[Yurl]=None
-	try:
-		the_referer=Yurl(the_referer_raw).path
-	except Exception as exc:
-		print(f"{exc}")
-		return _ROUTE_PAGE
-
-	if not isinstance(the_referer,str):
-		return _ROUTE_PAGE
-
-	if not the_referer.startswith("/page/"):
-		return _ROUTE_PAGE
-
-	return the_referer
 
 def util_write_return(
 		lang:str,
@@ -387,7 +371,7 @@ async def route_api_login_otp(request:Request)->Union[json_response,Response]:
 
 	lang=request[_REQ_LANGUAGE]
 
-	the_referer=util_get_correct_referer(request)
+	the_referer=util_get_correct_referer(request,_ROUTE_PAGE)
 
 	if request[_REQ_HAS_SESSION]:
 		return response_fullpage(
@@ -575,7 +559,7 @@ async def route_api_login_magical(request:Request)->Union[json_response,Response
 
 	lang=request[_REQ_LANGUAGE]
 
-	the_referer=util_get_correct_referer(request)
+	the_referer=util_get_correct_referer(request,_ROUTE_PAGE)
 
 	if request[_REQ_HAS_SESSION]:
 		tl={
@@ -759,7 +743,7 @@ async def route_main(request:Request)->Union[json_response,Response]:
 			html_text,
 			html_header_extra=[
 				_SCRIPT_HTMX,
-				_STYLE_POPUP,
+				# _STYLE_POPUP,
 				_STYLE_CUSTOM
 			]
 		),

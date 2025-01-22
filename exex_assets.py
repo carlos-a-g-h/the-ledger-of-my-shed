@@ -1,6 +1,7 @@
 #!/usr/bin/python3.9
 
 from asyncio import to_thread as async_run_block
+from datetime import datetime
 from pathlib import Path
 from secrets import token_hex
 from typing import Optional,Mapping
@@ -37,7 +38,7 @@ _ExExWarn="E.E. Warning"
 def conversion_process(
 		path_base:Path,
 		list_of_assets:list,
-		lang:str,
+		lang:str=_LANG_EN,
 	)->Optional[Path]:
 
 	path_output=path_base.joinpath("temp").joinpath(f"assets_x{token_hex(8)}.xlsx")
@@ -45,27 +46,52 @@ def conversion_process(
 
 	wb:Workbook=Workbook()
 	ws:Worksheet=wb.active
-	ws.title="Assets"
+	ws.title="SHLED_ASSETS"
 
-	# A, B, C, D
+	# A, B, C, D, E
 	col_headers=[
-		# _KEY_ASSET,
-		{_LANG_EN:"Asset ID",_LANG_ES:"ID de activo"}[lang],
+		{
+			_LANG_EN:"Asset ID",
+			_LANG_ES:"ID del activo"
+		}[lang],
 
-		# _KEY_NAME,
-		{_LANG_EN:"Name",_LANG_ES:"Nombre"}[lang],
+		{
+			_LANG_EN:"Name",
+			_LANG_ES:"Nombre"
+		}[lang],
 
-		# _KEY_VALUE,
-		{_LANG_EN:"Valor",_LANG_ES:"Valor"}[lang],
+		{
+			_LANG_EN:"Valor",
+			_LANG_ES:"Valor"
+		}[lang],
 
-		# _KEY_TOTAL
-		{_LANG_EN:"Supply",_LANG_ES:"Suministro"}[lang]
+		{
+			_LANG_EN:"Supply",
+			_LANG_ES:"Suministro"
+		}[lang],
+
+		# Current supply - Initial supply
+		{
+			_LANG_EN:"Breakdown",
+			_LANG_ES:"Resúmen"
+		}[lang],
+
+		# # Net total of mods
+		# {
+		# 	_LANG_EN:"Volume",
+		# 	_LANG_ES:"Volúmen"
+		# }[lang]
 	]
-	col_h_start=len(col_headers)+1
 
 	# Taking the first row as column headers
 	ws.append(col_headers)
 	row=1
+
+	# column where the supply is located
+	col_supply=4
+
+	# column where history starts
+	col_h_start=len(col_headers)+1
 
 	# Each row is an asset
 	for asset in list_of_assets:
@@ -83,6 +109,10 @@ def conversion_process(
 
 		if not isinstance(asset.get(_KEY_HISTORY),Mapping):
 			print(_ExExWarn,f"{asset_id} has no history")
+
+			ws[f"D{row}"]=0
+			ws[f"E{row}"]=0
+
 			continue
 
 		asset_history_size=len(asset[_KEY_HISTORY])
@@ -91,13 +121,19 @@ def conversion_process(
 
 		col_h_end=col_h_start+asset_history_size-1
 
-		# Row D: the current ammount of the asset
+		# Row D: The supply
 
 		ws[f"D{row}"]=(
 			f"=SUM({util_excel_dectocol(col_h_start)}{row}:{util_excel_dectocol(col_h_end)}{row})"
 		)
 
-		# C
+		# Row E: The breakdown
+
+		ws[f"E{row}"]=(
+			f"=SUM({util_excel_dectocol(col_supply)}{row}-{util_excel_dectocol(col_h_end)}{row})"
+		)
+
+		# Row F and beyond: Full history
 
 		col_idx=-1
 
@@ -117,6 +153,10 @@ def conversion_process(
 				asset[_KEY_HISTORY][uid].get(_KEY_DATE)
 			)
 
+			record_tag=util_valid_str(
+				asset[_KEY_HISTORY][uid].get(_KEY_TAG),True
+			)
+
 			cell_comment=(
 				f"UID:\n"
 				f"{uid}"
@@ -127,6 +167,13 @@ def conversion_process(
 					f"{cell_comment}\n"
 					f"DATE:\n"
 					f"{record_date}"
+				)
+
+			if record_tag is not None:
+				cell_comment=(
+					f"{cell_comment}\n"
+					f"TAG:\n"
+					f"{record_tag}"
 				)
 
 			if record_comment is not None:

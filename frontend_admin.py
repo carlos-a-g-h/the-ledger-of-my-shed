@@ -7,7 +7,7 @@ from symbols_Any import (
 )
 
 from symbols_accounts import (
-	_KEY_USERID,
+	# _KEY_USERID,
 	_KEY_USERNAME,
 
 	_KEY_EMAIL,
@@ -86,7 +86,7 @@ def write_form_create_user(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"{write_html_input_string(_KEY_USERNAME,label=tl,maxlen=24,inpuy_type=1)}"
+		f"{write_html_input_string(_KEY_USERNAME,label=tl,maxlen=24,input_type=1)}"
 	)
 
 	tl={
@@ -95,7 +95,7 @@ def write_form_create_user(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"{write_html_input_string(_KEY_EMAIL,label=tl,maxlen=24,inpuy_type=1)}"
+		f"{write_html_input_string(_KEY_EMAIL,label=tl,maxlen=24,input_type=1)}"
 	)
 
 	tl={
@@ -166,7 +166,7 @@ def write_form_search_users(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"{write_html_input_string(_KEY_USERNAME,label=tl,maxlen=24,inpuy_type=1)}"
+		f"{write_html_input_string(_KEY_USERNAME,label=tl,maxlen=24,input_type=1)}"
 	)
 
 	tl={
@@ -175,7 +175,7 @@ def write_form_search_users(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"{write_html_input_string(_KEY_EMAIL,label=tl,maxlen=24,inpuy_type=1)}"
+		f"{write_html_input_string(_KEY_EMAIL,label=tl,maxlen=24,input_type=1)}"
 	)
 
 	tl={

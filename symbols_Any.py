@@ -27,6 +27,7 @@ _APP_LANG="lang"
 _APP_PROGRAMDIR="programdir"
 _APP_ROOT_USERID="Root-UserID"
 _APP_CACHE_ASSETS="AssetsCache"
+_APP_BAKED_CSS="Baked_CSS"
 _APP_RDBN="MongoDB-DB-Name"
 _APP_RDBC="MongoDB-Client"
 
@@ -77,11 +78,12 @@ _COOKIE_USER="USER-ID"
 _ROOT_USER="root"
 _ROOT_USER_ID="000000000000000000000001"
 
-# Request baggage
+# Request extra data
 _REQ_USERNAME="Username"
 _REQ_USERID="User_ID"
 _REQ_ACCESS_KEY="Access_Key"
 _REQ_CLIENT_TYPE="Client_Type"
+_REQ_IS_HTMX="RequestFromHTMX"
 _REQ_HAS_SESSION="Has_Session?"
 _REQ_LANGUAGE="Language"
 
@@ -92,6 +94,7 @@ _CFG_DB_NAME="db-name"
 _CFG_DB_URL="db-url"
 
 _CFG_FLAGS="flags"
+# _CFG_FLAG_ON_LAUNCH_CSS_NOT_BAKED="on-launch-css-not-baked"
 _CFG_FLAG_ROOT_LOCAL_AUTOLOGIN="root-local-autologin"
 _CFG_FLAG_PUB_READ_ACCESS_TO_ORDERS="pub-read-orders"
 _CFG_FLAG_PUB_READ_ACCESS_TO_HISTORY="pub-read-history"

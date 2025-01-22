@@ -37,7 +37,7 @@ from control_assets_search import (
 
 from dbi_assets import (
 
-	dbi_assets_ChangeAssetMetadata,
+	dbi_assets_EditAssetMetadata,
 	dbi_assets_CreateAsset,
 	dbi_assets_AssetQuery,
 	dbi_assets_DropAsset,
@@ -60,7 +60,7 @@ from frontend_Any import (
 
 	_SCRIPT_HTMX,
 	_STYLE_CUSTOM,
-	_STYLE_POPUP,
+	# _STYLE_POPUP,
 
 	# _CSS_CLASS_COMMON,
 	# _CSS_CLASS_CONTAINER,
@@ -616,8 +616,8 @@ async def route_api_asset_change_metadata(
 		request:Request
 	)->Union[json_response,Response]:
 
-	# POST /api/assets/pool/{asset_id}/change-metadata
-	# POST /api/assets/change-metadata
+	# POST /api/assets/pool/{asset_id}/edit-metadata
+	# POST /api/assets/edit-metadata
 
 	ct=request[_REQ_CLIENT_TYPE]
 
@@ -659,6 +659,9 @@ async def route_api_asset_change_metadata(
 	asset_name=util_valid_str(
 		request_data.get(_KEY_NAME)
 	)
+	asset_value=util_valid_int(
+		request_data.get(_KEY_VALUE)
+	)
 	asset_tag=util_valid_str(
 		request_data.get(_KEY_TAG)
 	)
@@ -670,6 +673,10 @@ async def route_api_asset_change_metadata(
 		request_data.get(f"change-{_KEY_NAME}"),
 		dval=False
 	)
+	change_value=util_valid_bool(
+		request_data.get(f"change-{_KEY_VALUE}"),
+		dval=False
+	)
 	change_tag=util_valid_bool(
 		request_data.get(f"change-{_KEY_TAG}"),
 		dval=False
@@ -679,16 +686,18 @@ async def route_api_asset_change_metadata(
 		dval=False
 	)
 
-	result_mdchange=await dbi_assets_ChangeAssetMetadata(
+	result_mdchange=await dbi_assets_EditAssetMetadata(
 		request.app[_APP_RDBC],
 		request.app[_APP_RDBN],
 
 		asset_id=asset_id,
 		asset_name=asset_name,
+		asset_value=asset_value,
 		asset_tag=asset_tag,
 		asset_comment=asset_comment,
 
 		change_name=change_name,
+		change_value=change_value,
 		change_tag=change_tag,
 		change_comment=change_comment
 	)
@@ -736,7 +745,7 @@ async def route_api_asset_change_metadata(
 			"</div>\n"
 
 			f"""<details hx-swap-oob="innerHTML:#{html_id_asset(asset_id,editor=True)}">""" "\n"
-				f"{write_form_edit_asset_metadata(lang,asset_id,False)}\n"
+				f"{write_form_edit_asset_metadata(lang,asset_id,data=result_nv,full=False)}\n"
 			"</details>\n"
 
 			f"<!-- CHANGED METADATA FOR {asset_id}-->"
@@ -1134,9 +1143,13 @@ async def route_api_excel_export(
 
 	# /api/assets/export-as-excel
 
-	lang=request[_REQ_LANGUAGE]
+	assert_referer(
+		request,
+		request[_REQ_CLIENT_TYPE]
+		,_ROUTE_PAGE
+	)
 
-	# TODO: we need better error handling
+	lang=request[_REQ_LANGUAGE]
 
 	the_file=await export_assets_as_excel_file(
 		request.app[_APP_PROGRAMDIR],
@@ -1226,7 +1239,7 @@ async def route_main(
 			html_text,
 			html_header_extra=[
 				_SCRIPT_HTMX,
-				_STYLE_POPUP,
+				# _STYLE_POPUP,
 				_STYLE_CUSTOM
 			]
 		),

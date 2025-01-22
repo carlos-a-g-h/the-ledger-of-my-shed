@@ -31,7 +31,8 @@ from frontend_Any import (
 
 	_CSS_CLASS_NAV,
 
-	_STYLE_CUSTOM,_STYLE_POPUP,
+	_STYLE_CUSTOM,
+	# _STYLE_POPUP,
 	_SCRIPT_HTMX,
 
 	write_fullpage,
@@ -430,7 +431,7 @@ async def route_main(
 			html_text,
 			html_header_extra=[
 				_SCRIPT_HTMX,
-				_STYLE_POPUP,
+				# _STYLE_POPUP,
 				_STYLE_CUSTOM
 			]
 		),

@@ -48,7 +48,8 @@ from frontend_Any import (
 	_ID_NAV_ONE,_ID_NAV_TWO,_ID_NAV_TWO_OPTS,
 	_ID_MESSAGES,
 
-	_SCRIPT_HTMX,_STYLE_CUSTOM,_STYLE_POPUP,
+	_SCRIPT_HTMX,_STYLE_CUSTOM,
+	# _STYLE_POPUP,
 
 	# _CSS_CLASS_CONTAINER,
 	# _CSS_CLASS_CONTENT,
@@ -1217,7 +1218,7 @@ async def route_main(
 			html_text,
 			html_header_extra=[
 				_SCRIPT_HTMX,
-				_STYLE_POPUP,
+				# _STYLE_POPUP,
 				_STYLE_CUSTOM
 			]
 		),

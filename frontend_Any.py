@@ -49,8 +49,9 @@ _CSS_CLASS_FOCUSED="focused"
 _SCRIPT_HTMX="""<script src="/src/local/htmx.min.js"></script>"""
 _SCRIPT_HYPERSCRIPT="""<script src="/src/local/hyperscript.js"></script>"""
 
-_STYLE_CUSTOM="""<link rel="stylesheet" href="/src/local/custom.css">"""
-_STYLE_POPUP="""<link rel="stylesheet" href="/src/baked/popup.css">"""
+_STYLE_CUSTOM="""<link rel="stylesheet" href="/src/baked/custom.css">"""
+# _STYLE_CUSTOM="""<link rel="stylesheet" href="/src/local/custom.css">"""
+# _STYLE_POPUP="""<link rel="stylesheet" href="/src/baked/popup.css">"""
 
 _STYLE_TALIGN_R="text-align:right;"
 
