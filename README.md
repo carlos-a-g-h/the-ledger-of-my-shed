@@ -16,10 +16,11 @@ More will be added but this is what you can do right now:
 - Accumulative history for each asset
 - Large scale record modifications using orders
 - User accounts system with dynamic passwords
+- Export assets + their history to excel format
 
 ### Pending
 
-- Exporting/Importing asset definitions, orders, etc...
+- User creation functionality (the only user right now is root)
 - Propper API (route naming, authorization, etc... ) for custom clients
 
 ## This is built on what?
@@ -55,8 +56,6 @@ $ python3 main.py
 
 or you can just double-click the "shled.exe" executable it if you're on Windows
 
-### How to customize
+### How to customize the CSS
 
-You can customize the looks of this thing by editing the "custom.css" file, feel free to adjust it to your needs
-
-NOTE: If you're going to edit anything related to the popup messages, check the "popup.css" file using your browser's CSS Editor while the server is running
+Add/modify the CSS in the sources directory: everything will be concatenated into a single custom.css file at runtime
