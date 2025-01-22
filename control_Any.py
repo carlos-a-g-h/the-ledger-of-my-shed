@@ -696,7 +696,12 @@ def create_custom_css(
 			return False
 		return None
 
-	fse_new=path_base.joinpath("custom.css")
+	fse_new=path_base.joinpath(
+		"temp"
+	).joinpath(
+		"custom.css"
+	)
+	fse_new.parent.mkdir(exist_ok=True,parents=True)
 
 	print("\nWriting custom.css...")
 
@@ -738,6 +743,7 @@ async def pull_custom_css(path_base:Path)->Optional[Path]:
 	).joinpath(
 		"custom.css"
 	)
+
 
 	if not path_file.is_file():
 		path_file=await async_run(
