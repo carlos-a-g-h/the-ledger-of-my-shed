@@ -933,6 +933,16 @@ async def route_api_delete_order(
 
 		order_id=request.match_info[_KEY_ORDER]
 
+	if order_id is None:
+		return response_errormsg(
+			_ERR_TITLE_DROP_ORDER[lang],
+			{_LANG_EN:"Order ID missing",_LANG_ES:"Falta el ID de la órden"}[lang],
+			ct,status_code=406
+		)
+
+
+
+
 	result:Mapping=await dbi_orders_DropOrder(
 		request.app[_APP_RDBC],
 		request.app[_APP_RDBN],
@@ -1095,7 +1105,7 @@ async def route_api_revert_order(
 
 	ct=request[_REQ_CLIENT_TYPE]
 	if ct==_TYPE_BROWSER:
-		if request.path.startswith("/api/orders/pool/"):
+		if not request.path.startswith("/api/orders/pool/"):
 			return Response(status=403)
 
 	assert_referer(request,ct,_ROUTE_PAGE)

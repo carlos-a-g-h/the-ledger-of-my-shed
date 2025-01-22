@@ -564,6 +564,7 @@ def write_button_delete_order(
 		html_text=(
 			f"{html_text}\n"
 			f"""<input type="hidden" name="{_KEY_DELETE_AS_ITEM}" value=true>""" "\n"
+			f"""<input type="hidden" name="{_KEY_ORDER}" value="{order_id}">""" "\n"
 		)
 
 	tl={

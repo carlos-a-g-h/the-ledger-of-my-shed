@@ -23,7 +23,7 @@ _ID_RESULT_SEARCH_ASSETS="result-search-assets"
 
 def html_id_asset(
 		asset_id:str,
-		suply:bool=False,
+		supply:bool=False,
 		info:bool=False,
 		editor:bool=False,
 		controls:bool=False,
@@ -32,8 +32,8 @@ def html_id_asset(
 
 	html_text=f"asset-{asset_id}"
 
-	if suply:
-		return f"{html_text}-suply"
+	if supply:
+		return f"{html_text}-supply"
 	if info:
 		return f"{html_text}-info"
 	if editor:

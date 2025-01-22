@@ -29,7 +29,7 @@ from symbols_assets import(
 )
 
 _KEY_GET_VALUE="get_value"
-_KEY_GET_TOTAL="get_total"
+_KEY_GET_SUPPLY="get_supply"
 
 def write_form_search_assets(
 		lang:str,
@@ -111,12 +111,12 @@ def write_form_search_assets(
 		)
 
 		tl={
-			_LANG_EN:"Include total",
-			_LANG_ES:"Incluir total"
+			_LANG_EN:"Include supply",
+			_LANG_ES:"Incluir supply"
 		}[lang]
 		html_text=(
 			f"{html_text}\n"
-			f"{write_html_input_checkbox(_KEY_GET_TOTAL,label=tl)}"
+			f"{write_html_input_checkbox(_KEY_GET_SUPPLY,label=tl)}"
 		)
 
 		html_text=(

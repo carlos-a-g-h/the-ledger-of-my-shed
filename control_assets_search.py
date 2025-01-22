@@ -39,7 +39,7 @@ from frontend_assets import (
 
 from frontend_assets_search import (
 
-	_KEY_GET_VALUE,_KEY_GET_TOTAL,
+	_KEY_GET_VALUE,_KEY_GET_SUPPLY,
 
 	write_form_search_assets,
 )
@@ -284,7 +284,7 @@ async def route_api_search_assets(
 			request_data.get(_KEY_GET_VALUE),False
 		)
 		grab_total=util_valid_bool(
-			request_data.get(_KEY_GET_TOTAL),False
+			request_data.get(_KEY_GET_SUPPLY),False
 		)
 
 	search_results=(

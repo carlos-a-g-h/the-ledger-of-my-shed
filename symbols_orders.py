@@ -22,7 +22,7 @@ def html_id_order(
 		order_id:str,
 		info:bool=False,
 		value:bool=False,
-		assets:bool=True
+		assets:bool=False
 	)->str:
 
 	html_text=f"order-{order_id}"

@@ -725,7 +725,7 @@ async def route_api_asset_change_metadata(
 		get_sign=True,
 		get_tag=True,
 		get_value=True,
-		get_suply=True,
+		get_supply=True,
 	)
 	error_msg:Optional[str]=result_nv.get(_ERR)
 	if error_msg is not None:
@@ -1038,7 +1038,7 @@ async def route_api_add_record(
 	html_text=(
 		f"{html_text}\n"
 
-		f"""<code hx-swap-oob="innerHTML:#{html_id_asset(asset_id,suply=True)}">"""
+		f"""<code hx-swap-oob="innerHTML:#{html_id_asset(asset_id,supply=True)}">"""
 			"???"
 		"</code>\n"
 
