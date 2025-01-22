@@ -3,17 +3,18 @@ name: Builder
 on:
   workflow_dispatch:
     inputs:
+
+      BRANCH:
+        description: "Branch name"
+        type: string
+        required: true
+        default: "main"
+
       TEST_VARIABLES:
         description: "(Debug) Test variables moved accross jobs and steps"
         type: boolean
         required: true
         default: false
-
-#      ONE_FILE:
-#        description: "ONE FILE (Nuitka)"
-#        type: boolean
-#        required: true
-#        default: false
 
       NO_WINDOWS:
         description: "No Windows"
@@ -22,25 +23,25 @@ on:
         default: false
 
       MARK_AS_PRE_RELEASE:
-        description: "Mark as a pre-release"
+        descrption: "Mark as a pre-release"
         type: boolean
         required: true
         default: false
 
       DO_NOT_CREATE_RELEASE:
-        description: "Do not create release"
+        description: "(Debug) Do not create release"
         type: boolean
         required: true
         default: false
 
       DO_NOT_MOVE_ARTIFACTS:
-        description: "Do not upload/download the artifacts"
+        description: "(Debug) Do not upload/download the artifacts"
         type: boolean
         required: true
         default: false
 
       DO_NOT_COMPILE_CREATE_DUMMY:
-        description: "Do not compile, create a dummy"
+        description: "(Debug) Do not compile, create dummy files"
         type: boolean
         required: true
         default: false
@@ -55,19 +56,9 @@ jobs:
     name: Build and upload executable binary
     strategy:
       matrix:
-        include:
-          - os: "ubuntu-20.04"
-            pyver: "3.9.6"
-          - os: "ubuntu-22.04"
-            pyver: "3.9.20"
-          - os: "ubuntu-24.04"
-            pyver: "3.9.20"
-          - os: "windows-latest"
-            pyver: "3.9.13"
-
         # os: [ ubuntu-20.04 , windows-2019 ]
-        # os: [ubuntu-20.04,ubuntu-22.04,ubuntu-24.04,windows-latest]
-        # pyver: ["3.9.6","3.9.20","3.9.20","3.9.13"]
+        os: [ubuntu-20.04,ubuntu-22.04,ubuntu-24.04,windows-latest]
+        pyver: ["3.9.6","3.9.20","3.9.20","3.9.13"]
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -80,6 +71,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: repo
+          ref: $${{ inputs.BRANCH_NAME }}
 
       - name: Setup Python
         if: $${{ inputs.DO_NOT_COMPILE_CREATE_DUMMY == false }}
@@ -124,7 +116,7 @@ jobs:
         working-directory: repo
         run: |
           echo "[ LINKING ]"
-          ldd "the-output/${{ env.THE_NAME }}.bin"
+          ldd "the-output/main.dist/${{ env.THE_NAME }}.bin"
           echo "[ CONTENTS ]"
           find the-output
 
@@ -141,6 +133,7 @@ jobs:
         working-directory: repo
         run: |
           dir the-output
+          dir the-output/main.dist
 
       - uses: actions/upload-artifact@v3
         if: ${{ inputs.DO_NOT_MOVE_ARTIFACTS == false }}
@@ -210,6 +203,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: repo
+          ref: $${{ inputs.BRANCH_NAME }}
 
       - name: Download Notes
         uses: actions/download-artifact@v3
@@ -241,7 +235,7 @@ jobs:
           cp -v repo/config.yaml "${{ env.THE_NAME }}/config.yaml"
           mkdir -v "${{ env.THE_NAME }}/sources"
           cp -v repo/htmx.min.js "${{ env.THE_NAME }}/sources/htmx.min.js"
-          cp -v repo/custom.css "${{ env.THE_NAME }}/sources/custom.css"
+          cp -v repo/*.css "${{ env.THE_NAME }}/sources/"
 
           echo "${{ steps.step_notes.outputs.THE_DATE }}" > "${{ env.THE_NAME }}/README.md"
           cat repo/README.md >> "${{ env.THE_NAME }}/README.md"
