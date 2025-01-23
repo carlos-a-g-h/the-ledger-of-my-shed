@@ -108,6 +108,14 @@ _ERR_DETAIL_DBI_FAIL={
 
 # Utilities
 
+def has_local_access(request:Request)->bool:
+	has_it=(
+		request.remote=="127.0.0.1" or
+		request.remote=="::1"
+	)
+	print("\nLocal access?",has_it)
+	return has_it
+
 def get_lang(ct:str,request:Request)->str:
 	if ct==_TYPE_CUSTOM:
 		return _LANG_EN
@@ -179,11 +187,13 @@ def get_client_type(request:Request)->Optional[str]:
 	accepts_any=(accept.find("*/*")>-1)
 
 	if accepts_json and (not accepts_html):
+		print("\n→ CT:",_TYPE_CUSTOM)
 		return _TYPE_CUSTOM
 
 	if (not accepts_json) and (accepts_html or accepts_any):
 		ua=request.headers.get(_HEADER_USER_AGENT)
 		if isinstance(ua,str):
+			print("\n→ CT:",_TYPE_BROWSER)
 			return _TYPE_BROWSER
 
 	return None
@@ -548,6 +558,8 @@ async def the_middleware_factory(app,handler):
 			request.path.startswith("/fgmt/orders/")
 		)
 
+		api_local_access=has_local_access(request)
+
 		# The following routes will require user authentication
 		needs_session_checkin=(
 			url_is_page or
@@ -573,7 +585,7 @@ async def the_middleware_factory(app,handler):
 
 				# NOTE: The following if block is temporary
 
-				if request.remote not in ("127.0.0.1","::1"):
+				if not has_local_access(request):
 					return json_response(
 						data={
 							"error":(
@@ -601,6 +613,10 @@ async def the_middleware_factory(app,handler):
 			test_session=(
 				request.path=="/api/accounts/debug"
 			)
+			if (not client_is_browser):
+				if api_local_access:
+					has_session=True
+
 			if client_is_browser:
 				msg_error=(
 					await process_session_checkin(
@@ -625,9 +641,17 @@ async def the_middleware_factory(app,handler):
 				url_is_account
 			)
 
+			if (not client_is_browser):
+				if api_local_access:
+					allowed=True
+					userid=_ROOT_USER_ID
+
 			print("\tis account?",url_is_account)
 			print("\tis admin?",url_is_admin)
 			print("\tis page?",url_is_page)
+
+			# if is_local_access(request) and (not client_is_browser):
+			# 	allowed=True
 
 			if not allowed:
 
@@ -705,9 +729,13 @@ def create_custom_css(
 
 	print("\nWriting custom.css...")
 
+
+	detected=list(path_sources.glob("*.css"))
+	detected.sort()
+
 	with open(fse_new,"wt") as target:
 
-		for fse in path_sources.glob("*.css"):
+		for fse in detected:
 			if "*" in fse.name:
 				continue
 

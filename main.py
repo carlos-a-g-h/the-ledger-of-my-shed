@@ -69,7 +69,8 @@ from control_orders import (
 	route_api_delete_order as route_Orders_api_DeleteOrder,
 	route_api_update_asset_in_order as route_Orders_api_UpdateAsset,
 	route_api_remove_asset_from_order as route_Orders_api_RemoveAsset,
-	route_api_run_order as route_Orders_api_RunOrder
+	route_api_run_order as route_Orders_api_RunOrder,
+	route_api_revert_order as route_Orders_api_RevertOrder
 )
 
 from dbi_accounts import (
@@ -376,6 +377,10 @@ def build_app(
 					"/api/assets/pool/{asset_id}/history/add",
 					route_Assets_api_AddRecord
 				),
+					web_POST(
+						"/api/assets/history/add",
+						route_Assets_api_AddRecord
+					),
 
 				web_GET(
 					"/fgmt/assets/pool/{asset_id}/history/records/{record_id}",
@@ -432,10 +437,18 @@ def build_app(
 				"/api/orders/pool/{order_id}/run",
 				route_Orders_api_RunOrder
 			),
+			web_POST(
+				"/api/orders/pool/{order_id}/revert",
+				route_Orders_api_RevertOrder
+			),
 			web_DELETE(
 				"/api/orders/pool/{order_id}/drop",
 				route_Orders_api_DeleteOrder
 			),
+				web_DELETE(
+					"/api/orders/drop-order",
+					route_Orders_api_DeleteOrder
+				),
 	])
 
 	app.on_startup.append(init_assets_cache)

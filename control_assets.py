@@ -325,7 +325,7 @@ async def route_api_new_asset(
 	):
 
 		return response_errormsg(
-			_ERR_TITLE_RECORD_MOD[lang],
+			_ERR_TITLE_NEW_ASSET[lang],
 			{
 				_LANG_EN:"You are not authorized to sign with a different username",
 				_LANG_ES:"Usted no está autorizado a firmar bajo un nombre de usuario distinto"
@@ -883,7 +883,7 @@ async def route_api_add_record(
 	)->Union[json_response,Response]:
 
 	# POST /api/assets/pool/{asset_id}/history/add
-	# POST /api/assets/add-record
+	# POST /api/assets/history/add
 
 	ct=request[_REQ_CLIENT_TYPE]
 	if ct==_TYPE_BROWSER:
@@ -893,7 +893,6 @@ async def route_api_add_record(
 	assert_referer(request,ct,_ROUTE_PAGE)
 
 	lang=request[_REQ_LANGUAGE]
-
 
 	userid=request[_REQ_USERID]
 	username=await get_username(request)

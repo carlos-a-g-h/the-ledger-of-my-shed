@@ -624,9 +624,9 @@ async def dbi_Orders_RevertOrder(
 			UpdateOne(
 				{"_id":asset_id},
 				{
-					"$unset":[
-						{f"{_KEY_HISTORY}.{order_id}":0}
-					]
+					"$unset":{
+						f"{_KEY_HISTORY}.{order_id}":True
+					}
 				}
 			)
 		)
