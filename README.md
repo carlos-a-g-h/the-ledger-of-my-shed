@@ -59,7 +59,7 @@ or you can just double-click the "shled.exe" executable it if you're on Windows
 Shled can also accept a custom config file as a command line argument instead of the default "config.yaml" file
 
 ```
-./shled "/your/custom/configuration/file.yaml"
+$ ./shled "/your/custom/configuration/file.yaml"
 ```
 
 NOTE: Relative paths are relative not to your working directory, but to the program's directory
