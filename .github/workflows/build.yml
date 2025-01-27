@@ -4,12 +4,6 @@ on:
   workflow_dispatch:
     inputs:
 
-      #BRANCH:
-      #  description: "Branch name"
-      #  type: string
-      #  required: true
-      #  default: "main"
-
       TEST_VARIABLES:
         description: "(Debug) Test variables moved accross jobs and steps"
         type: boolean
@@ -70,10 +64,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
 
-#      - name: Check if on Windows
-#        if: ${{ contains(matrix.os,'windows') == true && inputs.NO_WINDOWS == true }}
-#        run: exit 1
-
       - name: Download repo
         uses: actions/checkout@v4
         with:
@@ -81,19 +71,19 @@ jobs:
           ref: ${{ inputs.BRANCH_NAME }}
 
       - name: Setup Python
-        if: $${{ inputs.DO_NOT_COMPILE_CREATE_DUMMY == false }}
+        if: ${{ inputs.DO_NOT_COMPILE_CREATE_DUMMY == false }}
         uses: actions/setup-python@v3
         with:
           python-version: "${{ matrix.pyver }}"
 
       - name: Setup Python (project dependencies)
-        if: $${{ inputs.DO_NOT_COMPILE_CREATE_DUMMY == false }}
+        if: ${{ inputs.DO_NOT_COMPILE_CREATE_DUMMY == false }}
         working-directory: repo
         run: |
           pip install -r "${{ env.REQFILE }}"
 
       - name: Setup Python (install Nuitka for Linux)
-        if: $${{ contains(matrix.os,'windows') == false && inputs.DO_NOT_COMPILE_CREATE_DUMMY == false }}
+        if: ${{ contains(matrix.os,'windows') == false && inputs.DO_NOT_COMPILE_CREATE_DUMMY == false }}
         run: |
           python -m pip install nuitka
 
@@ -101,12 +91,12 @@ jobs:
         # By the time this was last checked:
         # https://github.com/Nuitka/Nuitka/issues/3015
         # The latest version does not work, and factory version either, trying out on 2.3.11
-        if: $${{ contains(matrix.os,'windows') == true && inputs.DO_NOT_COMPILE_CREATE_DUMMY == false }}
+        if: ${{ contains(matrix.os,'windows') == true && inputs.DO_NOT_COMPILE_CREATE_DUMMY == false }}
         run: |
           python -m pip install nuitka==2.3.11
 
       - name: Build dummy
-        if: $${{ inputs.DO_NOT_COMPILE_CREATE_DUMMY == true }}
+        if: ${{ inputs.DO_NOT_COMPILE_CREATE_DUMMY == true }}
         working-directory: repo
         run: |
           mkdir -p the-output/main.dist/
