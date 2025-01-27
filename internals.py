@@ -1,29 +1,29 @@
 #!/usr/bin/python3.9
 
-from datetime import datetime
-# from logging import error as log_err
-# from logging import exception as log_exc
+from datetime import datetime,timedelta
+from hashlib import (
+	sha256 as hash_sha256,
+	md5 as hash_md5
+)
 from pathlib import Path
-from typing import Optional,Union
+from typing import Mapping,Optional,Union
 
+from aiohttp.web import Request
 from aiofiles import open as async_open
-from yaml import Loader as yaml_Loader
-from yaml import load as yaml_load
-from yaml import dump as yaml_dump
-from yaml import Dumper as yaml_Dumper
+from yaml import (
+	Loader as yaml_Loader,
+	load as yaml_load,
+	dump as yaml_dump,
+	Dumper as yaml_Dumper
+)
 
-_excel_columns=[
-	"Z",
-	"A","B","C",
-	"D","E","F",
-	"G","H","I",
-	"J","K","L",
-	"M","N","O",
-	"P","Q","R",
-	"S","T","U",
-	"V","W","X",
-	"Y",
-]
+from symbols_Any import (
+	_excel_columns,
+	_COOKIE_AKEY,_COOKIE_USER,
+	_HEADER_USER_AGENT
+)
+
+# excel related
 
 def util_excel_dectocol(decimal_start:int):
 
@@ -40,10 +40,71 @@ def util_excel_dectocol(decimal_start:int):
 	
 	return result
 
+# hi-level string to hash functions
+
+def util_hash_sha256(content:str)->str:
+	m=hash_sha256()
+	m.update(content.encode())
+	return m.hexdigest()
+
+def util_hash_md5(content:str)->str:
+	m=hash_md5()
+	m.update(content.encode())
+	return m.hexdigest()
+
+# user session management related
+
+def util_get_pid_from_request(request:Request)->tuple:
+
+	# PID = Partially Identifiable Data
+
+	ip_address=request.remote
+	user_agent=util_valid_str(
+		request.headers.get(_HEADER_USER_AGENT)
+	)
+
+	return (ip_address,user_agent)
+
+def util_extract_from_cookies(
+		request:Request
+	)->Optional[tuple]:
+
+	# Pulls username and access key from request cookies
+
+	username=request.cookies.get(_COOKIE_USER)
+	if username is None:
+		return None
+
+	access_key=request.cookies.get(_COOKIE_AKEY)
+	if access_key is None:
+		return None
+
+	return (username,access_key)
+
+# date and time
+
+def util_date_calc_age(
+		pit:datetime,
+		in_min:bool=False,
+	)->int:
+
+	now=datetime.now().utcnow()
+	age_td=now-pit
+
+	age=age_td.total_seconds()
+
+	if in_min:
+		return age/60
+
+	return age
+
 def util_valid_date(
 		dt_string:str,
 		get_dt:bool=False
 	)->Optional[Union[str,datetime]]:
+
+	if not isinstance(dt_string,str):
+		return None
 
 	dtobj:Optional[datetime]=None
 	try:
@@ -62,15 +123,47 @@ def util_valid_date(
 
 	return dt_string
 
-
 def util_rnow()->str:
-	now=datetime.now()
+	now=datetime.now().utcnow()
 	t=f"{now.year}"
 	t=f"{t}-{str(now.month).zfill(2)}"
 	t=f"{t}-{str(now.day).zfill(2)}"
 	t=f"{t}-{str(now.hour).zfill(2)}"
 	t=f"{t}-{str(now.minute).zfill(2)}"
 	return f"{t}-{str(now.second).zfill(2)}"
+
+def util_date_calc_expiration(
+		pit:Optional[datetime],
+		thold:int,in_min:bool=False,
+		get_age:bool=True,
+		get_exp_flag:bool=True,
+		get_exp_date:bool=True
+	)->Mapping:
+
+	if not isinstance(pit,datetime):
+		return {}
+
+	the_age=util_date_calc_age(
+		pit,in_min=in_min
+	)
+
+	result={}
+
+	if get_age:
+		result.update({"age":the_age})
+
+	if get_exp_flag:
+		result.update({"expired":(the_age>thold)})
+
+	if get_exp_date:
+		if in_min:
+			thold=thold*60
+
+		exp_date=pit+timedelta(seconds=thold)
+
+		result.update({"exp_date":exp_date})
+
+	return result
 
 # Validation stuff
 
@@ -146,8 +239,6 @@ def util_valid_int_inrange(
 def util_valid_int(
 		data:Optional[Union[str,int]],
 		fallback:Optional[int]=None,
-		minimum:Optional[int]=None,
-		maximum:Optional[int]=None,
 	)->Optional[int]:
 
 	if not isinstance(data,(str,int)):
@@ -166,6 +257,34 @@ def util_valid_int(
 		return fallback
 
 	return int(data)
+
+def util_valid_int_ext(
+		data:Optional[Union[str,int]],
+		fallback:Optional[int]=None,
+		minimum:Optional[bool]=None,
+		maximum:Optional[bool]=None,
+	)->Optional[int]:
+
+	value=util_valid_int(data)
+	if not isinstance(value,int):
+		return fallback
+
+	chk_min=isinstance(minimum,int)
+	chk_max=isinstance(maximum,int)
+
+	if chk_max and chk_min:
+		if value in range(chk_min,chk_max+1):
+			return value
+
+	if chk_max and (not chk_min):
+		if value<chk_max+1:
+			return value
+
+	if (not chk_max) and chk_min:
+		if value>chk_min:
+			return value
+
+	return fallback
 
 def util_valid_bool(
 		data:Union[Optional[str],bool],

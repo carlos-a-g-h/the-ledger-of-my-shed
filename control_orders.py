@@ -2,69 +2,154 @@
 
 from pathlib import Path
 from secrets import token_hex
-# from typing import Any
-from typing import Mapping
-from typing import Union
-# from typing import Optional
 
-# from aiohttp.web import Application
-from aiohttp.web import Request
-from aiohttp.web import Response
-from aiohttp.web import json_response
+from typing import (
+	Mapping,
+	Union,
+	Optional
+)
 
-from control_Any import _MIMETYPE_HTML
-from control_Any import _SCRIPT_HTMX
-from control_Any import _STYLE_CUSTOM
-from control_Any import _STYLE_POPUP
-from control_Any import _TYPE_CUSTOM
-from control_Any import _ERR_DETAIL_DATA_NOT_VALID
-from control_Any import _ERR_DETAIL_DBI_FAIL
-from control_Any import assert_referer
-from control_Any import get_lang
-from control_Any import get_client_type
-from control_Any import get_request_body_dict
-from control_Any import response_errormsg
+from aiohttp.web import (
 
-from control_assets import _CACHE_ASSETS
+	Application,
 
-# from dbi_assets import dbi_assets_ModEv_Add
-# from dbi_assets import dbi_assets_AssetQuery
-from dbi_orders import dbi_orders_DropOrder
-from dbi_orders import dbi_orders_GetOrders
-from dbi_orders import dbi_orders_NewOrder
-from dbi_orders import dbi_orders_Editor_AssetDrop
-from dbi_orders import dbi_orders_Editor_AssetPatch
-from dbi_orders import dbi_Orders_ApplyOrder
+	Request,
+	Response,json_response
+)
 
-from frontend_Any import _LANG_EN
-from frontend_Any import _LANG_ES
-from frontend_Any import _CSS_CLASS_COMMON
-# from frontend_Any import _CSS_CLASS_DANGER
-from frontend_Any import _CSS_CLASS_HORIZONTAL
-from frontend_Any import _CSS_CLASS_TITLE
-from frontend_Any import write_fullpage
-from frontend_Any import write_popupmsg
-from frontend_Any import write_link_homepage
-from frontend_Any import write_ul
+from control_Any import (
+	_ERR_DETAIL_DATA_NOT_VALID,
+	_ERR_DETAIL_DBI_FAIL,
 
-from internals import util_valid_bool
-from internals import util_valid_int
-from internals import util_valid_str
+	assert_referer,
+	get_username,util_patch_doc_with_username,
+	get_request_body_dict,
+	response_errormsg,
+	response_fullpage_ext,
+)
 
-# from frontend_assets import write_form_search_assets
+from dbi_assets import dbi_assets_AssetQuery
 
-from frontend_orders import write_button_nav_new_order
-from frontend_orders import write_button_nav_list_orders
-from frontend_orders import write_button_goto_order_editor
-# from frontend_orders import write_button_goto_order_asset_search
-from frontend_orders import write_button_delete_order
-# from frontend_orders import write_button_add_asset_to_order
-from frontend_orders import write_form_update_asset_in_order
-from frontend_orders import write_form_new_order
-from frontend_orders import write_html_order
-from frontend_orders import write_html_order_assets
+from dbi_orders import (
 
-_ROUTE_PAGE="/page/orders"
+	dbi_orders_IsItLocked,
+	dbi_orders_DropOrder,
+	dbi_orders_QueryOrders,
+	dbi_orders_NewOrder,
+	dbi_orders_DropAsset,
+	dbi_orders_PatchAsset,
+	dbi_Orders_ApplyOrder,
+	dbi_Orders_RevertOrder,
+)
+
+from frontend_Any import (
+
+	# _ID_NAVIGATION,
+	_ID_MAIN,_ID_MAIN_ONE,_ID_MAIN_TWO,
+	_ID_NAV_ONE,_ID_NAV_TWO,_ID_NAV_TWO_OPTS,
+	_ID_MESSAGES,
+
+	# _SCRIPT_HTMX,
+	# _STYLE_CUSTOM,
+	# _STYLE_POPUP,
+
+	# _CSS_CLASS_CONTAINER,
+	# _CSS_CLASS_CONTENT,
+	_CSS_CLASS_NAV,
+
+	# _CSS_CLASS_COMMON,
+	# _CSS_CLASS_HORIZONTAL,
+	# _CSS_CLASS_TITLE,
+
+	_DETAILS,
+
+	write_popupmsg,
+	write_ul,
+	write_html_nav_pages,
+)
+
+from frontend_accounts import render_html_user_section
+
+from frontend_assets_search import write_form_search_assets
+
+from frontend_orders import (
+
+	write_button_nav_new_order,
+	write_button_nav_list_orders,
+	# write_button_goto_order_details,
+	# write_button_delete_order,
+	# write_form_update_asset_in_order,
+	write_form_new_order,
+
+	# write_html_asset_in_order,
+	write_html_order_as_item,
+	write_html_order_details,
+
+	# write_html_order_assets
+)
+
+from internals import (
+	util_valid_bool,
+	util_valid_int,
+	util_valid_str,
+)
+
+from symbols_Any import (
+
+	_ERR,
+	_SECTION,
+
+	_APP_CACHE_ASSETS,
+	_APP_RDBC,_APP_RDBN,
+
+	_REQ_LANGUAGE,_REQ_USERID,
+	_REQ_CLIENT_TYPE,_REQ_HAS_SESSION,
+
+	_LANG_EN,_LANG_ES,
+
+	_TYPE_CUSTOM,
+	_TYPE_BROWSER,
+	_MIMETYPE_HTML,
+
+	_KEY_DELETE_AS_ITEM,
+	_KEY_VLEVEL,
+	_KEY_SIGN,_KEY_SIGN_UNAME,
+	_KEY_TAG,_KEY_COMMENT,
+	# _KEY_VERBOSE,
+
+)
+
+from symbols_assets import (
+
+	_COL_ASSETS,
+	_KEY_NAME,
+	_KEY_ASSET,
+	_KEY_RECORD_MOD,
+	_KEY_VALUE,
+	# _ID_FORM_SEARCH_ASSETS,
+)
+
+from symbols_orders import (
+
+	_ROUTE_PAGE,
+
+	_KEY_ORDER,
+	_KEY_ORDER_VALUE,
+
+	_KEY_ALGSUM,
+	_KEY_ORDER_KEEP,
+	_KEY_ORDER_IS_FLIPPED,
+	_KEY_COPY_VALUE,
+	_KEY_LOCKED_BY,
+
+	_ID_FORM_NEW_ORDER,
+	_ID_RESULT_NEW_ORDER,
+	# _ID_ORDER_ASSETS,
+
+	html_id_order,
+	# html_id_order_asset
+
+)
 
 _ERR_TITLE_NEW_ORDER={
 	_LANG_EN:"New order not created",
@@ -86,51 +171,122 @@ _ERR_TITLE_DROP_ORDER={
 	_LANG_ES:"Fallo al eliminar la orden"
 }
 
-_ERR_TITLE_EXECUTE_ORDER={
+_ERR_TITLE_RUN_ORDER={
 	_LANG_EN:"Failed to execute the order",
 	_LANG_ES:"Fallo al ejecutar la orden"
 }
+
+_ERR_TITLE_REVERT_ORDER={
+	_LANG_EN:"Failed to revert the order",
+	_LANG_ES:"Fallo al revertir la orden"
+}
+
+async def util_patch_order_with_asset_names(
+		app:Application,
+		obj_order:Mapping
+	)->bool:
+
+	# NOTE:
+	# Some assets within the order will be
+	# removed from the response in case of not
+	# having a name, this could affect the value calculation
+
+	if not isinstance(obj_order.get(_COL_ASSETS),Mapping):
+		return False
+
+	dispose=[]
+
+	for asset_id in obj_order[_COL_ASSETS]:
+
+		# NOTE: expecting this
+		# {mod:int,value:Optional[int]}
+
+		has_name=isinstance(
+			obj_order[_COL_ASSETS][asset_id].get(_KEY_NAME),
+			str
+		)
+		if has_name:
+			continue
+
+		the_name:Optional[str]=app[_APP_CACHE_ASSETS].get(asset_id)
+		if not isinstance(the_name,str):
+			# Name not found == asset does not exist in the backend
+			dispose.append(asset_id)
+			continue
+
+		obj_order[_COL_ASSETS][asset_id].update({_KEY_NAME:the_name})
+
+	order_id=obj_order[_KEY_ORDER]
+	for asset_id in dispose:
+		print(
+			"- Disposing",asset_id,
+			"from",order_id
+		)
+		obj_order[_COL_ASSETS][asset_id].pop(asset_id)
+
+	return True
+
+async def util_calculate_order_value(
+		obj_order:Mapping,
+		mutate:bool=False
+	)->Union[int,bool]:
+
+	# NOTE: Will return zero if there is one involved asset without a value field
+
+	if not isinstance(obj_order.get(_COL_ASSETS),Mapping):
+		if mutate:
+			return False
+
+		return 0
+
+	order_value=0
+
+	for asset_id in obj_order[_COL_ASSETS]:
+
+		asset_value=obj_order[_COL_ASSETS][asset_id].get(_KEY_VALUE)
+		if not isinstance(asset_value,int):
+			order_value=0
+			break
+
+		asset_mod=obj_order[_COL_ASSETS][asset_id].get(_KEY_RECORD_MOD)
+		if not isinstance(asset_mod,int):
+			continue
+
+		order_value=order_value+(asset_value*asset_mod)
+
+	if mutate:
+		obj_order.update({_KEY_ORDER_VALUE:order_value})
+		return True
+
+	return order_value
 
 async def route_fgmt_new_order(
 		request:Request
 	)->Union[Response,json_response]:
 
 	# GET: /fgmt/orders/new
+	# hx-target: #messages
 
-	ct=get_client_type(request)
-	if not assert_referer(ct,request,_ROUTE_PAGE):
-		return Response(status=406)
+	assert_referer(
+		request,
+		request[_REQ_CLIENT_TYPE],
+		_ROUTE_PAGE
+	)
 
-	if ct==_TYPE_CUSTOM:
-		return json_response(data={})
-
-	lang=request.app["lang"]
+	lang=request[_REQ_LANGUAGE]
 
 	return Response(
 		body=(
 
-			"<!-- ORDER CREATION FORM -->\n"
+			"<!-- ORDER CREATION FORM -->\n\n"
 
-			"\n\n"
+			f"""<ul hx-swap-oob="innerHTML:#{_ID_NAV_TWO_OPTS}">""" "\n"
+				f"{write_ul([write_button_nav_list_orders(lang)],full=False)}\n"
+			"</ul>\n\n"
 
-			"""<section hx-swap-oob="innerHTML:#navigation">""" "\n"
-				"<ul>\n"
-					f"<li>\n{write_button_nav_list_orders(lang)}\n</li>\n"
-				"</ul>\n"
-			"</section>"
-
-			"\n\n"
-
-			"""<section hx-swap-oob="innerHTML:#main-1">""" "\n"
+			f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
 				f"{write_form_new_order(lang)}\n"
-			"</section>"
-
-			"\n\n"
-
-			"""<section hx-swap-oob="innerHTML:#main-2">""" "\n"
-				"<!-- EMPTY -->"
-			"</section>"
-
+			"</section>\n\n"
 		),
 		content_type=_MIMETYPE_HTML
 	)
@@ -140,107 +296,81 @@ async def route_api_new_order(
 	)->Union[Response,json_response]:
 
 	# POST: /api/orders/new
+	# hx-target: #messages
 
-	ct=get_client_type(request)
-	if not assert_referer(ct,request,_ROUTE_PAGE):
-		return Response(status=406)
+	ct=request[_REQ_CLIENT_TYPE]
+	assert_referer(request,ct,_ROUTE_PAGE)
 
 	req_data=await get_request_body_dict(ct,request)
 	if req_data is None:
 		return Response(status=406)
 
-	lang=get_lang(ct,request)
-
-	order_sign=util_valid_str(
-		req_data.get("sign")
-	)
-	if not isinstance(order_sign,str):
-		return response_errormsg(
-			_ERR_TITLE_NEW_ORDER[lang],
-			{
-				_LANG_EN:"The signature is missing ('sign' field)",
-				_LANG_ES:"Falta la firma (campo 'sign')"
-			}[lang],
-			ct,status=406
-		)
+	lang=request[_REQ_LANGUAGE]
+	userid=request[_REQ_USERID]
+	username=await get_username(request,explode=False)
 
 	order_tag=util_valid_str(
-		req_data.get("tag")
+		req_data.get(_KEY_TAG)
 	)
 	if not isinstance(order_tag,str):
 		return response_errormsg(
 			_ERR_TITLE_NEW_ORDER[lang],
 			{
-				_LANG_EN:"The tag is required ('tag' field)",
-				_LANG_ES:"La etiqueta es necesaria (campo 'tag')"
+				_LANG_EN:"The tag is required",
+				_LANG_ES:"La etiqueta es necesaria"
 			}[lang],
 			ct,status=406
 		)
 
 	order_comment=util_valid_str(
-		req_data.get("comment")
+		req_data.get(_KEY_COMMENT)
+	)
+	order_is_flipped=util_valid_bool(
+		req_data.get(_KEY_ORDER_IS_FLIPPED),False
 	)
 	order_id=token_hex(16)
 
-	outverb=1
+	vlevel=2
 	if ct==_TYPE_CUSTOM:
-		outverb=util_valid_int(
-			req_data.get("v")
+		vlevel=util_valid_int(
+			req_data.get(_KEY_VLEVEL),2
 		)
 
 	dbi_result=await dbi_orders_NewOrder(
-		request.app["rdbc"],
-		request.app["rdbn"],
-		order_id,order_sign,order_tag,
+		request.app[_APP_RDBC],
+		request.app[_APP_RDBN],
+		order_id,userid,order_tag,
 		order_comment=order_comment,
-		outverb=outverb
+		order_is_flipped=order_is_flipped,
+		vlevel=vlevel
 	)
-	error_msg=dbi_result.get("err")
+	error_msg=dbi_result.get(_ERR)
 	if error_msg is not None:
 		response_errormsg(
 			_ERR_TITLE_NEW_ORDER[lang],
-			f"{_ERR_DETAIL_DBI_FAIL[lang]}"
-			f": {error_msg}",
+			f"{_ERR_DETAIL_DBI_FAIL[lang]}; {error_msg}",
 			ct,status=406
 		)
 
 	if ct==_TYPE_CUSTOM:
 		return json_response(data=dbi_result)
 
-	tl={
-		_LANG_EN:"Most recent order",
-		_LANG_ES:"Orden más reciente"
-	}[lang]
-	html_text=(
-		f"<div>{tl}: {order_id}</div>\n"
-		"<div>"
-			f"""<div class="{_CSS_CLASS_HORIZONTAL}">"""
-				f"{write_button_goto_order_editor(lang,order_id)}"
-			"</div>"
-			f"""<div style="float:right;">"""
-				f"{write_button_delete_order(lang,order_id)}"
-			"</div>"
-		"</div>"
-	)
+	username=await get_username(request,False)
+
+	dbi_result.update({_KEY_SIGN_UNAME:username})
 
 	return Response(
 		body=(
 
-			f"<!-- NEW ORDER CREATED: {order_id}-->"
+			f"<!-- NEW ORDER CREATED: {order_id} -->\n"
 
-			"\n\n"
+			f"""<div hx-swap-oob="innerHTML:#{_ID_FORM_NEW_ORDER}">""" "\n"
+				f"{write_form_new_order(lang,False)}\n"
+			"</div>\n"
 
-			"""<section hx-swap-oob="innerHTML:#main-1">""" "\n"
-				f"{write_form_new_order(lang)}\n"
-			"</section>"
-
-			"\n\n"
-
-			"""<section hx-swap-oob="innerHTML:#main-2">""" "\n"
-				f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
-					f"{html_text}\n"
-				"</div>\n"
-			"</section>"
+			f"""<div hx-swap-oob="afterbegin:#{_ID_RESULT_NEW_ORDER}">""" "\n"
+				f"{write_html_order_as_item(lang,dbi_result,True)}\n"
+			"</div>"
 
 		),
 		content_type=_MIMETYPE_HTML
@@ -250,148 +380,193 @@ async def route_fgmt_list_orders(
 		request:Request
 	)->Union[Response,json_response]:
 
-	# GET: /fgmt/orders/current
+	# GET: /fgmt/orders/all-orders
+	# hx-target: #messages
 
-	ct=get_client_type(request)
-	if not assert_referer(ct,request,_ROUTE_PAGE):
-		return Response(status=406)
+	ct=request[_REQ_CLIENT_TYPE]
+	assert_referer(request,ct,_ROUTE_PAGE)
 
-	if ct==_TYPE_CUSTOM:
-		return json_response(data={})
+	authorized=request[_REQ_HAS_SESSION]
 
-	lang=request.app["lang"]
+	lang=request[_REQ_LANGUAGE]
 
-	results_list=await dbi_orders_GetOrders(
-		request.app["rdbc"],
-		request.app["rdbn"],
+	results_list=await dbi_orders_QueryOrders(
+		request.app[_APP_RDBC],
+		request.app[_APP_RDBN],
 	)
-	if len(results_list)==0:
-		return Response(
-			body=write_popupmsg(
-				f"<h2>{_ERR_DETAIL_DBI_FAIL[lang]}</h2>"
-			),
-			content_type=_MIMETYPE_HTML
+	empty=(len(results_list)==0)
+	if not empty:
+		msg_err:Optional[str]=util_valid_str(
+			results_list[0].get(_ERR)
 		)
+		if msg_err is not None:
+			return Response(
+				body=write_popupmsg(
+					f"<h2>{_ERR_DETAIL_DBI_FAIL[lang]}</h2>\n"
+					f"<p>{_DETAILS[lang]}: <code>{msg_err}</code></p>"
+				),
+				content_type=_MIMETYPE_HTML
+			)
 
-	html_text=""
-	for order in results_list:
-		# print(order)
+	print("ORDERS:",results_list)
+
+	html_text=(
+		"<!-- LISTING EXISTING ORDERS -->\n"
+
+		f"""<div hx-swap-oob="innerHTML:#{_ID_NAV_TWO_OPTS}">""" "\n"
+			f"{write_ul([write_button_nav_new_order(lang)],full=False)}\n"
+		"</div>\n"
+
+		f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
+			"<div>"
+	)
+
+	if empty:
+		tl={
+			_LANG_EN:"There are no orders",
+			_LANG_ES:"No hay órdenes"
+		}[lang]
 		html_text=(
 			f"{html_text}\n"
-			f"{write_html_order(lang,order)}"
+				f"{tl}"
 		)
 
-	return Response(
-		body=(
-
-			"<!-- LISTING EXISTING ORDERS -->"
-
-			"\n\n"
-
-			"""<section hx-swap-oob="innerHTML:#navigation">""" "\n"
-				f"{write_ul([write_button_nav_new_order(lang)])}\n"
-			"</section>"
-
-			"\n\n"
-
-			"""<section hx-swap-oob="innerHTML:#main-1">""" "\n"
+	if not empty:
+		first=True
+		for obj_order in results_list:
+			html_text=(
 				f"{html_text}\n"
-			"</section>"
+				f"{write_html_order_as_item(lang,results_list.pop(),authorized,focus=first)}"
+			)
+			if first:
+				first=False
 
-			"\n\n"
+	html_text=(
+				f"{html_text}\n"
+			"</div>\n"
+		"</section>\n"
+	)
 
-			"""<section hx-swap-oob="innerHTML:#main-2">""" "\n"
-				"<!-- EMPTY -->" "\n"
-			"</section>"
-
-		),
+	return Response(
+		body=html_text,
 		content_type=_MIMETYPE_HTML
 	)
 
-async def route_fgmt_order_editor(
+async def route_fgmt_order_details(
 		request:Request
 	)->Union[Response,json_response]:
 
-	# GET: /fgmt/orders/current/{order_id}/editor
+	# GET: /fgmt/orders/pool/{order_id}/details
 	# hx-target: #messages
 
-	ct=get_client_type(request)
-	if not assert_referer(ct,request,_ROUTE_PAGE):
-		return Response(status=406)
+	ct=request[_REQ_CLIENT_TYPE]
+	assert_referer(request,ct,_ROUTE_PAGE)
 
-	if ct==_TYPE_CUSTOM:
-		return json_response(data={})
+	lang=request[_REQ_LANGUAGE]
 
-	lang=request.app["lang"]
+	order_id=request.match_info[_KEY_ORDER]
 
-	order_id=request.match_info["order_id"]
+	render_main_1=(request.query.get(_SECTION)==_ID_MAIN_ONE)
+	render_main_2=(request.query.get(_SECTION)==_ID_MAIN_TWO)
 
-	the_order=await dbi_orders_GetOrders(
-		request.app["rdbc"],
-		request.app["rdbn"],
-		order_id=order_id,
-		include_assets=True
+	render_all=(
+		(render_main_1 and render_main_2) or
+		(
+			(not render_main_1) or
+			(not render_main_2)
+		)
 	)
 
-	if len(the_order)==0:
-		return response_errormsg(
-			_ERR_TITLE_DISPLAY_ORDER[lang],
-			{
-				_LANG_EN:"Order not foud",
-				_LANG_ES:"Orden no encontrada"
-			}[lang],
-			ct,404
-		)
-
-	html_text=(
-
-		f"<!-- EDITOR MODE FOR ORDER {order_id} -->"
-		"\n"
-
-		"""<section hx-swap-oob="innerHTML:#navigation">"""
-		"\n"
-			"<ul>\n"
-				f"<li>\n{write_button_nav_new_order(lang)}\n</li>\n"
-				f"<li>\n{write_button_nav_list_orders(lang)}\n</li>\n"
-			"</ul>\n"
-		"</section>"
-		"\n\n"
-
-		"""<section hx-swap-oob="innerHTML:#main-1">"""
-		"\n"
-			f"{write_html_order(lang,the_order,True)}\n"
-		"</section>"
-
-		"\n\n"
-
-		"""<section hx-swap-oob="innerHTML:#main-2">"""
-		"\n"
-			"<!-- EMPTY -->\n"
-		"</section>"
+	print(
+		"Render what?",
+		render_all,
+		render_main_1,
+		render_main_2
 	)
 
-	if isinstance(the_order.get("assets"),Mapping):
+	html_text_order=""
 
-		html_text_assets=write_html_order_assets(
-			lang,order_id,
-			the_order["assets"],
-			request.app[_CACHE_ASSETS]
+	if render_all or render_main_2:
+
+		dbi_result=await dbi_orders_QueryOrders(
+			request.app[_APP_RDBC],
+			request.app[_APP_RDBN],
+			order_id=order_id,
+			include_assets=True,
+			include_comment=True,
 		)
+		msg_err:Optional[str]=dbi_result.get(_ERR)
+		if msg_err is not None:
+	
+			return response_errormsg(
+				_ERR_TITLE_DISPLAY_ORDER[lang],
+				f"{_DETAILS[lang]}: {msg_err}",
+				_TYPE_BROWSER,404
+			)
+
+		await util_patch_doc_with_username(request,dbi_result)
+
+		await util_patch_order_with_asset_names(
+			request.app,dbi_result
+		)
+		await util_calculate_order_value(
+			dbi_result,
+			True
+		)
+
+		html_text_order=f"{write_html_order_details(lang,dbi_result,True)}\n"
+
+	html_text=f"<!-- EDITOR MODE FOR ORDER {order_id} -->"
+
+	if render_all:
 
 		html_text=(
+
 			f"{html_text}\n"
-			"""<section hx-swap-oob="innerHTML:#main-2">"""
-			"\n"
-				f"{html_text_assets}\n"
+
+			f"""<ul hx-swap-oob="innerHTML:#{_ID_NAV_TWO_OPTS}">""" "\n"
+				f"{write_ul([write_button_nav_new_order(lang),write_button_nav_list_orders(lang)],full=False)}\n"
+			"</ul>\n"
+
+			f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
+
+				f"""<div id="{_ID_MAIN_ONE}">""" "\n"
+					f"{write_form_search_assets(lang,order_id=order_id)}\n"
+				"</div>\n"
+
+				f"""<div id="{_ID_MAIN_TWO}">""" "\n"
+					f"{html_text_order}\n"
+				"</div>\n"
+
 			"</section>"
 		)
 
-	html_text=(
-		f"{html_text}\n"
-		"""<section hx-swap-oob="innerHTML:#messages">""" "\n"
-			"<!-- EMPTY -->\n"
-		"</section>"
-	)
+	if not render_all:
+
+		if render_main_1:
+
+			html_text=(
+				f"{html_text}\n"
+
+				f"""<div hx-swap-oob="innerHTML:#{_ID_MAIN_ONE}">""" "\n"
+					"<!-- start { -->\n"
+						f"{write_form_search_assets(lang,order_id=order_id)}\n"
+					"<!-- } end -->\n"
+				"</div>"
+			)
+
+		if render_main_2:
+	
+			html_text=(
+				f"{html_text}\n"
+
+				f"""<div hx-swap-oob="innerHTML:#{_ID_MAIN_TWO}">""" "\n"
+					"<!-- start { -->\n"
+						f"{html_text_order}\n"
+					"<!-- } end -->\n"
+				"</div>"
+	
+			)
 
 	return Response(
 		body=html_text,
@@ -402,16 +577,20 @@ async def route_api_update_asset_in_order(
 		request:Request
 	)->Union[json_response,Response]:
 
-	# POST:/api/orders/current/{order_id}/update
+	# POST:/api/orders/pool/{order_id}/update-asset
+	# POST:/api/orders/pool/{order_id}/add-asset
+	# hx-target: #messages
 
-	ct=get_client_type(request)
-	if not assert_referer(ct,request,_ROUTE_PAGE):
-		return Response(status=406)
+	# POST:/api/orders/add-or-update-asset
 
-	lang=get_lang(ct,request)
+	ct=request[_REQ_CLIENT_TYPE]
+	if ct==_TYPE_BROWSER:
+		if not request.path.startswith("/api/orders/pool/"):
+			return Response(status=403)
 
-	order_id=request.match_info["order_id"]
+	assert_referer(request,ct,_ROUTE_PAGE)
 
+	lang=request[_REQ_LANGUAGE]
 	reqdata=await get_request_body_dict(ct,request)
 	if reqdata is None:
 		return response_errormsg(
@@ -420,15 +599,50 @@ async def route_api_update_asset_in_order(
 			ct,406
 		)
 
-	# print(
-	# 	"DATA:",
-	# 	reqdata
-	# )
+	order_id:Optional[str]=None
+	if ct==_TYPE_BROWSER:
+		order_id=request.match_info[_KEY_ORDER]
 
-	asset_id=util_valid_str(
-		reqdata.get("asset")
+	if ct==_TYPE_CUSTOM:
+		order_id=util_valid_str(
+			reqdata.get(_KEY_ORDER)
+		)
+	if order_id is None:
+		return response_errormsg(
+			_ERR_TITLE_ADD_ORDER_UPDATE[lang],
+			f"'{_KEY_ORDER}'?",
+			ct,406
+		)
+
+	result_islock=await dbi_orders_IsItLocked(
+		request.app[_APP_RDBC],
+		request.app[_APP_RDBN],
+		order_id
 	)
-	if not isinstance(asset_id,str):
+	msg_err:Optional[str]=result_islock.get(_ERR)
+	if msg_err is not None:
+		return response_errormsg(
+			_ERR_TITLE_ADD_ORDER_UPDATE[lang],
+			f"{_ERR_DETAIL_DBI_FAIL[lang]}; {msg_err}",
+			ct, 400
+		)
+
+	locked_by=result_islock.get(_KEY_LOCKED_BY)
+	if locked_by is not None:
+		tl={
+			_LANG_EN:"The order is locked by",
+			_LANG_ES:"La orden está bloqueada por"
+		}[lang]
+		return response_errormsg(
+			_ERR_TITLE_ADD_ORDER_UPDATE[lang],
+			f"{tl}; {locked_by}",
+			ct, 403
+		)
+
+	asset_id:Optional[str]=util_valid_str(
+		reqdata.get(_KEY_ASSET)
+	)
+	if asset_id is None:
 		return response_errormsg(
 			_ERR_TITLE_ADD_ORDER_UPDATE[lang],
 			{
@@ -438,68 +652,86 @@ async def route_api_update_asset_in_order(
 			ct,406
 		)
 
-	imod=util_valid_int(
-		reqdata.get("imod"),fallback=0
+	vlevel=3
+	if ct==_TYPE_CUSTOM:
+		vlevel=util_valid_int(
+			reqdata.get(_KEY_VLEVEL),
+			fallback=1
+		)
+
+	mode_update=(Path(request.path).name=="update-asset")
+	mode_add=(Path(request.path).name=="add-asset")
+
+	asset_value:Optional[int]=None
+
+	algsum=True
+	asset_mod=util_valid_int(
+		reqdata.get(_KEY_RECORD_MOD),0
 	)
 
-	justbool=util_valid_bool(
-		reqdata.get("justbool"),dval=False
-	)
+	if mode_add:
+		if util_valid_bool(
+			reqdata.get(_KEY_COPY_VALUE),
+			False
+		):
+			obj_asset=await dbi_assets_AssetQuery(
+				request.app[_APP_RDBC],
+				request.app[_APP_RDBN],
+				asset_id,
+				get_value=True
+			)
+			msg_err=obj_asset.get(_ERR)
+			if msg_err is not None:
+				print("WARNING:",msg_err)
 
-	algsum=util_valid_bool(
-		reqdata.get("algsum"),dval=False
-	)
+			if msg_err is None:
+				asset_value=util_valid_int(
+					obj_asset.get(_KEY_VALUE)
+				)
 
-	result=await dbi_orders_Editor_AssetPatch(
-		request.app["rdbc"],
-		request.app["rdbn"],
+	if mode_update:
+		algsum=util_valid_bool(
+			reqdata.get(_KEY_ALGSUM),dval=False
+		)
+
+	result_patch:Mapping=await dbi_orders_PatchAsset(
+		request.app[_APP_RDBC],
+		request.app[_APP_RDBN],
 		order_id,asset_id,
-		imod=imod,
-		justbool=justbool,
-		algsum=algsum
+		asset_mod=asset_mod,
+		asset_value=asset_value,
+		algsum=algsum,
+		vlevel=vlevel
 	)
-	if not result:
+	msg_err:Optional[str]=util_valid_str(
+		result_patch.get(_ERR)
+	)
+	if msg_err is not None:
 		return response_errormsg(
 			_ERR_TITLE_ADD_ORDER_UPDATE[lang],
-			_ERR_DETAIL_DBI_FAIL[lang],
+			f"{_ERR_DETAIL_DBI_FAIL[lang]}; {msg_err}",
 			ct,406
 		)
 
+	if vlevel>1:
+		await util_patch_order_with_asset_names(
+			request.app,result_patch
+		)
+		await util_calculate_order_value(
+			result_patch,
+			True
+		)
+
 	if ct==_TYPE_CUSTOM:
-		if justbool:
-			return json_response(data={})
+		return json_response(data=result_patch)
 
-		return json_response(data=result)
+	html_text=(
+		f"<!-- UPDATED {asset_id} IN {order_id} -->\n"
 
-	curr_mod:Union[int,str]="???"
-	print("->",type(result))
-	if isinstance(result,Mapping):
-		curr_mod=util_valid_int(
-			result.get("assets",{}).get(asset_id),
-			fallback="???"
-		)
-
-	html_text:str=""
-
-	if justbool:
-		html_text=write_popupmsg(
-			"<h2>"+{
-				_LANG_EN:f"Added/Updated asset {asset_id} to the current order",
-				_LANG_ES:f"Agregado/actualizado el activo {asset_id} a la orden actual"
-			}[lang]+"</h2>"
-		)
-
-	if not justbool:
-		html_text=(
-			f"""<!-- {asset_id} CHANGED TO {curr_mod} ({imod}) -->"""
-			"\n"
-
-			f"""<div hx-swap-oob="innerHTML:#asset-{asset_id}-in-{order_id}-updater">"""
-			"\n"
-				"<!-- UPDATED! -->\n"
-				f"{write_form_update_asset_in_order(lang,order_id,asset_id,currmod=curr_mod,inner=True)}\n"
-			"</div>"
-		)
+		f"""<div hx-swap-oob="innerHTML:#{_ID_MAIN_TWO}">""" "\n"
+			f"{write_html_order_details(lang,result_patch,True,focus=asset_id)}\n"
+		"</div>"
+	)
 
 	return Response(
 		body=html_text,
@@ -510,15 +742,19 @@ async def route_api_remove_asset_from_order(
 		request:Request
 	)->Union[json_response,Response]:
 
-	# DELETE:/api/orders/current/{order_id}/update
+	# DELETE:/api/orders/pool/{order_id}/remove-asset
+	# hx-target: #messages
 
-	ct=get_client_type(request)
-	if not assert_referer(ct,request,_ROUTE_PAGE):
-		return Response(status=406)
+	# DELETE /api/orders/remove-asset
 
-	lang=get_lang(ct,request)
+	ct=request[_REQ_CLIENT_TYPE]
+	if ct==_TYPE_BROWSER:
+		if not request.path.startswith("/api/orders/pool/"):
+			return Response(status=403)
 
-	order_id=request.match_info["order_id"]
+	assert_referer(request,ct,_ROUTE_PAGE)
+
+	lang=request[_REQ_LANGUAGE]
 
 	reqdata=await get_request_body_dict(ct,request)
 	if reqdata is None:
@@ -528,8 +764,47 @@ async def route_api_remove_asset_from_order(
 			ct,406
 		)
 
+	order_id:Optional[str]=None
+	if ct==_TYPE_BROWSER:
+		order_id=request.match_info[_KEY_ORDER]
+	if ct==_TYPE_CUSTOM:
+		order_id=util_valid_str(
+			reqdata.get(_KEY_ORDER)
+		)
+	if order_id is None:
+		return response_errormsg(
+			_ERR_TITLE_ADD_ORDER_UPDATE[lang],
+			f"'{_KEY_ORDER}'?",
+			ct,406
+		)
+
+	result_islock=await dbi_orders_IsItLocked(
+		request.app[_APP_RDBC],
+		request.app[_APP_RDBN],
+		order_id
+	)
+	msg_err:Optional[str]=result_islock.get(_ERR)
+	if msg_err is not None:
+		return response_errormsg(
+			_ERR_TITLE_ADD_ORDER_UPDATE[lang],
+			f"{_ERR_DETAIL_DBI_FAIL[lang]}; {msg_err}",
+			ct, 400
+		)
+
+	locked_by=result_islock.get(_KEY_LOCKED_BY)
+	if locked_by is not None:
+		tl={
+			_LANG_EN:"The order is locked by",
+			_LANG_ES:"La orden está bloqueada por"
+		}[lang]
+		return response_errormsg(
+			_ERR_TITLE_ADD_ORDER_UPDATE[lang],
+			f"{tl}; {locked_by}",
+			ct, 403
+		)
+
 	asset_id=util_valid_str(
-		reqdata.get("asset")
+		reqdata.get(_KEY_ASSET)
 	)
 	if not isinstance(asset_id,str):
 		return response_errormsg(
@@ -541,17 +816,24 @@ async def route_api_remove_asset_from_order(
 			ct,406
 		)
 
-	result=await dbi_orders_Editor_AssetDrop(
-		request.app["rdbc"],
-		request.app["rdbn"],
+	result_drop=await dbi_orders_DropAsset(
+		request.app[_APP_RDBC],
+		request.app[_APP_RDBN],
 		order_id,asset_id,
 	)
-	if not result:
+	msg_err:Optional[str]=result_drop.get(_ERR)
+	if msg_err is not None:
 		return response_errormsg(
 			_ERR_TITLE_ADD_ORDER_UPDATE[lang],
-			_ERR_DETAIL_DBI_FAIL[lang],
-			ct,400
+			f"{_ERR_DETAIL_DBI_FAIL[lang]}; {msg_err}",
+			ct, 400
 		)
+
+	await util_patch_order_with_asset_names(request.app,result_drop)
+
+	await util_calculate_order_value(result_drop,True)
+
+	await util_patch_doc_with_username(request,result_drop)
 
 	if ct==_TYPE_CUSTOM:
 		return json_response(data={})
@@ -559,47 +841,58 @@ async def route_api_remove_asset_from_order(
 	return Response(
 		body=(
 			f"<!-- REMOVED FROM ORDER: {order_id} -->\n"
-			f"""<div hx-swap-oob="innerHTML:#asset-{asset_id}-in-{order_id}">"""
-			"\n"
-				"<!-- REMOVED -->\n"
+			f"""<div hx-swap-oob="innerHTML:#{_ID_MAIN_TWO}">"""
+				f"{write_html_order_details(lang,result_drop,True)}\n"
 			"</div>"
 		),
 		content_type=_MIMETYPE_HTML
 	)
 
 
-# For custom clients only
+# NOTE: For custom clients only
 async def route_api_list_orders(
 		request:Request
 	)->Union[Response,json_response]:
 
-	ct=get_client_type(request)
+	ct=request[_REQ_CLIENT_TYPE]
 	if not ct==_TYPE_CUSTOM:
 		return Response(status=406)
 
-	req_data=get_request_body_dict(ct,request)
+	req_data=await get_request_body_dict(ct,request)
 	if req_data is None:
 		return Response(status=406)
 
 	order_id=util_valid_str(
-		req_data.get("id")
+		req_data.get(_KEY_ORDER)
 	)
 	order_sign=util_valid_str(
-		req_data.get("sign")
+		req_data.get(_KEY_SIGN)
 	)
 	order_tag=util_valid_str(
-		req_data.get("tag")
+		req_data.get(_KEY_TAG)
 	)
 
-	qres=await dbi_orders_GetOrders(
-		request.app["rdbc"],
-		request.app["rdbn"],
+	qres:Union[Mapping,list]=await dbi_orders_QueryOrders(
+		request.app[_APP_RDBC],
+		request.app[_APP_RDBN],
 		order_id=order_id,
 		order_sign=order_sign,
 		order_tag=order_tag
 	)
-	if len(qres)==0:
-		return Response(status=406)
+	not_empty=(len(qres)>0)
+	if not_empty:
+		is_error=False
+		if isinstance(qres,list):
+			is_error=isinstance(qres[0].get(_ERR),str)
+
+		if isinstance(qres,Mapping):
+			is_error=isinstance(qres.get(_ERR),str)
+
+		if is_error:
+			return json_response(
+				data=qres,
+				status=400
+			)
 
 	return json_response(data=qres)
 
@@ -607,69 +900,108 @@ async def route_api_delete_order(
 		request:Request
 	)->Union[Response,json_response]:
 
-	# DELETE: /api/orders/current/{order_id}/drop
-	# DELETE: /api/orders/current/{order_id}/drop-fol
+	# DELETE: /api/orders/pool/{order_id}/drop
+	# hx-target: #messages
 
-	ct=get_client_type(request)
-	if not assert_referer(ct,request,_ROUTE_PAGE):
-		return Response(status=406)
+	# DELETE: /api/orders/drop
 
-	order_id=request.match_info["order_id"]
+	ct=request[_REQ_CLIENT_TYPE]
+	assert_referer(request,ct,_ROUTE_PAGE)
 
-	lang=get_lang(ct,request)
+	browser_only=request.path.startswith("/api/orders/pool/")
 
-	result=await dbi_orders_DropOrder(
-		request.app["rdbc"],
-		request.app["rdbn"],
-		order_id
-	)
-	if not result:
+	lang=request[_REQ_LANGUAGE]
+
+	order_id:Optional[str]=None
+	delete_as_item=False
+
+	if not browser_only:
+
+		# Browser and custom client
+
+		request_data=await get_request_body_dict(ct,request)
+		if not request_data:
+			return response_errormsg(
+				_ERR_TITLE_DROP_ORDER[lang],
+				_ERR_DETAIL_DATA_NOT_VALID[lang],
+				ct,status_code=406
+			)
+
+		order_id=util_valid_str(
+			request_data.get(_KEY_ORDER)
+		)
+		if ct==_TYPE_BROWSER:
+			delete_as_item=util_valid_bool(
+				request_data.get(_KEY_DELETE_AS_ITEM),
+				False
+			)
+
+	if browser_only:
+
+		order_id=request.match_info[_KEY_ORDER]
+
+	if order_id is None:
 		return response_errormsg(
 			_ERR_TITLE_DROP_ORDER[lang],
-			_ERR_DETAIL_DBI_FAIL[lang],
+			{_LANG_EN:"Order ID missing",_LANG_ES:"Falta el ID de la órden"}[lang],
+			ct,status_code=406
+		)
+
+
+
+
+	result:Mapping=await dbi_orders_DropOrder(
+		request.app[_APP_RDBC],
+		request.app[_APP_RDBN],
+		order_id
+	)
+	msg_err:Optional[str]=util_valid_str(
+		result.get(_ERR)
+	)
+	if msg_err is not None:
+		return response_errormsg(
+			_ERR_TITLE_DROP_ORDER[lang],
+			f"{_ERR_DETAIL_DBI_FAIL[lang]}: {msg_err}",
 			ct,400
 		)
 
 	if ct==_TYPE_CUSTOM:
 		return json_response(data={})
 
-	html_text=write_popupmsg(
-		"<h2>"+{
-			_LANG_EN:"You deleted this order",
-			_LANG_ES:"Ha eliminado esta orden"
-		}[lang]+"</h2>"
-	)
+	# delete_as_item=util_valid_bool(
+	# 	request_data.get(_KEY_DELETE_AS_ITEM),False
+	# )
 
-	from_orders_list=(
-		Path(request.url.path).name=="drop-fol"
-	)
+	tl={
+		_LANG_EN:"Order deleted",
+		_LANG_ES:"Órden eliminada"
+	}[lang]
+	html_text=write_popupmsg(f"<h2>{tl}</h2>")
 
-	if from_orders_list:
+	if delete_as_item:
+
+		# Deleting from order list or order creation form
+
 		html_text=(
 			f"{html_text}\n"
 
-			f"""<div hx-swap-oob="innerHTML:#order-{order_id}">"""
-				"<!-- DEELTED! -->"
+			f"""<div hx-swap-oob="outerHTML:#{html_id_order(order_id)}">""" "\n"
+				f"<!-- DELETED: {order_id} -->\n"
 			"</div>"
-
 		)
 
-	if not from_orders_list:
+	if not delete_as_item:
+
+		# Deleting from order full view
+
 		html_text=(
 			f"{html_text}\n"
 
-			"""<section hx-swap-oob="innerHTML:#navigation">""" "\n"
-				"<ul>\n"
-					f"<li>\n{write_button_nav_new_order(lang)}\n</li>\n"
-					f"<li>\n{write_button_nav_list_orders(lang)}\n</li>\n"
-				"</ul>\n"
-			"</section>\n"
+			f"""<ul hx-swap-oob="innerHTML:#{_ID_NAV_TWO_OPTS}">""" "\n"
+				f"{write_ul([write_button_nav_new_order(lang),write_button_nav_list_orders(lang)],full=False)}\n"
+			"</ul>\n"
 
-			"""<section hx-swap-oob="innerHTML:#main-1">""" "\n"
-				"<!-- EMPTY -->\n"
-			"</section>\n"
-
-			"""<section hx-swap-oob="innerHTML:#main-2">""" "\n"
+			f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
 				"<!-- EMPTY -->\n"
 			"</section>\n"
 		)
@@ -679,65 +1011,173 @@ async def route_api_delete_order(
 		content_type=_MIMETYPE_HTML
 	)
 
-
-
 async def route_api_run_order(
 		request:Request
 	)->Union[json_response,Response]:
 
-	# POST: /api/orders/current/{order_id}/run
+	# POST: /api/orders/pool/{order_id}/run
 
-	ct=get_client_type(request)
-	if not assert_referer(ct,request,_ROUTE_PAGE):
-		return Response(status=406)
+	# POST: /api/orders/run-order
 
-	lang=get_lang(ct,request)
+	ct=request[_REQ_CLIENT_TYPE]
+	if ct==_TYPE_BROWSER:
+		if not request.path.startswith("/api/orders/pool/"):
+			return Response(status=403)
 
-	order_id=request.match_info["order_id"]
+	assert_referer(request,ct,_ROUTE_PAGE)
 
-	ok=(
-		await dbi_Orders_ApplyOrder(
-			request.app["rdbc"],
-			request.app["rdbn"],
-			order_id
+	lang=request[_REQ_LANGUAGE]
+
+	order_id:Optional[str]=None
+	order_keep=True
+
+	request_data=await get_request_body_dict(ct,request)
+	request_data_boken=(request_data is None)
+	if request_data_boken:
+
+		if ct==_TYPE_CUSTOM:
+			return response_errormsg(
+				_ERR_TITLE_RUN_ORDER[lang],
+				_ERR_DETAIL_DATA_NOT_VALID[lang],
+				ct,400
+			)
+
+	if not request_data_boken:
+		order_keep=util_valid_bool(
+			request_data.get(_KEY_ORDER_KEEP),
+			True
 		)
+
+	if ct==_TYPE_BROWSER:
+		order_id=request.match_info[_KEY_ORDER]
+
+	if ct==_TYPE_CUSTOM:
+		order_id=util_valid_str(
+			request_data.get(_KEY_ORDER)
+		)
+
+	userid:Optional[str]=None
+	if order_keep:
+		userid=request[_REQ_USERID]
+
+	result_apply:Mapping=await dbi_Orders_ApplyOrder(
+		request.app[_APP_RDBC],
+		request.app[_APP_RDBN],
+		order_id,user_runner=userid
 	)
-	if not ok:
+
+	msg_err:Optional[str]=util_valid_str(
+		result_apply.get(_ERR)
+	)
+	if msg_err is not None:
 		return response_errormsg(
-			_ERR_TITLE_EXECUTE_ORDER[lang],
-			_ERR_DETAIL_DBI_FAIL[lang],
-			ct
+			_ERR_TITLE_RUN_ORDER[lang],
+			f"{_ERR_DETAIL_DBI_FAIL[lang]}; {msg_err}",
+			ct,400
 		)
 
 	if ct==_TYPE_CUSTOM:
-		return json_response(data={})
+		return json_response(data=result_apply)
 
-	html_text=write_popupmsg(
-		"<h2>"+{
-			_LANG_EN:"Applied changes to the involved assets",
-			_LANG_ES:"Se aplicaron los cambios a los activos involucrados"
-		}[lang]+"</h2>"
+	tl={
+		_LANG_EN:"Applied changes to the involved assets",
+		_LANG_ES:"Se aplicaron los cambios a los activos involucrados"
+	}[lang]
+	html_text=write_popupmsg(f"<h2>{tl}</h2>")
+
+	html_text=(
+		f"{html_text}\n"
+
+		f"""<ul hx-swap-oob="innerHTML:#{_ID_NAV_TWO_OPTS}">""" "\n"
+			f"{write_ul([write_button_nav_new_order(lang),write_button_nav_list_orders(lang)],full=False)}\n"
+		"</ul>\n"
+
+		f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
+			"<!-- EMPTY -->\n"
+		"</section>\n"
 	)
 
 	return Response(
-		body=(
-			f"{html_text}\n"
+		body=html_text,
+		content_type=_MIMETYPE_HTML
+	)
 
-			"""<section hx-swap-oob="innerHTML:#navigation">""" "\n"
-				"<ul>\n"
-					f"<li>\n{write_button_nav_new_order(lang)}\n</li>\n"
-					f"<li>\n{write_button_nav_list_orders(lang)}\n</li>\n"
-				"</ul>\n"
-			"</section>\n"
+async def route_api_revert_order(
+		request:Request
+	)->Union[Response,json_response]:
 
-			"""<section hx-swap-oob="innerHTML:#main-1">""" "\n"
-				"<!-- EMPTY -->\n"
-			"</section>\n"
+	# POST: /api/orders/pool/{order_id}/revert
 
-			"""<section hx-swap-oob="innerHTML:#main-2">""" "\n"
-				"<!-- EMPTY -->\n"
-			"</section>\n"
-		),
+	# POST: /api/orders/revert-order
+
+	ct=request[_REQ_CLIENT_TYPE]
+	if ct==_TYPE_BROWSER:
+		if not request.path.startswith("/api/orders/pool/"):
+			return Response(status=403)
+
+	assert_referer(request,ct,_ROUTE_PAGE)
+
+	lang=request[_REQ_LANGUAGE]
+
+	order_id:Optional[str]=None
+
+	if ct==_TYPE_CUSTOM:
+
+		request_data=await get_request_body_dict(ct,request)
+		if request_data is None:
+			return response_errormsg(
+				_ERR_TITLE_REVERT_ORDER[lang],
+				_ERR_DETAIL_DATA_NOT_VALID[lang],
+				ct,400
+			)
+
+		order_id=util_valid_str(
+			request_data.get(_KEY_ORDER)
+		)
+
+	if ct==_TYPE_BROWSER:
+
+		order_id=request.match_info[_KEY_ORDER]
+
+	result_rev=await dbi_Orders_RevertOrder(
+		request.app[_APP_RDBC],
+		request.app[_APP_RDBN],
+		order_id
+	)
+
+	msg_err:Optional[str]=util_valid_str(
+		result_rev.get(_ERR)
+	)
+	if msg_err is not None:
+		return response_errormsg(
+			_ERR_TITLE_RUN_ORDER[lang],
+			f"{_ERR_DETAIL_DBI_FAIL[lang]}; {msg_err}",
+			ct,400
+		)
+
+	if ct==_TYPE_CUSTOM:
+		return json_response(data=result_rev)
+
+	tl={
+		_LANG_EN:"The order has been fully reversed",
+		_LANG_ES:"La orden ha sido completamente revertida"
+	}[lang]
+	html_text=write_popupmsg(f"<h2>{tl}</h2>")
+
+	html_text=(
+		f"{html_text}\n"
+
+		f"""<ul hx-swap-oob="innerHTML:#{_ID_NAV_TWO_OPTS}">""" "\n"
+			f"{write_ul([write_button_nav_new_order(lang),write_button_nav_list_orders(lang)],full=False)}\n"
+		"</ul>\n"
+
+		f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
+			"<!-- EMPTY -->\n"
+		"</section>\n"
+	)
+
+	return Response(
+		body=html_text,
 		content_type=_MIMETYPE_HTML
 	)
 
@@ -745,52 +1185,53 @@ async def route_main(
 		request:Request
 	)->Union[Response,json_response]:
 
-	ct=get_client_type(request)
-	if ct==_TYPE_CUSTOM:
-		return json_response(data={})
+	lang=request[_REQ_LANGUAGE]
+	userid=request[_REQ_USERID]
 
-	lang=request.app["lang"]
-
-	page_title={
-		_LANG_EN:"Orders manager",
-		_LANG_ES:"Administrador de órdenes"
+	tl_title={
+		_LANG_EN:"Orders",
+		_LANG_ES:"Órdenes"
 	}[lang]
 
-	tl={
-		_LANG_EN:"Create, edit and run orders",
-		_LANG_ES:"Crea, edita y ejecuta órdenes"
-	}[lang]
+	tl=await render_html_user_section(request,lang,userid)
 
-	return Response(
-		body=write_fullpage(
-			lang,page_title,
-			(
-				f"""<h1 class="{_CSS_CLASS_TITLE}">{page_title}</h1>""" "\n"
-				f"<p>{tl}</p>\n"
-				f"{write_link_homepage(lang)}\n"
-				# f"""<p>{write_link_homepage(lang)}</p>""" "\n"
-				"""<section id="navigation">""" "\n"
-					f"{write_ul([write_button_nav_new_order(lang),write_button_nav_list_orders(lang)])}\n"
-					# "<ul>\n"
-					# 	f"<li>\n{write_button_nav_new_order(lang)}\n</li>\n"
-					# 	f"<li>\n{write_button_nav_list_orders(lang)}\n</li>\n"
-					# "</ul>\n"
-				"</section>\n"
-				"""<section id="main-1">""" "\n"
-					"<!-- EMPTY -->\n"
-				"</section>\n"
-				"""<section id="main-2">""" "\n"
-					"<!-- EMPTY -->\n"
-				"</section>\n"
-				"""<section id="messages">""" "\n"
-					"<!-- WELCOME TO THE ORDER BOOK -->\n"
-				"</section>"
-			),
-			html_header_extra=[
-				_SCRIPT_HTMX,
-				_STYLE_POPUP,
-				_STYLE_CUSTOM
-			]
-		),
-		content_type=_MIMETYPE_HTML
+	html_text=(
+		f"""<section id="{_ID_MESSAGES}">""" "\n"
+			"<!-- MESSAGES GO HERE -->\n"
+		"</section>\n"
+
+		f"""<section id="{_ID_NAV_ONE}">""" "\n"
+			f"<div>SHLED / {tl_title}</div>\n"
+			f"{write_html_nav_pages(lang,1)}\n"
+		"</section>\n"
+
+		f"""<section id="{_ID_NAV_TWO}">""" "\n"
+			f"{tl}\n"
+	)
+
+	tl=write_ul(
+		[
+			write_button_nav_new_order(lang),
+			write_button_nav_list_orders(lang)
+		],
+		ul_id=_ID_NAV_TWO_OPTS,
+		ul_classes=[_CSS_CLASS_NAV]
+	)
+
+	html_text=(
+			f"{html_text}\n"
+			f"{tl}\n"
+		"</section>\n"
+
+		f"""<section id="{_ID_MAIN}">""" "\n"
+			"<!-- EMPTY AT THE MOMENT -->\n"
+		"</section>"
+	)
+
+	return (
+		await response_fullpage_ext(
+			request,
+			f"SHLED / {tl_title}",
+			html_text
+		)
 	)

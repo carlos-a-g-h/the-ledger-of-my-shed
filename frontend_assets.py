@@ -3,21 +3,69 @@
 from typing import Mapping
 from typing import Optional
 
-from frontend_Any import _LANG_EN,_LANG_ES
+from frontend_Any import (
 
-# from frontend_Any import _CSS_CLASS_BUTTON
-from frontend_Any import _CSS_CLASS_DANGER
-# from frontend_Any import _CSS_CLASS_INPUT
+	_ID_MESSAGES,
 
-from frontend_Any import _CSS_CLASS_COMMON
-from frontend_Any import _CSS_CLASS_HORIZONTAL
+	_CSS_CLASS_DANGER,
+	_CSS_CLASS_FOCUSED,
+	_CSS_CLASS_VER,
+	_CSS_CLASS_COMMON,
+	_CSS_CLASS_NAV,
+	_CSS_CLASS_CONTROLS,
+	# _CSS_CLASS_HORIZONTAL,
 
-from frontend_Any import write_div_display_error
+	# _CSS_CLASS_ANCHOR_AS_BUTTON,
 
-# from internals import util_valid_list
-from internals import util_valid_str
-from internals import util_valid_int
-from internals import util_valid_date
+	_CSS_CLASS_ASSET_HISTORY,
+
+	# _CSS_CLASS_IG_CHECKBOXES,
+	_CSS_CLASS_IG_FIELDS,
+
+	_CSS_CLASS_INPUT_GUARDED,
+
+	write_button_submit,
+	write_div_display_error,
+	write_html_input_checkbox,
+	write_html_input_number,
+	write_html_input_string,
+	write_html_input_textbox
+)
+
+from internals import (
+	util_valid_int,
+	util_valid_str,
+	util_valid_date
+)
+
+from symbols_assets import (
+
+	_KEY_ASSET,
+	_KEY_NAME,
+	_KEY_VALUE,
+	_KEY_SUPPLY,
+
+	_KEY_HISTORY,
+	_KEY_RECORD_UID,
+	_KEY_RECORD_MOD,
+
+	_ID_FORM_NEW_ASSET,
+	_ID_RESULT_NEW_ASSET,
+	_ID_FORM_AE,
+
+	html_id_asset
+)
+
+from symbols_Any import (
+	_LANG_EN,_LANG_ES,
+
+	_KEY_TAG,
+	_KEY_SIGN,_KEY_SIGN_UNAME,
+	_KEY_COMMENT,
+
+	# _KEY_DELETE_AS_ITEM,
+	_KEY_DATE,
+)
 
 def write_button_nav_new_asset(lang:str)->str:
 
@@ -26,10 +74,10 @@ def write_button_nav_new_asset(lang:str)->str:
 		_LANG_ES:"Crear activo nuevo"
 	}[lang]
 	return (
-		f"""<button class="{_CSS_CLASS_COMMON}" """
+		f"""<button class="{_CSS_CLASS_NAV}" """
 			"""hx-get="/fgmt/assets/new" """
 			"""hx-swap="innerHTML" """
-			"""hx-target="#main" """
+			f"""hx-target="#{_ID_MESSAGES}" """
 			">"
 			f"{tl}"
 		"</button>"
@@ -42,29 +90,28 @@ def write_button_nav_search_assets(lang:str)->str:
 		_LANG_ES:"Buscar activo(s)"
 	}[lang]
 	return (
-		f"""<button class="{_CSS_CLASS_COMMON}" """
+		f"""<button class="{_CSS_CLASS_NAV}" """
 			"""hx-get="/fgmt/assets/search-assets" """
 			"""hx-swap="innerHTML" """
-			"""hx-target="#main" """
+			f"""hx-target="#{_ID_MESSAGES}" """
 			">"
 			f"{tl}"
 		"</button>"
 	)
 
-def write_form_new_asset(lang:str)->str:
+def write_form_new_asset(lang:str,full:bool=True)->str:
 
-	tl={
-		_LANG_EN:"Creation of a new asset",
-		_LANG_ES:"Creación de un nuevo activo"
-	}[lang]
+	# OK
+
 	html_text=(
-		f"<h3>{tl}</h3>\n"
 		"<form "
 			"""hx-post="/api/assets/new" """
 			"""hx-trigger="submit" """
-			"""hx-target="#messages" """
+			f"""hx-target="#{_ID_MESSAGES}" """
 			"""hx-swap="innerHTML" """
 			">\n"
+
+			f"""<div class="{_CSS_CLASS_IG_FIELDS}">""" "\n"
 	)
 
 	tl={
@@ -73,31 +120,7 @@ def write_form_new_asset(lang:str)->str:
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		"<div>\n"
-			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-				f"""<label class="{_CSS_CLASS_COMMON}" for="name">{tl}</label>""" "\n"
-				f"""<input class="{_CSS_CLASS_COMMON}" """
-					""" name="name" """
-					"""type="text" """
-					"""max-length=64 """
-					"required>\n"
-			"</div>"
-	)
-
-	tl={
-		_LANG_EN:"Sign",
-		_LANG_ES:"Firma"
-	}[lang]
-	html_text=(
-		f"{html_text}\n"
-		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-			f"""<label class="{_CSS_CLASS_COMMON}" for="sign">{tl}</label>""" "\n"
-			f"""<input class="{_CSS_CLASS_COMMON}" """
-				""" name="sign" """
-				"""type="text" """
-				"""max-length=32 """
-				"required>\n"
-		"</div>"
+		f"{write_html_input_string(_KEY_NAME,label=tl,required=True)}"
 	)
 
 	tl={
@@ -105,16 +128,17 @@ def write_form_new_asset(lang:str)->str:
 		_LANG_ES:"Etiqueta"
 	}[lang]
 	html_text=(
-			f"{html_text}\n"
-			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-				f"""<label class="{_CSS_CLASS_COMMON}" for="tag">{tl}</label>""" "\n"
-				f"""<input class="{_CSS_CLASS_COMMON}" """
-					""" name="tag" """
-					"""type="text" """
-					"""max-length=32 """
-					">\n"
-			"</div>\n"
-		"</div>"
+		f"{html_text}\n"
+		f"{write_html_input_string(_KEY_TAG,label=tl,maxlen=32)}"
+	)
+
+	tl={
+		_LANG_EN:"Value",
+		_LANG_ES:"Valor"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		f"{write_html_input_number(_KEY_VALUE,label=tl,value=0,minimum=0)}"
 	)
 
 	tl={
@@ -122,32 +146,46 @@ def write_form_new_asset(lang:str)->str:
 		_LANG_ES:"Comentario"
 	}[lang]
 	html_text=(
-		f"{html_text}\n"
-		f"""<label class="{_CSS_CLASS_COMMON}" for="comment">{tl}</label>""" "\n"
-		f"""<textarea class="{_CSS_CLASS_COMMON}" """
-			"""name="comment" """
-			"max-length=256 "
-			">"
-		"""</textarea>"""
+			f"{html_text}\n"
+		"</div>\n"
+		f"{write_html_input_textbox(_KEY_COMMENT,label=tl)}"
 	)
 
 	tl={
 		_LANG_EN:"Create asset",
 		_LANG_ES:"Crear activo"
 	}[lang]
-	return (
-			f"{html_text}"
-			"""<button """
-				f"""class="{_CSS_CLASS_COMMON}" """
-				"""type="submit" """
-				">"
-				f"{tl}"
-			"</button>"
+	html_text=(
+			f"{html_text}\n"
+			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
+				f"{write_button_submit(tl)}\n"
+			"</div>\n"
+
 		"</form>"
 	)
 
+	if full:
+		tl={
+			_LANG_EN:"Creation of a new asset",
+			_LANG_ES:"Creación de un nuevo activo"
+		}[lang]
+		html_text=(
+			"<div>\n"
+				f"<h3>{tl}</h3>\n"
+				f"""<div id="{_ID_FORM_NEW_ASSET}">""" "\n"
+					f"{html_text}\n"
+				"</div>\n"
+			"</div>\n"
+			f"""<div id="{_ID_RESULT_NEW_ASSET}">""" "\n"
+				"<!-- NEW ASSET GOES HERE -->\n"
+			"</div>"
+		)
+
+	return html_text
+
 def write_form_edit_asset_metadata(
 		lang:str,asset_id:str,
+		data:Mapping={},
 		full:bool=True,
 	)->str:
 
@@ -156,109 +194,103 @@ def write_form_edit_asset_metadata(
 		_LANG_ES:"Editar"
 	}[lang]
 	html_text=(
+		"<!-- ASSET METADATA EDITOR -->\n"
 		f"<summary>{tl}</summary>\n"
-		"<div>\n"
-		f"""<form hx-post="/api/assets/change-metadata" """ "\n"
+		f"""<form hx-post="/api/assets/pool/{asset_id}/edit-metadata" """ "\n"
 			"""hx-swap="innerHTML" """ "\n"
-			"""hx-target="#messages" """ "\n"
+			f"""hx-target="#{_ID_MESSAGES}" """ "\n"
 			">\n"
-			f"""<input name="id" type=hidden value="{asset_id}">"""
+
 			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
+
+				# Group of fields start
+				f"""<div class="{_CSS_CLASS_IG_FIELDS}">"""
 	)
 
 	tl={
-		_LANG_EN:"New name",
-		_LANG_ES:"Nuevo nombre"
+		_LANG_EN:"Name",
+		_LANG_ES:"Nombre"
 	}[lang]
+	tl_change=f"change-{_KEY_NAME}"
 	html_text=(
 		f"{html_text}\n"
 
-		f"""<label class="{_CSS_CLASS_COMMON}" for="name">{tl}</label>"""
+			f"""<div class="{_CSS_CLASS_INPUT_GUARDED}">""" "\n"
+				f"{write_html_input_checkbox(tl_change,tl)}\n"
+				f"{write_html_input_string(_KEY_NAME)}"
+			"</div>"
 	)
 
 	tl={
-		_LANG_EN:"Ignore name",
-		_LANG_ES:"Ignorar nombre"
+		_LANG_EN:"Value",
+		_LANG_ES:"Valor"
 	}[lang]
+	tl_change=f"change-{_KEY_VALUE}"
 	html_text=(
 		f"{html_text}\n"
 
-		"<div>\n"
-			f"""<input name="ignore-name" type=checkbox checked>""" "\n"
-			f"""<label for=ignore-name>{tl}</label>""" "\n"
-		"</div>\n"
-		f"""<input class="{_CSS_CLASS_COMMON}" name="name" type=text max-length=32>"""
+			f"""<div class="{_CSS_CLASS_INPUT_GUARDED}">""" "\n"
+				f"{write_html_input_checkbox(tl_change,tl)}\n"
+				f"{write_html_input_number(_KEY_VALUE,minimum=0)}"
+			"</div>"
 	)
 
 	tl={
-		_LANG_EN:"New tag",
-		_LANG_ES:"Nueva etiqueta"
+		_LANG_EN:"Tag",
+		_LANG_ES:"Etiqueta"
 	}[lang]
+	tl_change=f"change-{_KEY_TAG}"
 	html_text=(
 		f"{html_text}\n"
 
-		f"""<label class="{_CSS_CLASS_COMMON}" for="tag">{tl}</label>"""
-	)
-
-	tl={
-		_LANG_EN:"Ignore tag",
-		_LANG_ES:"Ignorar etiqueta"
-	}[lang]
-	html_text=(
-		f"{html_text}\n"
-
-		"<div>\n"
-			f"""<input name="ignore-tag" type=checkbox checked>""" "\n"
-			f"""<label for=ignore-tag>{tl}</label>""" "\n"
-		"</div>\n"
-		f"""<input class="{_CSS_CLASS_COMMON}" name="tag" type=text max-length=32>"""
-	)
-
-	tl={
-		_LANG_EN:"New comment",
-		_LANG_ES:"Nuevo comentario"
-	}[lang]
-	html_text=(
-		f"{html_text}\n"
-
-		f"""<label class="{_CSS_CLASS_COMMON}" for="comment">{tl}</label>"""
-	)
-
-
-	tl={
-		_LANG_EN:"Ignore comment",
-		_LANG_ES:"Ignorar comentario"
-	}[lang]
-	html_text=(
-		f"{html_text}\n"
-
-		"<div>"
-			f"""<input name="ignore-comment" type=checkbox checked>"""
-			f"""<label for=ignore-comment>{tl}</label>"""
+		f"""<div class="{_CSS_CLASS_INPUT_GUARDED}">""" "\n"
+			f"{write_html_input_checkbox(tl_change,tl)}\n"
+			f"{write_html_input_string(_KEY_TAG)}"
 		"</div>"
-		f"""<textarea class="{_CSS_CLASS_COMMON}" """
-			"""name="comment" """
-			"max-length=256 "
-			">"
-		"</textarea>"
 	)
 
+	html_text=(
+			f"{html_text}\n"
+
+		"</div>"
+		# Group of fields ends
+	)
+
+	tl={
+		_LANG_EN:"Comment",
+		_LANG_ES:"Comentario"
+	}[lang]
+	tl_change=f"change-{_KEY_COMMENT}"
+	html_text=(
+		f"{html_text}\n"
+
+		f"""<div class="{_CSS_CLASS_INPUT_GUARDED}">""" "\n"
+			f"{write_html_input_checkbox(tl_change,tl)}\n"
+			f"{write_html_input_textbox(_KEY_COMMENT)}"
+		"</div>"
+	)
 
 	tl={
 		_LANG_EN:"Apply changes",
 		_LANG_ES:"Aplicar cambios"
 	}[lang]
 	html_text=(
-		f"{html_text}\n"
+				f"{html_text}\n"
 
-				f"""<button class="common" type="submit">{tl}</button>""" "\n"
+				f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
+					f"{write_button_submit(tl)}\n"
+				"</div>\n"
+
 			"</div>\n"
+
 		"</form>"
 	)
 
 	if full:
 		html_text=(
-			f"""<details id="asset-{asset_id}-editor">""" "\n"
+			f"""<details id="{_ID_FORM_AE}" """
+				f"""class="{_CSS_CLASS_VER}" """
+				">\n"
 				f"{html_text}\n"
 			"</details>"
 		)
@@ -277,219 +309,90 @@ def write_button_asset_fullview_or_update(
 			_LANG_ES:"Actualizar ahora"
 		}[lang],
 		False:{
-			_LANG_EN:"Manage",
-			_LANG_ES:"Administrar"
+			_LANG_EN:"View/Manage",
+			_LANG_ES:"Ver/Administrar"
 		}[lang]
 	}[in_fullview]
 
 	return (
 		f"""<button class="{_CSS_CLASS_COMMON}" """
-			f"""hx-get="/fgmt/assets/editor/{asset_id}" """
-			"""hx-target="#messages" """
+			f"""hx-get="/fgmt/assets/pool/{asset_id}" """
+			f"""hx-target="#{_ID_MESSAGES}" """
 			"""hx-swap="innerHTML" """
 			">"
 			f"{tl}"
 		"</button>"
 	)
 
-def write_form_delete_asset(
+def write_form_drop_asset(
 		lang:str,
 		asset_id:str,
+		delete_entry:bool=True,
 	)->str:
+
+	the_path={
+		True:"/api/assets/drop",
+		False:f"/api/assets/pool/{asset_id}/drop"
+	}[delete_entry]
+
 
 	tl={
 		_LANG_EN:"Are you sure you want to delete this asset?",
 		_LANG_ES:"¿Está seguro de que quiere eliminar este activo?"
 	}[lang]
 	html_text=(
-		"<form "
+		f"""<form hx-delete="{the_path}" """
 			"""hx-trigger="submit" """
-			"""hx-delete="/api/assets/drop" """
-			"""hx-target="#messages" """
+			f"""hx-target="#{_ID_MESSAGES}" """
 			"""hx-swap="innerHTML" """
 			f"""hx-confirm="{tl}" """
-			">"
+			">\n"
 	)
 
+	if delete_entry:
+		html_text=(
+			f"{html_text}\n"
+			f"""<input name="{_KEY_ASSET}" type="hidden" value="{asset_id}">"""
+		)
+
 	tl={
-		_LANG_EN:"Delete this asset",
-		_LANG_ES:"Eliminar este activo"
+		_LANG_EN:"Delete",
+		_LANG_ES:"Eliminar"
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-			f"""<input name="id" type="hidden" value="{asset_id}">"""
-			f"""<button class="{_CSS_CLASS_COMMON} {_CSS_CLASS_DANGER}" """
-				"""type="submit">"""
-				f"{tl}"
-			"</button>\n"
-		"</form>\n"
+			f"{write_button_submit(tl,[_CSS_CLASS_COMMON,_CSS_CLASS_DANGER])}\n"
+		"</form>"
 	)
 
 	return html_text
 
-def write_form_search_assets(
-		lang:str,
-		order_id:Optional[str]=None
-	)->str:
-
-	order_specific=isinstance(order_id,str)
-
-	the_route={
-		True:f"/api/orders/current/{order_id}/search-assets",
-		False:"/api/assets/search-assets"
-	}[order_specific]
-
-	tl={
-		_LANG_EN:"Asset searcher",
-		_LANG_ES:"Buscador de activos"
-	}[lang]
-	html_text=(
-		f"<h3>{tl}</h3>\n"
-	)
-
-	if order_specific:
-		tl={
-			_LANG_EN:"Go to the editor",
-			_LANG_ES:"Ir al editor"
-		}[lang]
-		html_text=(
-			f"{html_text}\n"
-			"<div>\n"
-				f"ID: {order_id}"
-			"</div>\n"
-			"<div>\n"
-				f"""<button class="{_CSS_CLASS_COMMON}" """
-					f"""hx-get="/fgmt/orders/current/{order_id}/editor" """
-					"""hx-target="#messages" """
-					"""hx-swap="innerHTML" """
-					">\n"
-					f"{tl}\n"
-				"</button>\n"
-			"</div>"
-		)
-
-	tl={
-		_LANG_EN:"Name",
-		_LANG_ES:"Nombre"
-	}[lang]
-	html_text=(
-		f"{html_text}\n"
-		"""<form """
-			f"""hx-post="{the_route}" """
-			"""hx-trigger="submit" """
-			"""hx-target="#messages" """
-			"""hx-swap="innerHTML" """
-			">"
-				"<div>\n"
-					f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-						f"""<label class="{_CSS_CLASS_COMMON}" for="name">{tl}</label>"""
-						"\n"
-						f"""<input class="{_CSS_CLASS_COMMON}" """
-							"""name="name" """
-							"""type="text" """
-							"""max-length=32 """
-							">\n"
-					"</div>"
-	)
-
-	tl={
-		_LANG_EN:"Sign",
-		_LANG_ES:"Firma"
-	}[lang]
-
-	html_text=(
-		f"{html_text}\n"
-		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-			f"""<label class="{_CSS_CLASS_COMMON}" for="sign">{tl}</label>""" "\n"
-			f"""<input class="{_CSS_CLASS_COMMON}" """
-				"""name="sign" """
-				"""type="text" """
-				"""max-length=32 """
-				">\n"
-		"</div>"
-	)
-
-	tl={
-		_LANG_EN:"Tag",
-		_LANG_ES:"Etiqueta"
-	}[lang]
-
-	html_text=(
-			f"{html_text}\n"
-			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-				f"""<label class="{_CSS_CLASS_COMMON}" for="tag">{tl}</label>"""
-				"\n"
-				f"""<input class="{_CSS_CLASS_COMMON}" """
-					"""name="tag" """
-					"""type="text" """
-					"""max-length=32 """
-					">\n"
-			"</div>\n"
-		"</div>"
-	)
-
-	tl={
-		_LANG_EN:"Perform search",
-		_LANG_ES:"Realizar búsqueda"
-	}[lang]
-
-	return (
-			f"{html_text}\n"
-
-			"""<button type="submit" """
-				f"""class="{_CSS_CLASS_COMMON}" """
-				">"
-				f"{tl}"
-			"</button>\n"
-		"</form>"
-	)
-
 def write_form_add_record(lang:str,asset_id:str)->str:
+
+	html_text=(
+		f"""<form hx-post="/api/assets/pool/{asset_id}/history/add" """
+			f"""hx-target="#{_ID_MESSAGES}" """
+			"""hx-swap="innerHTML" """
+			">\n"
+
+			# WARN: HIDDEN INPUT
+			# f"""<input name="{_KEY_ASSET}" """
+			# 	"""type="hidden" """
+			# 	f"""value="{asset_id}" """
+			# 	"required>\n"
+
+			f"""<div class={_CSS_CLASS_IG_FIELDS}>"""
+				# conventional fields {
+
+	)
 
 	tl={
 		_LANG_EN:"Add or remove",
 		_LANG_ES:"Agregar o sustraer"
 	}[lang]
 	html_text=(
-		"<form "
-			f"""hx-post="/api/assets/history/{asset_id}/add" """
-			"""hx-target="#messages" """
-			"""hx-swap="innerHTML" """
-			">\n"
-
-			# WARN: HIDDEN INPUT
-			"""<input id="record-asset" """
-				"""name="asset-id" """
-				"""type="hidden" """
-				f"""value="{asset_id}" """
-				">\n"
-
-			"<div>"
-
-				f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-					f"""<label class="{_CSS_CLASS_COMMON}" for="mod">{tl}</label>""" "\n"
-					f"""<input class="{_CSS_CLASS_COMMON}" """
-						""" name="mod" """
-						"""type="number" """
-						"""value=0 """
-						"required>\n"
-				"</div>"
-	)
-
-	tl={
-		_LANG_EN:"Sign",
-		_LANG_ES:"Firma"
-	}[lang]
-	html_text=(
 		f"{html_text}\n"
-		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-			f"""<label class="{_CSS_CLASS_COMMON}" for="sign">{tl}</label>""" "\n"
-			f"""<input class="{_CSS_CLASS_COMMON}" """
-				""" name="sign" """
-				""" type="text" """
-				"""max-length=32 """
-				"required>\n"
-		"</div>"
+		f"{write_html_input_number(_KEY_RECORD_MOD,label=tl,value=0,required=True)}"
 	)
 
 	tl={
@@ -499,14 +402,7 @@ def write_form_add_record(lang:str,asset_id:str)->str:
 
 	html_text=(
 		f"{html_text}\n"
-		f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-			f"""<label class="{_CSS_CLASS_COMMON}" for="tag">{tl}</label>""" "\n"
-			f"""<input class="{_CSS_CLASS_COMMON}" """
-				""" name="tag" """
-				""" type="text" """
-				"""max-length=32 """
-				">\n"
-		"</div>"
+		f"{write_html_input_string(_KEY_TAG,label=tl)}"
 	)
 
 	tl={
@@ -515,29 +411,26 @@ def write_form_add_record(lang:str,asset_id:str)->str:
 	}[lang]
 	html_text=(
 			f"{html_text}\n"
+			# } conventional fields 
 		"</div>\n"
-		f"""<label class="{_CSS_CLASS_COMMON}" for="comment">{tl}</label>""" "\n"
-		f"""<textarea class="{_CSS_CLASS_COMMON}" """ 
-			"""name="comment" """
-			"max-length=256 "
-			">"
-		"</textarea>"
+		f"{write_html_input_textbox(_KEY_COMMENT,label=tl)}"
 	)
 
 	tl={
 		_LANG_EN:"Add to history",
 		_LANG_ES:"Agregar al historial"
 	}[lang]
-
-	return (
+	html_text=(
 			f"{html_text}\n"
-			"""<button type="submit" """
-				f"""class="{_CSS_CLASS_COMMON}" """
-				">"
-				f"{tl}"
-			"</button>\n"
+			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
+				f"{write_button_submit(tl)}\n"
+			"</div>\n"
+
+		# NOTE: end of the form
 		"</form>\n"
 	)
+
+	return html_text
 
 
 def write_button_record_details(
@@ -553,8 +446,8 @@ def write_button_record_details(
 
 	return (
 		f"""<button class="{_CSS_CLASS_COMMON}" """
-			f"""hx-get="/api/assets/history/{asset_id}/records/{record_uid}" """
-			"""hx-target="#messages" """
+			f"""hx-get="/fgmt/assets/pool/{asset_id}/history/records/{record_uid}" """
+			f"""hx-target="#{_ID_MESSAGES}" """
 			"""hx-swap="innerHTML" """
 			">"
 			f"{tl}"
@@ -566,238 +459,257 @@ def write_html_record(
 		asset_id:str,
 		data:Mapping,
 		record_uid:Optional[str]=None,
-		detailed:bool=False
+		authorized:bool=False,
+		focused:bool=False,
 	)->str:
 
 	record_uid_ok:Optional[str]=record_uid
-	if not isinstance(record_uid,str):
 
-		record_uid_ok=util_valid_str(data.get("uid"),True)
-		if not isinstance(record_uid_ok,str):
-			return write_div_display_error(lang)
+	# print(type(record_uid_ok),record_uid_ok)
 
-	record_date=util_valid_date(
-		util_valid_str(data.get("date"))
-	)
+	if record_uid_ok is None:
+
+		record_uid_ok=util_valid_str(
+			data.get(_KEY_RECORD_UID),
+			True
+		)
+
+	if record_uid_ok is None:
+		print(1)
+		return write_div_display_error(lang)
+
+	record_date=util_valid_date(data.get(_KEY_DATE))
 	if not isinstance(record_date,str):
+		print(2)
 		return write_div_display_error(lang)
 
-	record_mod=util_valid_int(data.get("mod"))
+	record_mod=util_valid_int(data.get(_KEY_RECORD_MOD))
 	if not isinstance(record_mod,int):
+		print(3)
 		return write_div_display_error(lang)
 
-	record_sign=util_valid_str(data.get("sign"),True)
+	record_sign=util_valid_str(data.get(_KEY_SIGN),True)
 	if not isinstance(record_sign,str):
+		print(4)
 		return write_div_display_error(lang)
 
-	record_tag=util_valid_str(data.get("tag"),True)
+	record_tag=util_valid_str(data.get(_KEY_TAG),True)
 
-	html_text=""
+	html_text=f"\n<!-- HISTORY RECORD {record_uid_ok} -->"
 
-	if not detailed:
+	tl={
+		_LANG_EN:"Adjustment",
+		_LANG_ES:"Ajuste",
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		f"<div><strong>{record_date}</strong></div>\n"
+		"<div>\n"
+			# f"""<div class="{_CSS_CLASS_HORIZONTAL}">"""
+			f"{tl}: {record_mod}"
+		"</div>\n"
+	)
 
+	if isinstance(record_tag,str):
 		tl={
-			_LANG_EN:"Adjustment",
-			_LANG_ES:"Ajuste",
+			_LANG_EN:"Tag",
+			_LANG_ES:"Etiqueta"
 		}[lang]
 		html_text=(
 			f"{html_text}\n"
-			f"<div>{record_date}</div>\n"
-			"<div>\n"
-				f"""<div class="{_CSS_CLASS_HORIZONTAL}">"""
-					f"{tl}: {record_mod}"
-				"</div>\n"
+			f"<div>{tl}: {record_tag}</div>"
 		)
 
-		tl={
-			_LANG_EN:"Signed by",
-			_LANG_ES:"Firmado por"
-		}[lang]
+	if authorized:
+
 		html_text=(
 			f"{html_text}\n"
-				f"""<div class="{_CSS_CLASS_HORIZONTAL}">"""
-					f"{tl}: {record_sign}"
-				"</div>\n"
-			"</div>"
+			f"{write_button_record_details(lang,asset_id,record_uid_ok)}"
 		)
 
-		if isinstance(record_tag,str):
-			tl={
-				_LANG_EN:"Tag",
-				_LANG_ES:"Etiqueta"
-			}[lang]
-			html_text=(
-				f"{html_text}\n"
-				f"<div>{tl}: {record_tag}</div>"
-			)
+	classes=f"{_CSS_CLASS_COMMON}"
+	if focused:
+		classes=f"{classes} {_CSS_CLASS_FOCUSED}"
 
-		html_text=(
-			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
-				f"{html_text}\n"
-				f"{write_button_record_details(lang,asset_id,record_uid_ok)}\n"
-			"</div>"
-		)
-
-	if detailed:
-
-		tl={
-			_LANG_EN:"Record details",
-			_LANG_ES:"Detalles del registro"
-		}[lang]
-		html_text=(
+	html_text=(
+		f"""<div class="{classes}">""" "\n"
 			f"{html_text}\n"
-			"""<div style="padding-bottom:8px;">""" "\n"
-				f"<strong>{tl}</strong>\n"
-			"</div>\n"
-			"""<table style="width:100%;text-align:left;">""" "\n"
-				"<tbody>\n"
-					"<tr>\n"
-						"<td>UID</td>\n"
-						f"<td>{record_uid_ok}</td>\n"
-					"</tr>\n"
-		)
-
-		tl={
-			_LANG_EN:"Date",
-			_LANG_ES:"Fecha"
-		}[lang]
-		html_text=(
-			f"{html_text}\n"
-			"<tr>\n"
-				f"<td>{tl}</td>\n"
-				f"<td>{record_date}</td>\n"
-			"</tr>\n"
-		)
-
-		tl={
-			_LANG_EN:"From asset",
-			_LANG_ES:"Del activo"
-		}[lang]
-		html_text=(
-			f"{html_text}\n"
-			"<tr>\n"
-				f"<td>{tl}</td>\n"
-				f"<td>{asset_id}</td>\n"
-			"</tr>\n"
-		)
-
-		tl={
-			_LANG_EN:"Adjustment",
-			_LANG_ES:"Ajuste",
-		}[lang]
-		html_text=(
-			f"{html_text}\n"
-			"<tr>\n"
-				f"<td>{tl}</td>\n"
-				f"<td>{record_mod}</td>\n"
-			"</tr>\n"
-		)
-
-		tl={
-			_LANG_EN:"Signed by",
-			_LANG_ES:"Firmado por"
-		}[lang]
-		html_text=(
-			f"{html_text}\n"
-			"<tr>\n"
-				f"<td>{tl}</td>\n"
-				f"<td>{record_sign}</td>\n"
-			"</tr>\n"
-		)
-
-		if record_tag is not None:
-
-			tl={
-				_LANG_EN:"Tag",
-				_LANG_ES:"Etiqueta"
-			}[lang]
-			html_text=(
-				f"{html_text}\n"
-				"<tr>\n"
-					f"<td>{tl}</td>\n"
-					f"<td>{record_tag}</td>\n"
-				"</tr>\n"
-			)
-
-		record_comment=util_valid_str(data.get("comment"),True)
-		if record_comment is not None:
-
-			html_text=(
-				f"{html_text}\n"
-				"""<tr>""" "\n"
-					"<td colspan=2>\n"
-						"""<div style="padding-top:8px;">""" "\n"
-							f"{record_comment}"
-						"</div>"
-					"</td>\n"
-				"</tr>\n"
-			)
-
-		html_text=(
-					f"{html_text}\n"
-				"</tbody>\n"
-			"</table>"
-		)
+		"</div>"
+	)
 
 	return html_text
 
-def write_html_record_history(
-		lang:str,asset_id:str,
-		history:Optional[Mapping]
+def write_html_record_detailed(
+		lang:str,
+		asset_id:str,
+		data:Mapping,
+		record_uid:Optional[str]=None,
+	)->str:
+
+	record_uid_ok=record_uid
+	if record_uid_ok is None:
+		record_uid_ok=util_valid_str(
+			data.get(_KEY_RECORD_UID),
+			True
+		)
+	if record_uid_ok is None:
+		return write_div_display_error(lang,data)
+
+	record_date=util_valid_date(data.get(_KEY_DATE))
+	record_mod=util_valid_int(data.get(_KEY_RECORD_MOD))
+
+	record_tag=util_valid_str(data.get(_KEY_TAG),True)
+	record_comment=util_valid_str(data.get(_KEY_COMMENT))
+
+	record_sign=util_valid_str(
+		data.get(_KEY_SIGN),
+		True
+	)
+	record_sign_uname=util_valid_str(
+		data.get(_KEY_SIGN_UNAME),
+		True
+	)
+
+	if (
+		(record_date is None) or
+		(record_mod is None) or
+		(record_sign is None)
 	):
+		return write_div_display_error(lang,data)
 
-	if not isinstance(history,Mapping):
-		return (
-			"<div>"+{
-				_LANG_EN:"History is empty/unknown",
-				_LANG_ES:"Historial vacío/desconocido"
-			}[lang]+"</div>"
-		)
+	tl={
+		_LANG_EN:"Record details",
+		_LANG_ES:"Detalles del registro"
+	}[lang]
 
-	if len(history)==0:
-		return (
-			"<p>"+{
-				_LANG_EN:"History is empty/unknown",
-				_LANG_ES:"Historial vacío/desconocido"
-			}[lang]+"</p>"
-		)
+	html_text=(
+		# f"{html_text}\n"
+		"""<div style="padding-bottom:8px;">""" "\n"
+			f"<strong>{tl}</strong>\n"
+		"</div>\n"
+		"""<table style="width:100%;text-align:left;">""" "\n"
+			"<tbody>\n"
+				"<tr>\n"
+					"<td>UID</td>\n"
+					f"<td>{record_uid_ok}</td>\n"
+				"</tr>\n"
+	)
 
-	html_text=""
+	tl={
+		_LANG_EN:"Date",
+		_LANG_ES:"Fecha"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		"<tr>\n"
+			f"<td>{tl}</td>\n"
+			f"<td>{record_date}</td>\n"
+		"</tr>\n"
+	)
 
-	history_keys=list(history.keys())
-	history_keys.reverse()
+	tl={
+		_LANG_EN:"Asset ID",
+		_LANG_ES:"ID del activo"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		"<tr>\n"
+			f"<td>{tl}</td>\n"
+			f"<td>{asset_id}</td>\n"
+		"</tr>\n"
+	)
 
-	for record_uid in history_keys:
+	tl={
+		_LANG_EN:"Adjustment",
+		_LANG_ES:"Ajuste",
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		"<tr>\n"
+			f"<td>{tl}</td>\n"
+			f"<td>{record_mod}</td>\n"
+		"</tr>\n"
+	)
+
+	tl={
+		_LANG_EN:"Signed by",
+		_LANG_ES:"Firmado por"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		"<tr>\n"
+			f"<td>{tl}</td>"
+	)
+
+	tl=record_sign
+	if record_sign_uname is None:
+		tl=f"{record_sign_uname} ({tl})"
+
+	html_text=(
+			f"{html_text}\n"
+			f"<td>{tl}</td>\n"
+		"</tr>\n"
+	)
+
+	if record_tag is not None:
+
+		tl={
+			_LANG_EN:"Tag",
+			_LANG_ES:"Etiqueta"
+		}[lang]
 		html_text=(
 			f"{html_text}\n"
-			f"{write_html_record(lang,asset_id,history[record_uid],record_uid=record_uid)}"
+			"<tr>\n"
+				f"<td>{tl}</td>\n"
+				f"<td>{record_tag}</td>\n"
+			"</tr>\n"
 		)
 
-	return html_text
+	if record_comment is not None:
+
+		html_text=(
+			f"{html_text}\n"
+			"""<tr>""" "\n"
+				"<td colspan=2>\n"
+					"""<div style="padding-top:8px;">""" "\n"
+						f"{record_comment}\n"
+					"</div>\n"
+				"</td>\n"
+			"</tr>\n"
+		)
+
+	return (
+				f"{html_text}\n"
+			"</tbody>\n"
+		"</table>"
+	)
 
 def write_html_asset_info(
-		lang:str,data:Mapping,
+		lang:str,
+		the_asset:Mapping,
 		full:bool=True
 	)->str:
 
-	asset_id=util_valid_str(data.get("id"))
+	print("rendering:",the_asset)
+
+	asset_id=util_valid_str(the_asset.get(_KEY_ASSET))
 	if not isinstance(asset_id,str):
 		return write_div_display_error(lang)
 
-	asset_name=util_valid_str(data.get("name"))
+	asset_name=util_valid_str(the_asset.get(_KEY_NAME))
 	if not isinstance(asset_name,str):
 		return write_div_display_error(lang)
 
-	tl={
-		_LANG_EN:"Name",
-		_LANG_ES:"Nombre"
-	}[lang]
 	html_text=(
-		f"<div>ID: <code>{asset_id}</code></div>\n"
-		f"<div>{tl}: <code>{asset_name}</code></div>"
+		f"<div>"
+			f"<strong>{asset_name}</strong>"
+		"</div>"
+		f"<div>"
+			f"ID: <code>{asset_id}</code>"
+		"</div>"
 	)
 
-	asset_tag=util_valid_str(data.get("tag"),True)
+	asset_tag=util_valid_str(the_asset.get(_KEY_TAG),True)
 	if isinstance(asset_tag,str):
 		tl={
 			_LANG_EN:"Tag",
@@ -805,152 +717,239 @@ def write_html_asset_info(
 		}[lang]
 		html_text=(
 			f"{html_text}\n"
-			f"<div>{tl}: <code>{asset_tag}</code></div>"
-		)
-
-	asset_sign=util_valid_str(data.get("sign"))
-	if isinstance(asset_sign,str):
-		tl={
-			_LANG_EN:"Sign",
-			_LANG_ES:"Firma"
-		}[lang]
-		html_text=(
-			f"{html_text}\n"
-			f"<div>{tl}: <code>{asset_sign}</code></div>"
-		)
-
-	asset_comment=util_valid_str(data.get("comment"))
-	if isinstance(asset_comment,str):
-		tl={
-			_LANG_EN:"Comment",
-			_LANG_ES:"Comentario"
-		}[lang]
-		html_text=(
-			f"{html_text}\n"
-			f"<div>{tl}: <code>{asset_comment}</code></div>"
-		)
-
-	if full:
-		html_text=(
-			f"""<div id="asset-{asset_id}-info">""" "\n"
-				f"{html_text}\n"
+			f"<div>"
+				f"{tl}: <code>{asset_tag}</code>"
 			"</div>"
 		)
 
-	return html_text
+	asset_sign=util_valid_str(the_asset.get(_KEY_SIGN))
+	asset_sign_uname=util_valid_str(the_asset.get(_KEY_SIGN_UNAME))
+	signed_raw=(isinstance(asset_sign,str))
+	signed_neat=(isinstance(asset_sign_uname,str))
+	if signed_raw or signed_neat:
+		tl={
+			_LANG_EN:"Signed by:",
+			_LANG_ES:"Firmado por:"
+		}[lang]
+		if signed_neat:
+			tl=f"{tl} [ <code>{asset_sign_uname}</code> ]"
+		if signed_raw:
+			tl=f"{tl} [ <code>{asset_sign}</code> ]"
 
-def write_html_asset(
-		lang:str,
-		data:Mapping,
-		fullview:bool=False,
-	)->str:
+		html_text=(
+			f"{html_text}\n"
+			f"<div>{tl}</div>"
+		)
 
-	asset_id=util_valid_str(data.get("id"))
-	if not isinstance(asset_id,str):
-		return write_div_display_error(lang)
+	asset_value=util_valid_int(the_asset.get(_KEY_VALUE))
+	if isinstance(asset_value,int):
+		tl={
+			_LANG_EN:"Value",
+			_LANG_ES:"Valor"
+		}[lang]
+		html_text=(
+			f"{html_text}\n"
+			f"<div>{tl}: <code>{asset_value}</code></div>"
+		)
 
-	# info
-
-	html_text=(
-		f"""<div class={_CSS_CLASS_COMMON} id="asset-{asset_id}">""" "\n"
-			f"{write_html_asset_info(lang,data,fullview)}"
-	)
-
-	asset_total=util_valid_int(data.get("total"))
-	if isinstance(asset_total,int):
+	asset_supply=util_valid_int(the_asset.get(_KEY_SUPPLY))
+	if isinstance(asset_supply,int):
 		tl={
 			_LANG_EN:"Current amount",
 			_LANG_ES:"Cantidad actual"
 		}[lang]
 		html_text=(
 			f"{html_text}\n"
-			f"""<div>{tl}: <code id="asset-{asset_id}-total">{asset_total}</code></div>"""
+			f"""<div>{tl}: <code id="{html_id_asset(asset_id,supply=True)}">{asset_supply}</code></div>"""
 		)
 
-	if fullview:
+	asset_comment=util_valid_str(the_asset.get(_KEY_COMMENT))
+	if isinstance(asset_comment,str):
 		html_text=(
 			f"{html_text}\n"
-			f"{write_form_edit_asset_metadata(lang,asset_id)}"
+			f"<div><code>{asset_comment}</code></div>"
 		)
 
-	# actions
-
-	html_text=(
-		f"{html_text}\n"
-		f"""<div class="inner-controls" id="asset-{asset_id}-controls">""" "\n"
-			f"{write_button_asset_fullview_or_update(lang,asset_id,fullview)}\n"
-	)
-
-	if fullview:
-
+	if full:
 		html_text=(
-			f"{html_text}\n"
-			f"{write_form_delete_asset(lang,asset_id)}"
-		)
-
-	html_text=(
+			f"""<div id="{html_id_asset(asset_id,info=True)}">""" "\n"
 				f"{html_text}\n"
-			"</div>"
-		"</div>"
-	)
-
-	if fullview:
-
-		# History
-
-		tl={
-			_LANG_EN:"History",
-			_LANG_ES:"Historial"
-		}[lang]
-		html_record_history=write_html_record_history(
-			lang,asset_id,
-			data.get("history")
-		)
-		html_text=(
-			f"{html_text}\n"
-			f"<h3>{tl}</h3>\n"
-			f"""<div id="asset-{asset_id}-history-ctl" class="{_CSS_CLASS_COMMON}">""" "\n"
-				f"{write_form_add_record(lang,asset_id)}\n"
-			"</div>\n"
-			f"""<div id="asset-{asset_id}-history">""" "\n"
-				f"{html_record_history}\n"
 			"</div>"
 		)
 
 	return html_text
 
-def write_html_list_of_assets(
-		lang:str,assetlist:list,
-		order_id:Optional[str]=None
+def write_html_asset_as_item(
+		lang:str,
+		the_asset:Mapping,
+		full:bool=True,
+		authorized:bool=True,
+		focused:bool=False,
 	)->str:
 
-	html_text="""<div id="list-of-assets">"""
+	asset_id=the_asset.get(_KEY_ASSET)
 
-	empty=(len(assetlist)==0)
-
-	if empty:
-		tl={
-			_LANG_EN:"There are no assets",
-			_LANG_ES:"No hay activos"
-		}[lang]
+	html_text=(
+		f"{write_html_asset_info(lang,the_asset,False)}\n"
+		f"""<div id="{html_id_asset(asset_id,controls=True)}" "class={_CSS_CLASS_CONTROLS}">""" "\n"
+			f"{write_button_asset_fullview_or_update(lang,asset_id,False)}\n"
+	)
+	if authorized:
 		html_text=(
 			f"{html_text}\n"
-			f"<div>{tl}</div>"
+			f"{write_form_drop_asset(lang,asset_id)}\n"
 		)
 
-	if not empty:
-
-		x=len(assetlist)
-		while True:
-			x=x-1
-			if x<0:
-				break
-			html_text=(
-				f"{html_text}\n"
-				f"{write_html_asset(lang,assetlist[x])}"
-			)
-
-	return (
+	html_text=(
 			f"{html_text}\n"
 		"</div>"
+	)
+
+	if full:
+
+		classes=f"{_CSS_CLASS_COMMON}"
+		if focused:
+			classes=f"{classes} {_CSS_CLASS_FOCUSED}"
+
+		html_text=(
+			f"""<div id="{html_id_asset(asset_id)}" """
+				f"""class="{classes}" """
+				">\n"
+				f"{html_text}\n"
+			"</div>"
+		)
+
+	return html_text
+
+def write_html_asset_details(
+		lang:str,
+		the_asset:Mapping,
+		authorized:bool=True,
+	)->str:
+
+	asset_id=the_asset.get(_KEY_ASSET)
+	if asset_id is None:
+		return write_div_display_error(lang)
+
+	tl={
+		_LANG_EN:"Asset details",
+		_LANG_ES:"Detalles del activo"
+	}[lang]
+
+	html_text=(
+		f"<h3>{tl}</h3>\n"
+		f"{write_html_asset_info(lang,the_asset)}"
+	)
+
+	if authorized:
+		html_text=(
+			f"{html_text}\n"
+			f"{write_form_edit_asset_metadata(lang,asset_id,data=the_asset)}"
+		)
+
+	tl=html_id_asset(asset_id,controls=True)
+
+	html_text=(
+		f"{html_text}\n"
+		f"""<div id="{tl}" class="{_CSS_CLASS_CONTROLS}">""" "\n"
+			f"{write_button_asset_fullview_or_update(lang,asset_id,True)}\n"
+	)
+	if authorized:
+		html_text=(
+			f"{html_text}\n"
+			f"{write_form_drop_asset(lang,asset_id,False)}"
+		)
+
+	html_text=(
+			f"{html_text}\n"
+		"</div>"
+	)
+
+	return html_text
+
+def write_html_asset_history(
+		lang:str,
+		data:Mapping,
+		authorized:bool=True,
+	)->str:
+
+	asset_id=data.get(_KEY_ASSET)
+	if asset_id is None:
+		return write_div_display_error(lang)
+	# History
+
+	tl={
+		_LANG_EN:"History",
+		_LANG_ES:"Historial"
+	}[lang]
+	html_text=(
+		f"<!-- HISTORY FOR {asset_id} -->\n"
+		f"<h3>{tl}</h3>"
+	)
+
+	if authorized:
+		html_text=(
+			f"{html_text}\n"
+			f"""<div id="{html_id_asset(asset_id,history=True,controls=True)}">""" "\n"
+				f"{write_form_add_record(lang,asset_id)}\n"
+			"</div>"
+		)
+
+	html_text=(
+		f"{html_text}\n"
+		f"""<div id="{html_id_asset(asset_id,history=True)}" """
+			f""" class="{_CSS_CLASS_ASSET_HISTORY}">"""
+	)
+	history_empty=(not isinstance(data.get(_KEY_HISTORY),Mapping))
+	if not history_empty:
+		history_empty=(len(data[_KEY_HISTORY])==0)
+
+	if history_empty:
+		html_text=f"{html_text}\n<!-- HISTORY FOR {asset_id} IS EMPTY -->"
+
+	if not history_empty:
+
+		# The most recent ones will be first
+
+		html_text_history=""
+
+		for record_uid in data[_KEY_HISTORY]:
+			if not isinstance(
+				data[_KEY_HISTORY].get(record_uid),
+				Mapping
+			):
+				continue
+
+			if len(data[_KEY_HISTORY][record_uid])==0:
+				continue
+
+			html_text_history=write_html_record(
+				lang,asset_id,
+				data[_KEY_HISTORY][record_uid],
+				record_uid=record_uid,
+				authorized=authorized,
+			)+f"\n{html_text_history}"
+
+		if len(html_text_history)>0:
+			html_text=f"{html_text}\n{html_text_history}"
+
+	html_text=(
+			f"{html_text}\n"
+		"</div>"
+	)
+
+	return html_text
+
+def write_anchor_export_assets_as_excel(lang:str):
+
+	tl={
+		_LANG_EN:"Export the assets to excel",
+		_LANG_ES:"Exportar los activos a excel"
+	}[lang]
+
+	return (
+
+		f"""<a class="{_CSS_CLASS_COMMON}" href="/api/assets/export-as-excel">""" "\n"
+			f"{tl}\n"
+		"</a>\n"
 	)
