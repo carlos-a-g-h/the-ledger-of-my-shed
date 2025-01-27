@@ -112,8 +112,8 @@ jobs:
         if: ${{ contains(matrix.os,'windows') == false && inputs.DO_NOT_CREATE_RELEASE == true && inputs.DO_NOT_COMPILE_CREATE_DUMMY == false }}
         working-directory: repo
         run: |
-          echo "[ LINKING ]"
-          ldd "the-output/main.dist/${{ env.THE_NAME }}.bin"
+          echo "[ CHEKING THE LINKING ]"
+          ldd "the-output/${{ env.THE_NAME }}.bin"
           echo "[ CONTENTS ]"
           find the-output
 
@@ -154,7 +154,7 @@ jobs:
           echo "VAR_DATE=$(date +%Y-%m-%d-%H-%M-%S)" >> $GITHUB_OUTPUT
 
       - name: (dbg) Printing date
-        if: $${{ inputs.TEST_VARIABLES == true }}
+        if: ${{ inputs.TEST_VARIABLES == true }}
         run: echo "${{ steps.step_date.outputs.VAR_DATE }}"
 
       - name: Create release
@@ -214,7 +214,7 @@ jobs:
           cat NOTES.txt >> $GITHUB_OUTPUT
 
       - name: (dbg) Test Notes
-        if: $${{ inputs.TEST_VARIABLES == true }}
+        if: ${{ inputs.TEST_VARIABLES == true }}
         run: |
           echo "CURRENT DATE = ${{ steps.step_notes.outputs.THE_DATE }}"
           echo "UPLOAD URL = ${{ steps.step_notes.outputs.THE_URL }}"
