@@ -18,7 +18,8 @@ from internals import (
 	util_rnow,
 	util_valid_int,
 	util_valid_str,
-	util_valid_date
+	util_valid_date,
+	util_valid_bool
 )
 
 from symbols_Any import (
@@ -49,6 +50,7 @@ from symbols_orders import (
 	_KEY_ORDER,
 	# _KEY_ORDER_VALUE,
 	_KEY_LOCKED_BY,
+	_KEY_ORDER_IS_FLIPPED
 )
 
 from dbi_assets import dbi_assets_AssetQuery
@@ -77,6 +79,7 @@ async def dbi_orders_NewOrder(
 		rdbc:AsyncIOMotorClient,name_db:str,
 		order_id:str,order_sign:str,order_tag:str,
 		order_comment:Optional[str]=None,
+		order_is_flipped:bool=False,
 		vlevel:int=2,
 	)->Mapping:
 
@@ -88,7 +91,8 @@ async def dbi_orders_NewOrder(
 		"_id":order_id,
 		_KEY_SIGN:order_sign,
 		_KEY_TAG:order_tag,
-		_KEY_DATE:util_rnow()
+		_KEY_DATE:util_rnow(),
+		_KEY_ORDER_IS_FLIPPED:order_is_flipped,
 	}
 	if isinstance(order_comment,str):
 		new_order.update({
@@ -509,6 +513,10 @@ async def dbi_Orders_ApplyOrder(
 		except Exception as exc:
 			print("WARNING",exc)
 
+	order_is_flipped=util_valid_bool(
+		the_order.get(_KEY_ORDER_IS_FLIPPED),False
+	)
+
 	total_ops=0
 	bulk_write_ops=[]
 	for asset_id in the_order[_COL_ASSETS]:
@@ -518,6 +526,9 @@ async def dbi_Orders_ApplyOrder(
 		)
 		if not isinstance(the_mod,int):
 			continue
+
+		if order_is_flipped:
+			the_mod=the_mod*-1
 
 		total_ops=total_ops+1
 		bulk_write_ops.append(

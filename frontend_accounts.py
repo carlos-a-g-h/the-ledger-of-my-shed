@@ -243,7 +243,7 @@ def write_button_login_magical(lang:str)->str:
 		"""<form method="POST" """
 			"""action="/api/accounts/login-magical" """
 			">\n"
-			f"""<button class="{_CSS_CLASS_COMMON}" type=submit>{tl}</button>""" "\n"
+			f"""<button class="{_CSS_CLASS_NAV}" type=submit>{tl}</button>""" "\n"
 		"</form>"
 	)
 

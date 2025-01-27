@@ -1,4 +1,4 @@
-# My Shed's Ledger
+# My Shed's Ledger (SHLED)
 
 ## What is this now?
 
@@ -38,17 +38,17 @@ More will be added but this is what you can do right now:
 
 ## How to run this ?
 
-First of all, Make sure you have a MongoDB server instance available to use, wether you have it locally or remotely, it doesn't matter
+First of all, Make sure you have a MongoDB server instance available to use, wether you have it locally or remotely
 
-You might want to check out the "config.yaml" file and adjust it to your needs, specially if you are using MongoDB remotely and not locally
+You might want to check out the "config.yaml" file and adjust it to your needs, specially if you are using MongoDB remotely
 
-After setting it up, you can run the server like this
+After ensuring that there is a MongoDB instance available, you can run the server like this
 
 ```
 $ chmod +x shled; ./shled
 ```
 
-or like this if you're not running directly from the source code
+or like this if you're running directly from the source code
 
 ```
 $ python3 main.py
@@ -56,6 +56,16 @@ $ python3 main.py
 
 or you can just double-click the "shled.exe" executable it if you're on Windows
 
+Shled can also accept a custom config file as a command line argument instead of the default "config.yaml" file
+
+```
+./shled "/your/custom/configuration/file.yaml"
+```
+
+NOTE: Relative paths are relative not to your working directory, but to the program's directory
+
 ### How to customize the CSS
 
-Add/modify the CSS in the sources directory: everything will be concatenated into a single custom.css file at runtime
+Add/modify CSS files to the sources directory. At the startup phase, the files will be concatenated into a single 'custom.css' file and this is the CSS file that will be loaded on each page request
+
+There is a flag called 'devmode-css', this flag disables the default CSS "baking phase" and allows you to modify the CSS in a way more comfortable way while the server is running

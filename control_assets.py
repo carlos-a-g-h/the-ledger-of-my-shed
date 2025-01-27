@@ -27,6 +27,7 @@ from control_Any import (
 	get_request_body_dict,
 
 	response_errormsg,
+	response_fullpage_ext,
 	get_username,
 	util_patch_doc_with_username
 )
@@ -58,8 +59,8 @@ from frontend_Any import (
 
 	_ID_NAV_TWO_OPTS,
 
-	_SCRIPT_HTMX,
-	_STYLE_CUSTOM,
+	# _SCRIPT_HTMX,
+	# _STYLE_CUSTOM,
 	# _STYLE_POPUP,
 
 	# _CSS_CLASS_COMMON,
@@ -67,7 +68,7 @@ from frontend_Any import (
 	# _CSS_CLASS_CONTENT,
 	_CSS_CLASS_NAV,
 
-	write_fullpage,write_popupmsg,
+	write_popupmsg,
 	write_ul,
 	write_html_nav_pages
 )
@@ -128,6 +129,8 @@ from symbols_Any import (
 
 	_REQ_CLIENT_TYPE,_REQ_LANGUAGE,
 	_REQ_USERID,_REQ_HAS_SESSION,
+
+	_CFG_FLAGS,_CFG_FLAG_STARTUP_PRINT_ASSETS,
 
 	_KEY_TAG,
 	_KEY_SIGN,_KEY_SIGN_UNAME,
@@ -203,7 +206,10 @@ def util_convert_asset_to_kv(
 
 	return {asset_id:asset_name}
 
-async def util_update_known_assets(app:Application)->bool:
+async def util_update_known_assets(
+		app:Application,
+		startup:bool=True
+	)->bool:
 
 	dbi_result=await dbi_assets_AssetQuery(
 		app[_APP_RDBC],
@@ -212,7 +218,9 @@ async def util_update_known_assets(app:Application)->bool:
 
 	size=len(dbi_result)
 
-	print(dbi_result)
+	if startup:
+		if _CFG_FLAG_STARTUP_PRINT_ASSETS in app[_CFG_FLAGS]:
+			print("Assets: {",dbi_result,"}")
 
 	if size==0:
 		return False
@@ -1229,19 +1237,10 @@ async def route_main(
 		"</section>"
 	)
 
-
-
-	return Response(
-		body=write_fullpage(
-			lang,
-			tl_title,
-			html_text,
-			html_header_extra=[
-				_SCRIPT_HTMX,
-				# _STYLE_POPUP,
-				_STYLE_CUSTOM
-			]
-		),
-		content_type=_MIMETYPE_HTML
+	return (
+		await response_fullpage_ext(
+			request,
+			f"SHLED / {tl_title}",
+			html_text
+		)
 	)
-

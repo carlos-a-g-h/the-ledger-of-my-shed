@@ -94,11 +94,12 @@ _CFG_DB_NAME="db-name"
 _CFG_DB_URL="db-url"
 
 _CFG_FLAGS="flags"
-# _CFG_FLAG_ON_LAUNCH_CSS_NOT_BAKED="on-launch-css-not-baked"
+_CFG_FLAG_STARTUP_PRINT_ASSETS="startup-print-assets"
+_CFG_FLAG_DEVMODE_CSS="devmode-css"
 _CFG_FLAG_ROOT_LOCAL_AUTOLOGIN="root-local-autologin"
-_CFG_FLAG_PUB_READ_ACCESS_TO_ORDERS="pub-read-orders"
-_CFG_FLAG_PUB_READ_ACCESS_TO_HISTORY="pub-read-history"
-_CFG_FLAG_PVT_READ_ACCESS_TO_ASSETS="pvt-read-assets"
+# _CFG_FLAG_PUB_READ_ACCESS_TO_ORDERS="pub-read-orders"
+# _CFG_FLAG_PUB_READ_ACCESS_TO_HISTORY="pub-read-history"
+# _CFG_FLAG_PVT_READ_ACCESS_TO_ASSETS="pvt-read-assets"
 
 _CFG_PORT="port"
 _CFG_PORT_MIN=1024

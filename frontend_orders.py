@@ -29,6 +29,7 @@ from symbols_orders import (
 
 	_KEY_ORDER,
 	_KEY_ORDER_VALUE,
+	_KEY_ORDER_IS_FLIPPED,
 	_KEY_LOCKED_BY,
 
 	_KEY_ORDER_KEEP,
@@ -51,7 +52,7 @@ from frontend_Any import (
 
 	_CSS_CLASS_NAV,
 	_CSS_CLASS_COMMON,
-	_CSS_CLASS_HORIZONTAL,
+	# _CSS_CLASS_HORIZONTAL,
 	_CSS_CLASS_FOCUSED,
 	_CSS_CLASS_DANGER,
 	_CSS_CLASS_CONTROLS,
@@ -69,6 +70,7 @@ from frontend_Any import (
 )
 
 from internals import (
+	util_valid_bool,
 	util_valid_int,
 	util_valid_str,
 	util_valid_date,
@@ -128,6 +130,17 @@ def write_form_new_order(lang:str,full:bool=True)->str:
 		value=f"ord-{util_rnow()}",
 		maxlen=32,required=True
 	)
+
+	tl={
+		_LANG_EN:"Flipped order",
+		_LANG_ES:"Orden invertida"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		f"{write_html_input_checkbox(_KEY_ORDER_IS_FLIPPED,tl)}\n"
+	)
+
+
 
 	tl={
 		_LANG_EN:"Comment",
@@ -646,6 +659,21 @@ def write_html_order_info(
 				f"<div>{tl} <code>{locked_by}</code></div>"
 			)
 
+	order_is_fliped=util_valid_bool(
+		data.get(_KEY_ORDER_IS_FLIPPED),False
+	)
+	if order_is_fliped:
+		tl={
+			_LANG_EN:"This order is flipped",
+			_LANG_ES:"Esta orden es invertida"
+		}[lang]
+		html_text=(
+			f"{html_text}\n"
+			f"<div>"
+				f"<code>[ {tl} ]</code>"
+			"</div>"
+		)
+
 	order_comment:Optional[str]=util_valid_str(
 		data.get(_KEY_COMMENT)
 	)
@@ -688,14 +716,8 @@ def write_html_order_as_item(
 		f"{write_html_order_info(lang,data,authorized)}\n"
 
 		f"""<div class={_CSS_CLASS_CONTROLS}>""" "\n"
-
-			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-				f"{write_button_order_details(lang,order_id)}\n"
-			"</div>\n"
-			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-				f"{write_button_delete_order(lang,order_id,True)}\n"
-			"</div>\n"
-
+			f"{write_button_order_details(lang,order_id)}\n"
+			f"{write_button_delete_order(lang,order_id,True)}\n"
 		"</div>"
 	)
 

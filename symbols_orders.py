@@ -5,6 +5,7 @@ _ROUTE_PAGE="/page/orders"
 _COL_ORDERS="orders"
 _KEY_ORDER="order_id"
 _KEY_ORDER_VALUE="order_value"
+_KEY_ORDER_IS_FLIPPED="order_is_flipped"
 
 _KEY_LOCKED_BY="locked_by"
 

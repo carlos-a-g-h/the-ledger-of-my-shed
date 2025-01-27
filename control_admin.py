@@ -22,6 +22,8 @@ from symbols_Any import (
 	# _CFG_FLAG_ROOT_LOCAL_AUTOLOGIN
 )
 
+from symbols_admin import _ROUTE_PAGE
+
 from frontend_Any import (
 
 	_ID_NAV_ONE,
@@ -31,11 +33,11 @@ from frontend_Any import (
 
 	_CSS_CLASS_NAV,
 
-	_STYLE_CUSTOM,
+	# _STYLE_CUSTOM,
 	# _STYLE_POPUP,
-	_SCRIPT_HTMX,
+	# _SCRIPT_HTMX,
 
-	write_fullpage,
+	# write_fullpage,
 	write_popupmsg,
 	write_ul,
 	write_html_nav_pages
@@ -58,12 +60,12 @@ from frontend_admin import (
 from control_Any import (
 	_ERR_DETAIL_DBI_FAIL,
 	_ERR_DETAIL_DATA_NOT_VALID,
-)
 
-from control_Any import (
 	assert_referer,
 	get_client_type,
 	get_request_body_dict,
+
+	response_fullpage_ext,
 	response_errormsg,
 )
 
@@ -78,8 +80,6 @@ from internals import (
 	read_yaml_file_async,
 	write_yaml_file_async,
 )
-
-_ROUTE_PAGE="/page/admin"
 
 _ERR_TITLE_CONFIG_CHANGE={
 	_LANG_EN:"Configuration management error",
@@ -340,7 +340,7 @@ async def route_api_update_known_asset_names(
 
 	lang=request[_REQ_LANGUAGE]
 
-	ok=await util_update_known_assets(request.app)
+	ok=await util_update_known_assets(request.app,False)
 
 	if not ok:
 		return response_errormsg(
@@ -424,16 +424,10 @@ async def route_main(
 		"</section>"
 	)
 
-	return Response(
-		body=write_fullpage(
-			lang,
-			tl_title,
-			html_text,
-			html_header_extra=[
-				_SCRIPT_HTMX,
-				# _STYLE_POPUP,
-				_STYLE_CUSTOM
-			]
-		),
-		content_type=_MIMETYPE_HTML
+	return (
+		await response_fullpage_ext(
+			request,
+			f"SHLED / {tl_title}",
+			html_text
+		)
 	)

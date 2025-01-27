@@ -1,10 +1,14 @@
 #!/usr/bin/python3.9
 
-from typing import Any,Optional
-from symbols_Any import _LANG_EN,_LANG_ES
+from asyncio import to_thread as async_run_blk
+from pathlib import Path
+from typing import Any,Optional,Union
+
+from symbols_Any import _LANG_EN,_LANG_ES,_ONE_MB
 
 _ID_NAVIGATION="navigation"
 _ID_MAIN="main"
+_ID_MAIN_MENU="main-menu"
 _ID_MAIN_ONE="main-1"
 _ID_MAIN_TWO="main-2"
 _ID_NAV_ONE="nav-1"
@@ -49,68 +53,121 @@ _CSS_CLASS_FOCUSED="focused"
 _SCRIPT_HTMX="""<script src="/src/local/htmx.min.js"></script>"""
 _SCRIPT_HYPERSCRIPT="""<script src="/src/local/hyperscript.js"></script>"""
 
-_STYLE_CUSTOM="""<link rel="stylesheet" href="/src/baked/custom.css">"""
+_STYLE_CUSTOM="""<link rel="stylesheet" href="/src/special/custom.css">"""
 # _STYLE_CUSTOM="""<link rel="stylesheet" href="/src/local/custom.css">"""
 # _STYLE_POPUP="""<link rel="stylesheet" href="/src/baked/popup.css">"""
 
 _STYLE_TALIGN_R="text-align:right;"
 
-_STYLE_POPUP_CONTENTS="""
-/*
-	PLEASE DON'T TOUCH ANY OF THIS
-	UNLESS YOU KNOW WHAT YOU'RE DOING
-*/
-
-div.popup-background {
-
-	background-color:rgba(0, 0, 0, 0.5);
-
-	z-index:999;
-	position:fixed;
-	top:0;
-	left:0;
-	width:100vw;
-	height:100vh;
-
-}
-
-@media screen and (orientation: landscape) {
-	div.popup-background {
-		display:grid;
-		grid-template-columns:1fr 0.75fr 1fr;
-		grid-template-rows:1fr 1fr 1fr;
-	}
-}
-
-@media screen and (orientation: portrait) {
-	div.popup-background {
-		display:grid;
-		grid-template-columns:0.75fr 1fr 0.75fr;
-		grid-template-rows:1fr 1fr 1fr;
-	}
-}
-
-div.popup-area {
-
-	grid-column:2/3;
-	grid-row:2/3;
-}
-
-/*
-	EVERYTHING BELOW THIS LINE IS SAFE TO OVERRIDE ON THE 'CUSTOM.CSS' FILE
-
-	div.popup-body
-	div.popup-button-area
-	div.popup-button
-	div.popup-centered
-
-*/
-"""
-
 _DETAILS={
 	_LANG_EN:"Details",
 	_LANG_ES:"Detalles"
 }
+
+# CSS functions
+
+def write_link_stylesheet(filename:str)->str:
+	return f"""<link rel="stylesheet" href="/src/styles/{filename}">"""
+
+def util_css_gather(path_base:Path)->list:
+
+	path_sources:Path=path_base.joinpath("sources")
+	if not path_sources.is_dir():
+		return []
+
+	detected=list(path_sources.glob("*.css"))
+	detected.sort()
+
+	styles=[]
+
+	for fse in detected:
+		if not fse.is_file():
+			continue
+		if not fse.stat().st_size<_ONE_MB:
+			continue
+		styles.append(
+			write_link_stylesheet(
+				fse.name
+			)
+		)
+
+	return styles
+
+def util_css_bake(
+		path_base:Path,
+		confirm_only:bool=False
+	)->Union[bool,Optional[Path]]:
+
+	path_sources:Path=path_base.joinpath("sources")
+	if not path_sources.is_dir():
+		if confirm_only:
+			return False
+		return None
+
+	fse_new=path_base.joinpath(
+		"temp"
+	).joinpath(
+		"custom.css"
+	)
+	fse_new.parent.mkdir(exist_ok=True,parents=True)
+
+	print("\nWriting custom.css...")
+
+
+	detected=list(path_sources.glob("*.css"))
+	detected.sort()
+
+	with open(fse_new,"wt") as target:
+
+		for fse in detected:
+			if "*" in fse.name:
+				continue
+
+			if not fse.is_file():
+				continue
+
+			if not fse.stat().st_size<_ONE_MB:
+				continue
+
+			try:
+				target.write(
+					f"/* |{fse.name}| */\n"
+					f"{fse.read_text()}\n"
+				)
+			except Exception as exc:
+				print(
+					f"Baking failed on file:\n\t{fse}\n"
+					f"\tReason: {exc}"
+				)
+				continue
+
+			print("\tAdding to custom.css:",fse.name)
+
+	if confirm_only:
+		return True
+
+	return fse_new
+
+async def util_css_pull(path_base:Path)->Optional[Path]:
+
+	path_file:Optional[Path]=path_base.joinpath(
+		"temp"
+	).joinpath(
+		"custom.css"
+	)
+
+	if not path_file.is_file():
+		path_file=await async_run_blk(
+			util_css_bake,
+			path_base
+		)
+		if not isinstance(path_file,Path):
+			return None
+
+	if not path_file.is_file():
+		return None
+
+	return path_file
 
 # Components... ?
 

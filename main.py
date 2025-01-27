@@ -20,12 +20,10 @@ from control_Any import (
 	route_src,
 	route_main as route_Home,
 
-	create_custom_css,
-
 )
 
+
 from control_accounts import (
-	_ROUTE_PAGE as _ROUTE_PAGE_ACCOUNTS,
 	route_main as route_Accounts,
 	route_fgmt_login as route_Accounts_fgmt_Login,
 	route_api_login as route_Accounts_api_Login,
@@ -35,7 +33,7 @@ from control_accounts import (
 )
 
 from control_admin import (
-	_ROUTE_PAGE as _ROUTE_PAGE_ADMIN,
+	# _ROUTE_PAGE as _ROUTE_PAGE_ADMIN,
 	route_main as route_Admin,
 	route_api_change_config as route_Admin_api_ChangeConfig,
 	route_api_update_known_asset_names as route_Admin_api_UpdateKnownAssetNames,
@@ -79,6 +77,8 @@ from dbi_accounts import (
 	# ldbi_save_user,
 )
 
+from frontend_Any import util_css_bake
+
 from internals import (
 	read_yaml_file,
 	util_valid_int,
@@ -86,10 +86,6 @@ from internals import (
 	util_valid_str,
 	util_valid_list,
 )
-
-from symbols_assets import _ROUTE_PAGE as _ROUTE_PAGE_ASSETS
-
-from symbols_orders import _ROUTE_PAGE as _ROUTE_PAGE_ORDERS
 
 from symbols_Any import (
 
@@ -106,6 +102,7 @@ from symbols_Any import (
 
 	_CFG_PORT,_CFG_LANG,_CFG_DB_NAME,_CFG_DB_URL,_CFG_FLAGS,
 
+	_CFG_FLAG_DEVMODE_CSS,
 	# _CFG_FLAG_ROOT_LOCAL_AUTOLOGIN,
 	# _CFG_FLAG_PUB_READ_ACCESS_TO_HISTORY,
 	# _CFG_FLAG_PUB_READ_ACCESS_TO_ORDERS,
@@ -115,10 +112,15 @@ from symbols_Any import (
 	_CFG_PORT_MAX
 )
 
+from symbols_assets import _ROUTE_PAGE as _ROUTE_PAGE_ASSETS
+from symbols_orders import _ROUTE_PAGE as _ROUTE_PAGE_ORDERS
+from symbols_accounts import _ROUTE_PAGE as _ROUTE_PAGE_ACCOUNTS
+from symbols_admin import _ROUTE_PAGE as _ROUTE_PAGE_ADMIN
+
 def read_config(path_config:Path)->dict:
 
 	print(
-		"Config File:\n"
+		"Reading Config File:\n"
 		f"\t{path_config.absolute()}"
 	)
 
@@ -220,8 +222,10 @@ def build_app(
 	if msg_err is not None:
 		raise Exception(f"LDBI err.2: {msg_err}")
 
-	if not create_custom_css(path_programdir,True):
-		print("WARNING: Unable to create the custom.css file")
+	devmode_css=(_CFG_FLAG_DEVMODE_CSS in flags)
+	if not devmode_css:
+		if not util_css_bake(path_programdir,True):
+			print("WARNING: Unable to create the custom.css file")
 
 	app=Application(
 		middlewares=[the_middleware_factory]
@@ -454,6 +458,13 @@ def build_app(
 	app.on_startup.append(init_assets_cache)
 	return app
 
+def path_resolv(path_base:Path,path_given:Path)->Path:
+
+	if path_given.is_absolute():
+		return path_given
+
+	return path_base.joinpath(path_given)
+
 if __name__=="__main__":
 
 	from sys import argv as sys_argv
@@ -461,11 +472,19 @@ if __name__=="__main__":
 
 	path_appdir=Path(sys_argv[0]).parent
 
-	the_config=read_config(
-		path_appdir.joinpath(
-				"config.yaml"
-			)
+	path_cfg:Optional[Path]=None
+	if len(sys_argv)==2:
+		path_cfg=path_resolv(
+			path_appdir,
+			Path(sys_argv[1].strip())
 		)
+
+	if not isinstance(path_cfg,Path):
+		path_cfg=path_appdir.joinpath(
+			"config.yaml"
+		)
+
+	the_config=read_config(path_cfg)
 
 	cfg_port=the_config.get(_CFG_PORT)
 	if not isinstance(cfg_port,int):

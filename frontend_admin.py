@@ -6,6 +6,13 @@ from symbols_Any import (
 	_CFG_LANG,_CFG_PORT
 )
 
+from symbols_admin import (
+	_ID_MISC_SETTINGS,
+	_ID_UPDATE_ASSET_NAMES,
+	_ID_CREATE_USER,
+	_ID_SEARCH_USER,
+)
+
 from symbols_accounts import (
 	# _KEY_USERID,
 	_KEY_USERNAME,
@@ -28,12 +35,6 @@ from frontend_Any import (
 	write_html_input_checkbox,
 	write_html_input_number
 )
-
-_ID_CREATE_USER="admin-create-user"
-_ID_SEARCH_USER="admin-search-users"
-
-_ID_MISC_SETTINGS="admin-misc-settings"
-_ID_UPDATE_ASSET_NAMES="admin-update-asset-names"
 
 def write_button_nav_users(lang:str)->str:
 	tl={
@@ -308,7 +309,7 @@ def write_form_update_config(
 			_LANG_ES:"Configuración del servidor"
 		}[lang]
 		html_text=(
-			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
+			f"""<div id="{_ID_MISC_SETTINGS}" class="{_CSS_CLASS_COMMON}">""" "\n"
 				f"<h3>{tl}</h3>\n"
 				f"""<div id="admin-config">""" "\n"
 					f"{html_text}\n"
@@ -325,7 +326,7 @@ def write_button_update_known_asset_names(lang:str)->str:
 		_LANG_ES:"Actualizar nombres de activos conocidos"
 	}[lang]
 	html_text=(
-		f"""<div id="admin-asset-names" """
+		f"""<div id="{_ID_UPDATE_ASSET_NAMES}" """
 			f"""class="{_CSS_CLASS_COMMON}" """
 			">\n"
 			f"<h3>{tl}</h3>"

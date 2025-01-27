@@ -1,5 +1,23 @@
+# Database name
+
 db-name: my-inventory
+
+# Language
+
 lang: en
+
+# Server port
+
 port: 6969
-#flags:
-#  - "root-local-autologin"
+
+# Special flags
+
+flags:
+  # (Debug) Prints all assets at startup
+  - startup-print-assets
+
+  # (Dangerous) Access directly as root in the same machine the server is running. This is useful if you want to run SHLED only as a desktop application completely offline or in a small local network that you trust
+  #- root-local-autologin
+
+  # (Debug) Allows all the the CSS files to be reloaded in every /page/ route instead of baking them together at startup
+  #- devmode-css

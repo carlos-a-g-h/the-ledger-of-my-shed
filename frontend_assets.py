@@ -13,7 +13,7 @@ from frontend_Any import (
 	_CSS_CLASS_COMMON,
 	_CSS_CLASS_NAV,
 	_CSS_CLASS_CONTROLS,
-	_CSS_CLASS_HORIZONTAL,
+	# _CSS_CLASS_HORIZONTAL,
 
 	# _CSS_CLASS_ANCHOR_AS_BUTTON,
 
@@ -200,8 +200,6 @@ def write_form_edit_asset_metadata(
 			"""hx-swap="innerHTML" """ "\n"
 			f"""hx-target="#{_ID_MESSAGES}" """ "\n"
 			">\n"
-
-			# f"""<input name="{_KEY_ASSET}" type=hidden value="{asset_id}" required>""" "\n"
 
 			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
 
@@ -793,17 +791,13 @@ def write_html_asset_as_item(
 
 	html_text=(
 		f"{write_html_asset_info(lang,the_asset,False)}\n"
-		f"""<div id="{html_id_asset(asset_id,controls=True)}">""" "\n"
-			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-				f"{write_button_asset_fullview_or_update(lang,asset_id,False)}\n"
-			"</div>"
+		f"""<div id="{html_id_asset(asset_id,controls=True)}" "class={_CSS_CLASS_CONTROLS}">""" "\n"
+			f"{write_button_asset_fullview_or_update(lang,asset_id,False)}\n"
 	)
 	if authorized:
 		html_text=(
 			f"{html_text}\n"
-			f"""<div class="{_CSS_CLASS_HORIZONTAL}">""" "\n"
-				f"{write_form_drop_asset(lang,asset_id)}\n"
-			"</div>"
+			f"{write_form_drop_asset(lang,asset_id)}\n"
 		)
 
 	html_text=(

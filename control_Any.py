@@ -24,11 +24,19 @@ from yarl import URL as yarl_URL
 
 from frontend_Any import (
 
+	_SCRIPT_HTMX,
 	_STYLE_CUSTOM,
 	# _STYLE_POPUP_CONTENTS,
 	# _CSS_CLASS_TITLE_UNIQUE,
 
+	_ID_MAIN_MENU,
+
 	_CSS_CLASS_COMMON,
+
+	util_css_pull,
+	util_css_gather,
+
+	# write_link_stylesheet,
 
 	write_popupmsg,
 	write_fullpage,
@@ -73,9 +81,14 @@ from symbols_Any import (
 
 	_CFG_FLAGS,
 	_CFG_FLAG_ROOT_LOCAL_AUTOLOGIN,
+	_CFG_FLAG_DEVMODE_CSS,
 
 	_KEY_SIGN,_KEY_SIGN_UNAME
 )
+from symbols_assets import _ROUTE_PAGE as _ROUTE_PAGE_ASSETS
+from symbols_orders import _ROUTE_PAGE as _ROUTE_PAGE_ORDERS
+from symbols_accounts import _ROUTE_PAGE as _ROUTE_PAGE_ACCOUNTS
+from symbols_admin import _ROUTE_PAGE as _ROUTE_PAGE_ADMIN
 
 from dbi_accounts import (
 
@@ -88,13 +101,14 @@ from dbi_accounts import (
 )
 
 _src_files={
-	"baked":{
+	"special":{
 		"custom.css":{"mimetype":_MIMETYPE_CSS}
 	},
 	"local":{
 		"hyperscript.js":{"mimetype":_MIMETYPE_JS},
 		"htmx.min.js":{"mimetype":_MIMETYPE_JS},
-	}
+	},
+	"styles":{}
 }
 
 _ERR_DETAIL_DATA_NOT_VALID={
@@ -364,6 +378,8 @@ def response_fullpage(
 		status_code:int=200,
 	)->Response:
 
+	# NOTE: This variant is for simple responses
+
 	return Response(
 		body=write_fullpage(
 			lang,html_title,
@@ -372,6 +388,46 @@ def response_fullpage(
 		),
 		content_type=_MIMETYPE_HTML,
 		status=status_code
+	)
+
+async def response_fullpage_ext(
+		request:Request,
+		html_title:str,
+		html_inner:str,
+		status_code:int=200,
+	)->Response:
+
+	# NOTE: THIS IS HOW FULL PAGES MUST BE DONE
+
+	lang=request[_REQ_LANGUAGE]
+	path_programdir=request.app[_APP_PROGRAMDIR]
+
+	styles=[_SCRIPT_HTMX]
+	devmode_css=(
+		_CFG_FLAG_DEVMODE_CSS in request.app[_CFG_FLAGS]
+	)
+	if devmode_css:
+		styles.extend(
+			util_css_gather(
+				path_programdir
+			)
+		)
+
+	if not devmode_css:
+		path_css=util_css_pull(
+			path_programdir
+		)
+		if path_css is not None:
+			styles.append(
+				_STYLE_CUSTOM
+			)
+
+	return Response(
+		body=write_fullpage(
+			lang,html_title,
+			html_inner,
+			styles
+		),content_type=_MIMETYPE_HTML
 	)
 
 def response_unauthorized(
@@ -501,32 +557,53 @@ async def the_middleware_factory(app,handler):
 
 	async def the_middleware(request:Request):
 
-		# Local source files
-
-		if request.path.startswith("/src/"):
-			return (
-				await handler(request)
-			)
-
 		# Gather client type and language
-
 		client_type=get_client_type(request)
 		if client_type is None:
-			return Response(status=406)
+			return Response(
+				body="Can't tell if you're a browser or a custom client, play by the rules, kid",
+				status=406,
+			)
+		client_is_browser=(not client_type==_TYPE_CUSTOM)
 
+		# Custom client route restrictions
+		if not client_is_browser:
+
+			# All clients must use the /api/ routes
+			if not request.path.startswith("/api/"):
+				return json_response(data={})
+
+			# The /pool/ variants are for browsers only
+			if (
+				request.path.startswith("/api/assets/pool/") or
+				request.path.startswith("/api/orders/pool/")
+			):
+				return json_response(data={})
+
+		# Local source files
+		if client_is_browser:
+			if request.path.startswith("/src/"):
+				return (
+					await handler(request)
+				)
+
+		# Get the language
 		lang=get_lang(client_type,request)
 
 		request[_REQ_CLIENT_TYPE]=client_type
 		request[_REQ_LANGUAGE]=lang
 
-		by_htmx=(
-			util_valid_bool(
-				request.headers.get("HX-Request"),False
+		# Check wether the request was performed by HTMX
+		by_htmx=False
+		if client_is_browser:
+			by_htmx=(
+				util_valid_bool(
+					request.headers.get("HX-Request"),False
+				)
 			)
-		)
 		request[_REQ_IS_HTMX]=by_htmx
 
-		# Print request information
+		# Print (some) request information
 
 		print(
 			"\n" f"- Req.: {request.method}:{request.path}" " {" "\n"
@@ -538,13 +615,17 @@ async def the_middleware_factory(app,handler):
 		)
 
 		userid:Optional[str]=None
-		# username:Optional[str]=None
 		access_key:Optional[str]=None
 		has_session=False
 
-		client_is_browser=(not client_type==_TYPE_CUSTOM)
+		api_local_access=has_local_access(request)
+
 		url_is_page=request.path.startswith("/page/")
-		url_is_admin=request.path.startswith("/api/admin/")
+
+		url_is_admin=(
+			request.path.startswith("/api/admin/") or
+			request.path.startswith("/fgmt/admin/")
+		)
 		url_is_account=(
 			request.path.startswith("/api/accounts/") or
 			request.path.startswith("/fgmt/accounts/")
@@ -558,105 +639,53 @@ async def the_middleware_factory(app,handler):
 			request.path.startswith("/fgmt/orders/")
 		)
 
-		api_local_access=has_local_access(request)
-
-		# The following routes will require user authentication
-		needs_session_checkin=(
-			url_is_page or
-			url_is_admin or
-			url_is_account or
-			url_is_assets or
-			url_is_orders or
-
-			request.path=="/api/assets/change-metadata" or
-			request.path=="/api/assets/drop" or
-			request.path.startswith("/fgmt/assets/pool/") or
-			request.path.startswith("/fgmt/assets/history/") or
-			request.path.startswith("/api/assets/history/") or
-			request.path.startswith("/fgmt/orders/") or
-			request.path.startswith("/api/orders/")
-		)
-
-		# Custom client
-
-		if (not client_is_browser):
-
-			if url_is_admin or url_is_account or url_is_page:
-
-				# NOTE: The following if block is temporary
-
-				if not has_local_access(request):
-					return json_response(
-						data={
-							"error":(
-								"Custom clients can only access "
-								"from localhost at the moment"
-							)
-						},
-						status=501
-					)
-					# NOTE: 501 == Not implemented
-
-				if (
-					request.path=="/" or
-					url_is_page or
-					request.path.startswith("/fgmt/") or
-					request.path.startswith("/api/assets/pool/") or
-					request.path.startswith("/api/orders/pool/")
-				):
-					return json_response(data={})
-
-		# Get userid and access_key
-
-		if needs_session_checkin:
-
-			test_session=(
-				request.path=="/api/accounts/debug"
+		# Session and credentials will be verified. The process may change or destroy the credentials
+		requires_session_checkin=True
+		if client_is_browser:
+			requires_session_checkin=(
+				url_is_page or
+				url_is_assets or url_is_orders or
+				url_is_account or url_is_admin
 			)
-			if (not client_is_browser):
-				if api_local_access:
-					has_session=True
 
-			if client_is_browser:
-				msg_error=(
-					await process_session_checkin(
-						request,test_session
-					)
+		if not client_is_browser:
+			requires_session_checkin=(
+				not api_local_access
+			)
+			if api_local_access:
+				has_session=True
+				userid=_ROOT_USER_ID
+
+		# Session and credentials check-in
+
+		if requires_session_checkin:
+
+			msg_error=(
+				await process_session_checkin(
+					request,
 				)
-				has_session=(msg_error is None)
-				if not has_session:
-					print("SESSION CHECK-IN FAILED:",msg_error)
+			)
+			has_session=(msg_error is None)
+			if not has_session:
+				print(
+					"SESSION CHECK-IN FAILED:",
+					msg_error
+				)
 
-				if has_session:
-					userid,access_key=util_extract_from_cookies(request)
+			if has_session:
+				userid,access_key=util_extract_from_cookies(request)
 
-			# The following routes despite asking for a session will return a
-			# "different" content to unauthenticated users instead of denying it
-
+			# Allowed means that there will be partial or different content if the session is not valid
 			allowed=(
-				request.path.startswith("/fgmt/assets/search-assets") or
-				request.path.startswith("/api/assets/search-assets") or
-				request.path.startswith("/fgmt/assets/panel/") or
-				request.path.startswith("/fgmt/assets/history/") or 
-				url_is_account
+				request.path.startswith("/page/assets") or
+				request.path.startswith("/page/orders") or
+				request.path.startswith("/page/accounts")
+				# NOTE: The admin page has zero public access
 			)
 
-			if (not client_is_browser):
-				if api_local_access:
-					allowed=True
-					userid=_ROOT_USER_ID
-
-			print("\tis account?",url_is_account)
-			print("\tis admin?",url_is_admin)
-			print("\tis page?",url_is_page)
-
-			# if is_local_access(request) and (not client_is_browser):
-			# 	allowed=True
+			# TODO: Custom flags that can dumb down the public access to read only stuff would go here
 
 			if not allowed:
-
-				print("\nNOT ALLOWED")
-
 				the_referer:Optional[str]=None
 				if not by_htmx:
 					the_referer=util_get_correct_referer(request)
@@ -676,6 +705,98 @@ async def the_middleware_factory(app,handler):
 							fallback=the_referer
 						)
 
+		#########################################################
+
+		# Custom client
+
+		# if (not client_is_browser):
+
+		# 	if url_is_admin or url_is_account or url_is_page:
+
+		# 		# NOTE: The following if block is temporary
+
+		# 		if not has_local_access(request):
+		# 			return json_response(
+		# 				data={
+		# 					"error":(
+		# 						"Custom clients can only access "
+		# 						"from localhost at the moment"
+		# 					)
+		# 				},
+		# 				status=501
+		# 			)
+		# 			# NOTE: 501 == Not implemented
+
+		# Get userid and access_key
+
+		# if requires_session_checkin:
+
+		# 	test_session=(
+		# 		request.path=="/api/accounts/debug"
+		# 	)
+		# 	if (not client_is_browser):
+		# 		if api_local_access:
+		# 			has_session=True
+
+		# 	if client_is_browser:
+		# 		msg_error=(
+		# 			await process_session_checkin(
+		# 				request,test_session
+		# 			)
+		# 		)
+		# 		has_session=(msg_error is None)
+		# 		if not has_session:
+		# 			print("SESSION CHECK-IN FAILED:",msg_error)
+
+		# 		if has_session:
+		# 			userid,access_key=util_extract_from_cookies(request)
+
+		# 	# The following routes despite asking for a session will return a
+		# 	# "different" content to unauthenticated users instead of denying it
+
+		# 	allowed=(
+		# 		request.path.startswith("/fgmt/assets/search-assets") or
+		# 		request.path.startswith("/api/assets/search-assets") or
+		# 		request.path.startswith("/fgmt/assets/panel/") or
+		# 		request.path.startswith("/fgmt/assets/history/") or 
+		# 		url_is_account
+		# 	)
+
+		# 	if (not client_is_browser):
+		# 		if api_local_access:
+		# 			allowed=True
+		# 			userid=_ROOT_USER_ID
+
+		# 	print("\tis account?",url_is_account)
+		# 	print("\tis admin?",url_is_admin)
+		# 	print("\tis page?",url_is_page)
+
+		# 	# if is_local_access(request) and (not client_is_browser):
+		# 	# 	allowed=True
+
+		# 	if not allowed:
+
+		# 		print("\nNOT ALLOWED")
+
+		# 		the_referer:Optional[str]=None
+		# 		if not by_htmx:
+		# 			the_referer=util_get_correct_referer(request)
+
+		# 		if not url_is_account:
+		# 			if (not url_is_page) and (not has_session):
+		# 				return response_unauthorized(
+		# 					lang,client_type,
+		# 					fallback=the_referer
+		# 				)
+
+		# 		if (not url_is_page) and url_is_admin:
+		# 			if not userid==_ROOT_USER_ID:
+		# 				return response_unauthorized(
+		# 					lang,client_type,
+		# 					root_access=True,
+		# 					fallback=the_referer
+		# 				)
+
 		request[_REQ_USERID]=userid
 		request[_REQ_ACCESS_KEY]=access_key
 		request[_REQ_HAS_SESSION]=has_session
@@ -684,7 +805,7 @@ async def the_middleware_factory(app,handler):
 
 		the_response:Union[Response,json_response]=await handler(request)
 
-		if needs_session_checkin and client_is_browser and url_is_page:
+		if requires_session_checkin and client_is_browser and url_is_page:
 
 			if (
 				(not has_session) and
@@ -701,91 +822,6 @@ async def the_middleware_factory(app,handler):
 
 # Static content (regulated, baked and local)
 
-# CSS baking
-
-def create_custom_css(
-		path_base:Path,
-		confirm_only:bool=False
-	)->Union[bool,Optional[Path]]:
-
-	path_sources:Path=path_base.joinpath("sources")
-
-	if not path_sources.exists():
-		if confirm_only:
-			return False
-		return None
-
-	if not path_sources.is_dir():
-		if confirm_only:
-			return False
-		return None
-
-	fse_new=path_base.joinpath(
-		"temp"
-	).joinpath(
-		"custom.css"
-	)
-	fse_new.parent.mkdir(exist_ok=True,parents=True)
-
-	print("\nWriting custom.css...")
-
-
-	detected=list(path_sources.glob("*.css"))
-	detected.sort()
-
-	with open(fse_new,"wt") as target:
-
-		for fse in detected:
-			if "*" in fse.name:
-				continue
-
-			if not fse.is_file():
-				continue
-
-			if not fse.stat().st_size<_ONE_MB:
-				continue
-
-			try:
-				target.write(
-					f"/* |{fse.name}| */\n"
-					f"{fse.read_text()}\n"
-				)
-			except Exception as exc:
-				print(
-					f"Baking failed on file:\n\t{fse}\n"
-					f"\tReason: {exc}"
-				)
-				continue
-
-			print("\tAdding to custom.css:",fse.name)
-
-	if confirm_only:
-		return True
-
-	return fse_new
-
-async def pull_custom_css(path_base:Path)->Optional[Path]:
-
-	path_file:Optional[Path]=path_base.joinpath(
-		"temp"
-	).joinpath(
-		"custom.css"
-	)
-
-
-	if not path_file.is_file():
-		path_file=await async_run(
-			create_custom_css,
-			path_base
-		)
-		if not isinstance(path_file,Path):
-			return None
-
-	if not path_file.is_file():
-		return None
-
-	return path_file
-
 async def route_src(request:Request)->Response:
 
 	# /src/{srctype}/{filename}
@@ -793,45 +829,71 @@ async def route_src(request:Request)->Response:
 	srctype=request.match_info["srctype"]
 	if srctype not in _src_files.keys():
 		return Response(
-			body="Unknown source type",
+			body=f"Unknown source type: {srctype}",
 			status=404,
 		)
 
 	filename=request.match_info["filename"]
-	if filename not in _src_files[srctype].keys():
-		return Response(
-			body="Unknown file",
-			status=404,
-		)
-
-	mimetype=_src_files[srctype][filename].get("mimetype")
 
 	path_base=request.app[_APP_PROGRAMDIR]
+	path_file:Optional[Path]=None
+	mimetype:Optional[str]=None
 
-	# Local files
+	if srctype=="local" or srctype=="special":
 
-	if srctype=="local":
-		return FileResponse(
-			path=path_base.joinpath(
+		if filename not in _src_files[srctype].keys():
+			return Response(
+				body=f"Unknown local file: {filename}",
+				status=403,
+			)
+
+		mimetype=_src_files[srctype][filename].get("mimetype")
+
+		fse:Optional[Path]=None
+		if srctype=="local":
+			fse=path_base.joinpath(
 				"sources"
 			).joinpath(
 				filename
-			),headers={
+			)
+
+		if srctype=="special":
+			if filename=="custom.css":
+				fse=path_base.joinpath(
+					"temp"
+				).joinpath(filename)
+
+		if fse is None:
+			return Response(
+				body="Nothing to pull",
+				status=400,
+			)
+		if not fse.is_file():
+			return Response(
+				body=f"File not found: {fse.name}",
+				status=404,
+			)
+
+		return FileResponse(
+			path=fse,
+			headers={
 				_HEADER_CONTENT_TYPE:mimetype
 			}
 		)
 
-	# Baked files
-
-	path_file:Optional[Path]=None
-
-	if filename=="custom.css":
-		path_file=await pull_custom_css(path_base)
+	if srctype=="styles":
+		path_style:Path=path_base.joinpath("sources").joinpath(filename)
+		if path_style.exists():
+			if path_style.is_file():
+				if path_style.suffix.lower()==".css":
+					if path_style.stat().st_size<_ONE_MB:
+						path_file=path_style
+						mimetype=_MIMETYPE_CSS
 
 	if not isinstance(path_file,Path):
 		return Response(
-			body="Failed to get the baked file",
-			status=400
+			body="File not found/not available",
+			status=404
 		)
 
 	return FileResponse(
@@ -839,68 +901,9 @@ async def route_src(request:Request)->Response:
 		headers={_HEADER_CONTENT_TYPE:mimetype}
 	)
 
-# async def route_src(request:Request)->Response:
-
-# 	srctype=request.match_info["srctype"]
-# 	if srctype not in ("local","baked"):
-# 		return Response(status=406)
-
-# 	filename=request.match_info["filename"]
-# 	if filename not in _src_files.keys():
-# 		return Response(status=406)
-
-# 	type_baked=(
-# 		srctype=="baked" and
-# 		(_src_files[filename].get("content") is not None)
-# 	)
-# 	type_local=(
-# 		srctype=="local" and
-# 		(_src_files[filename].get("content") is None)
-# 	)
-
-# 	if not (type_baked or type_local):
-# 		return Response(status=406)
-
-# 	mimetype=_src_files[filename]["mimetype"]
-
-# 	# Baked type
-
-# 	if type_baked:
-
-# 		return Response(
-# 			body=_src_files[filename]["content"].strip(),
-# 			content_type=mimetype,
-# 			status=200
-# 		)
-
-# 	# Local type
-
-# 	filepath=Path(
-# 		request.app[_APP_PROGRAMDIR].joinpath(
-# 			f"sources/{filename}"
-# 		)
-# 	)
-
-# 	if not filepath.is_file():
-# 		return Response(status=403)
-
-# 	if not filepath.stat().st_size<_ONE_MB:
-# 		return Response(status=403)
-
-# 	return Response(
-# 		body=filepath.read_text(),
-# 		content_type=mimetype,
-# 	)
-
-# Main page
-
 async def route_main(
 		request:Request
 	)->Union[json_response,Response]:
-
-	# ct=get_client_type(request)
-	# if ct==_TYPE_CUSTOM:
-	# 	return json_response(data={})
 
 	lang=request[_REQ_LANGUAGE]
 
@@ -908,34 +911,38 @@ async def route_main(
 		_LANG_EN:"Welcome",
 		_LANG_ES:"Bienvenid@"
 	}[lang]
-	# html_text=f"""<h1 class="{_CSS_CLASS_TITLE_UNIQUE}">{tl}</h1>"""
-	html_text=f"""<h1>{tl}</h1>"""
+	html_text=(
+		f"""<section id="{_ID_MAIN_MENU}">""" "\n"
+			f"""<h1>{tl}</h1>""" "\n"
+			"<div>\n"
+			"<!-- ANCHORS START -->"
+	)
 
 	tl={
 		_LANG_EN:"Assets",
 		_LANG_ES:"Activos"
 	}[lang]
-	html_text=f"{html_text}\n"+write_button_anchor(
-		tl,"/page/assets",
-		classes=[_CSS_CLASS_COMMON]
+	html_text=(
+		f"{html_text}\n"
+		f"{write_button_anchor(tl,_ROUTE_PAGE_ASSETS,classes=[_CSS_CLASS_COMMON])}"
 	)
 
 	tl={
 		_LANG_EN:"Orders",
 		_LANG_ES:"Órdenes"
 	}[lang]
-	html_text=f"{html_text}\n"+write_button_anchor(
-		tl,"/page/orders",
-		classes=[_CSS_CLASS_COMMON]
+	html_text=(
+		f"{html_text}\n"
+		f"{write_button_anchor(tl,_ROUTE_PAGE_ORDERS,classes=[_CSS_CLASS_COMMON])}"
 	)
 
 	tl={
 		_LANG_EN:"Account",
 		_LANG_ES:"Cuenta"
 	}[lang]
-	html_text=f"{html_text}\n"+write_button_anchor(
-		tl,"/page/accounts",
-		classes=[_CSS_CLASS_COMMON]
+	html_text=(
+		f"{html_text}\n"
+		f"{write_button_anchor(tl,_ROUTE_PAGE_ACCOUNTS,classes=[_CSS_CLASS_COMMON])}"
 	)
 
 	# html_text=f"{html_text}{write_link_account(lang)}"
@@ -944,20 +951,27 @@ async def route_main(
 		_LANG_EN:"System config",
 		_LANG_ES:"Conf. del sistema"
 	}[lang]
-	html_text=f"{html_text}\n"+write_button_anchor(
-		tl,"/page/admin",
-		classes=[_CSS_CLASS_COMMON]
+	html_text=(
+		f"{html_text}\n"
+		f"{write_button_anchor(tl,_ROUTE_PAGE_ADMIN,classes=[_CSS_CLASS_COMMON])}"
 	)
 
-	return Response(
-		body=write_fullpage(
-			lang,
-			{
-				_LANG_EN:"Main page",
-				_LANG_ES:"Página principal"
-			}[lang],
-			html_text,
-			html_header_extra=[_STYLE_CUSTOM]
-		),
-		content_type=_MIMETYPE_HTML
+	html_text=(
+				f"{html_text}\n"
+				"<!-- ANCHORS END -->\n"
+			"</div>\n"
+		"</section>"
+	)
+
+	tl={
+		_LANG_EN:"Main page",
+		_LANG_ES:"Página principal"
+	}[lang]
+
+	return (
+		await response_fullpage_ext(
+			request,
+			f"SHLED / {tl}",
+			html_text
+		)
 	)

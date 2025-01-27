@@ -35,7 +35,7 @@ from control_Any import (
 	get_request_body_dict,
 	response_errormsg,
 	# response_popupmsg,
-	response_fullpage,
+	response_fullpage,response_fullpage_ext,
 	is_root_local_autologin_allowed,
 )
 
@@ -49,13 +49,13 @@ from frontend_Any import (
 	# _ID_NAVIGATION,
 
 	# _CSS_CLASS_COMMON,
-	_SCRIPT_HTMX,_STYLE_CUSTOM,
+	# _SCRIPT_HTMX,_STYLE_CUSTOM,
 	# _STYLE_POPUP,
 
 	# write_ul,
 	write_button_anchor,
 	write_html_nav_pages,
-	write_fullpage,
+	# write_fullpage,
 	write_popupmsg,
 )
 
@@ -100,13 +100,13 @@ from symbols_Any import (
 
 from symbols_accounts import (
 
+	_ROUTE_PAGE,
+
 	_KEY_USERNAME,
 	_KEY_EMAIL,_KEY_TELEGRAM,
 	_KEY_OTP,_KEY_VM,
 
 )
-
-_ROUTE_PAGE="/page/accounts"
 
 _ERR_TITLE_LOGIN={
 	_LANG_EN:"Login error",
@@ -736,17 +736,10 @@ async def route_main(request:Request)->Union[json_response,Response]:
 
 	)
 
-	return Response(
-		body=write_fullpage(
-			lang,
-			tl_title,
-			html_text,
-			html_header_extra=[
-				_SCRIPT_HTMX,
-				# _STYLE_POPUP,
-				_STYLE_CUSTOM
-			]
-		),
-		content_type=_MIMETYPE_HTML
+	return (
+		await response_fullpage_ext(
+			request,
+			f"SHLED / {tl_title}",
+			html_text
+		)
 	)
-

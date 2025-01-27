@@ -24,7 +24,8 @@ from control_Any import (
 	assert_referer,
 	get_username,util_patch_doc_with_username,
 	get_request_body_dict,
-	response_errormsg
+	response_errormsg,
+	response_fullpage_ext,
 )
 
 from dbi_assets import dbi_assets_AssetQuery
@@ -48,7 +49,8 @@ from frontend_Any import (
 	_ID_NAV_ONE,_ID_NAV_TWO,_ID_NAV_TWO_OPTS,
 	_ID_MESSAGES,
 
-	_SCRIPT_HTMX,_STYLE_CUSTOM,
+	# _SCRIPT_HTMX,
+	# _STYLE_CUSTOM,
 	# _STYLE_POPUP,
 
 	# _CSS_CLASS_CONTAINER,
@@ -61,7 +63,7 @@ from frontend_Any import (
 
 	_DETAILS,
 
-	write_fullpage,write_popupmsg,
+	write_popupmsg,
 	write_ul,
 	write_html_nav_pages,
 )
@@ -136,6 +138,7 @@ from symbols_orders import (
 
 	_KEY_ALGSUM,
 	_KEY_ORDER_KEEP,
+	_KEY_ORDER_IS_FLIPPED,
 	_KEY_COPY_VALUE,
 	_KEY_LOCKED_BY,
 
@@ -322,6 +325,9 @@ async def route_api_new_order(
 	order_comment=util_valid_str(
 		req_data.get(_KEY_COMMENT)
 	)
+	order_is_flipped=util_valid_bool(
+		req_data.get(_KEY_ORDER_IS_FLIPPED),False
+	)
 	order_id=token_hex(16)
 
 	vlevel=2
@@ -335,6 +341,7 @@ async def route_api_new_order(
 		request.app[_APP_RDBN],
 		order_id,userid,order_tag,
 		order_comment=order_comment,
+		order_is_flipped=order_is_flipped,
 		vlevel=vlevel
 	)
 	error_msg=dbi_result.get(_ERR)
@@ -1221,16 +1228,10 @@ async def route_main(
 		"</section>"
 	)
 
-	return Response(
-		body=write_fullpage(
-			lang,
-			tl_title,
-			html_text,
-			html_header_extra=[
-				_SCRIPT_HTMX,
-				# _STYLE_POPUP,
-				_STYLE_CUSTOM
-			]
-		),
-		content_type=_MIMETYPE_HTML
+	return (
+		await response_fullpage_ext(
+			request,
+			f"SHLED / {tl_title}",
+			html_text
+		)
 	)
