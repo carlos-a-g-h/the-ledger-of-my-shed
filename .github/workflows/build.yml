@@ -57,9 +57,10 @@ jobs:
     strategy:
       matrix:
         # os: [ ubuntu-20.04 , windows-2019 ]
-        os: [ubuntu-20.04, ubuntu-22.04, ubuntu-24.04, windows-latest]
+        # os: [ubuntu-20.04, ubuntu-22.04, ubuntu-24.04, windows-latest]
         # pyver: ["3.9.6","3.9.20","3.9.20","3.9.13"]
-        pyver: ["3.9.20"]
+        # must read later before going any further
+        # https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/running-variations-of-jobs-in-a-workflow
 
     runs-on: ${{ matrix.os }}
     steps:
