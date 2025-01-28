@@ -52,14 +52,14 @@ jobs:
       matrix:
         # https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/running-variations-of-jobs-in-a-workflow
         include:
-          - os: "ubuntu-20.04"
-            pyver: "3.9.6"
-          - os: "ubuntu-22.04"
-            pyver: "3.9.20"
-          - os: "ubuntu-24.04"
-            pyver: "3.9.20"
           - os: "windows-latest"
             pyver: "3.9.13"
+          - os: "ubuntu-24.04"
+            pyver: "3.9.20"
+          - os: "ubuntu-22.04"
+            pyver: "3.9.20"
+          - os: "ubuntu-20.04"
+            pyver: "3.9.6"
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -190,7 +190,7 @@ jobs:
     strategy:
       max-parallel: 2
       matrix:
-        binary: [ ubuntu-20.04, ubuntu-22.04, ubuntu-24.04, windows-latest ]
+        binary: [ windows-latest, ubuntu-24.04, ubuntu-22.04, ubuntu-20.04 ]
 
     runs-on: ubuntu-latest
     steps:
