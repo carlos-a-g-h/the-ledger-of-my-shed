@@ -190,8 +190,7 @@ jobs:
     strategy:
       max-parallel: 2
       matrix:
-        # binary: [ubuntu-20.04 , windows-2019 ]
-        binary: [ubuntu-20.04,ubuntu-22.04,ubuntu-24.04,windows-latest]
+        binary: [ ubuntu-20.04, ubuntu-22.04, ubuntu-24.04, windows-latest ]
 
     runs-on: ubuntu-latest
     steps:
@@ -228,11 +227,13 @@ jobs:
       - name: Create the package
         if: ${{ inputs.DO_NOT_MOVE_ARTIFACTS == false }}
         run: |
-          cp -va repo/config.yaml "${{ env.THE_NAME }}/"
-          cp -va repo/* "${{ env.THE_NAME }}/"
+          rm -rf repo/.git
 
           echo "${{ steps.step_notes.outputs.THE_DATE }}" > "${{ env.THE_NAME }}/README.md"
           cat repo/README.md >> "${{ env.THE_NAME }}/README.md"
+
+          cp -va repo/sources "${{ env.THE_NAME }}/"
+          cp -va repo/config.yaml "${{ env.THE_NAME }}/"
 
           zip -0 -r "${{ env.THE_NAME }}-${{ matrix.binary }}.zip" "${{ env.THE_NAME }}"
           echo "[ CONTENTS] "
