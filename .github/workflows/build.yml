@@ -228,10 +228,9 @@ jobs:
       - name: Create the package
         if: ${{ inputs.DO_NOT_MOVE_ARTIFACTS == false }}
         run: |
-          cp -v repo/config.yaml "${{ env.THE_NAME }}/config.yaml"
+          cp -va repo/config.yaml "${{ env.THE_NAME }}/config.yaml"
           mkdir -v "${{ env.THE_NAME }}/sources"
-          cp -v repo/htmx.min.js "${{ env.THE_NAME }}/sources/htmx.min.js"
-          cp -v repo/*.css "${{ env.THE_NAME }}/sources/"
+          cp -va repo/* "${{ env.THE_NAME }}/sources/"
 
           echo "${{ steps.step_notes.outputs.THE_DATE }}" > "${{ env.THE_NAME }}/README.md"
           cat repo/README.md >> "${{ env.THE_NAME }}/README.md"
