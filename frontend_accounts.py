@@ -134,9 +134,11 @@ def write_form_login(lang:str,full:bool=True)->str:
 			_LANG_ES:"Inicio de sesión"
 		}[lang]
 		html_text=(
-			f"<h3>{tl}</h3>\n"
-			f"""<div id="{_ID_FORM_LOGIN}">""" "\n"
-				f"{html_text}\n"
+			"<div>\n"
+				f"<h3>{tl}</h3>\n"
+				f"""<div id="{_ID_FORM_LOGIN}">""" "\n"
+					f"{html_text}\n"
+				"</div>\n"
 			"</div>"
 		)
 
@@ -221,9 +223,11 @@ def write_form_otp(
 			_LANG_ES:"Inicio de sesión (OTP)"
 		}[lang]
 		html_text=(
-			f"<h3>{tl}</h3>\n"
-			f"""<div id="session-login">""" "\n"
-				f"{html_text}\n"
+			"<div>\n"
+				f"<h3>{tl}</h3>\n"
+				f"""<div id="{_ID_FORM_LOGIN}">""" "\n"
+					f"{html_text}\n"
+				"</div>\n"
 			"</div>"
 		)
 

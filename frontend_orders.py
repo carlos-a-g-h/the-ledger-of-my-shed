@@ -140,8 +140,6 @@ def write_form_new_order(lang:str,full:bool=True)->str:
 		f"{write_html_input_checkbox(_KEY_ORDER_IS_FLIPPED,tl)}\n"
 	)
 
-
-
 	tl={
 		_LANG_EN:"Comment",
 		_LANG_ES:"Comentario"

@@ -29,7 +29,8 @@ from frontend_Any import (
 	write_html_input_checkbox,
 	write_html_input_number,
 	write_html_input_string,
-	write_html_input_textbox
+	write_html_input_textbox,
+	write_html_input_radio,
 )
 
 from internals import (
@@ -67,6 +68,8 @@ from symbols_Any import (
 	_KEY_DATE,
 )
 
+from exex_assets import _KEY_ATYPE
+
 def write_button_nav_new_asset(lang:str)->str:
 
 	tl={
@@ -92,6 +95,22 @@ def write_button_nav_search_assets(lang:str)->str:
 	return (
 		f"""<button class="{_CSS_CLASS_NAV}" """
 			"""hx-get="/fgmt/assets/search-assets" """
+			"""hx-swap="innerHTML" """
+			f"""hx-target="#{_ID_MESSAGES}" """
+			">"
+			f"{tl}"
+		"</button>"
+	)
+
+def write_button_nav_excel_export(lang:str)->str:
+
+	tl={
+		_LANG_EN:"Export assets",
+		_LANG_ES:"Exportar activos"
+	}[lang]
+	return (
+		f"""<button class="{_CSS_CLASS_NAV}" """
+			"""hx-get="/fgmt/assets/export-as-excel" """
 			"""hx-swap="innerHTML" """
 			f"""hx-target="#{_ID_MESSAGES}" """
 			">"
@@ -180,6 +199,53 @@ def write_form_new_asset(lang:str,full:bool=True)->str:
 				"<!-- NEW ASSET GOES HERE -->\n"
 			"</div>"
 		)
+
+	return html_text
+
+def write_form_export_assets_as_excel(lang:str):
+
+	radio_opts=[
+		(0,{_LANG_EN:"None",_LANG_ES:"Ninguno"}[lang]),
+		(1,{_LANG_EN:"Uphill",_LANG_ES:"Al alza"}[lang]),
+		(-1,{_LANG_EN:"Downhill",_LANG_ES:"A la baja"}[lang]),
+	]
+
+	tl={
+		_LANG_EN:"Analysis",
+		_LANG_ES:"Análisis"
+	}[lang]
+	html_text=(
+		"""<form method="POST" """
+			"""action="/api/assets/export-as-excel" """
+			">\n"
+
+			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
+				f"""<label for="{_KEY_ATYPE}">{tl}</label>""" "\n"
+				f"{write_html_input_radio(_KEY_ATYPE,radio_opts)}\n"
+			"</div>\n"
+	)
+
+	tl={
+		_LANG_EN:"Export",
+		_LANG_ES:"Exportar"
+	}[lang]
+	html_text=(
+				f"{html_text}\n"
+				f"{write_button_submit(tl,classes=[_CSS_CLASS_COMMON])}\n"
+		"</form>"
+	)
+
+	tl={
+		_LANG_EN:"Assets exportation",
+		_LANG_ES:"Exportación de activos"
+	}[lang]
+
+	html_text=(
+		"<div>\n"
+			f"<h3>{tl}</h3>\n"
+			f"{html_text}\n"
+		"</div>"
+	)
 
 	return html_text
 
@@ -331,7 +397,7 @@ def write_form_drop_asset(
 	)->str:
 
 	the_path={
-		True:"/api/assets/drop",
+		True:"/api/assets/drop-asset",
 		False:f"/api/assets/pool/{asset_id}/drop"
 	}[delete_entry]
 
@@ -940,16 +1006,3 @@ def write_html_asset_history(
 
 	return html_text
 
-def write_anchor_export_assets_as_excel(lang:str):
-
-	tl={
-		_LANG_EN:"Export the assets to excel",
-		_LANG_ES:"Exportar los activos a excel"
-	}[lang]
-
-	return (
-
-		f"""<a class="{_CSS_CLASS_COMMON}" href="/api/assets/export-as-excel">""" "\n"
-			f"{tl}\n"
-		"</a>\n"
-	)
