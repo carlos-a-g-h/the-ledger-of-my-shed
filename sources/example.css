@@ -298,6 +298,7 @@ div.assets-in-order > details > form > div.controls {
 		margin-left: 1em;
 		margin-right: 1em;
 		margin-top: 80px;
+		margin-bottom:160px;
 	}
 }
 
@@ -461,9 +462,8 @@ div.popup-area {
 }
 
 /*
-	OTHER
+	UNUSED
 	div.popup-button
 	div.popup-centered
-
 */
 
