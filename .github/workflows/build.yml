@@ -3,6 +3,11 @@ name: Builder
 on:
   workflow_dispatch:
     inputs:
+      BRANCH_NAME:
+        description: "Branch name"
+        type: string
+        required: true
+        default: "main"
 
       TEST_VARIABLES:
         description: "(Debug) Test variables moved accross jobs and steps"

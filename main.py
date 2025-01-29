@@ -43,6 +43,7 @@ from control_admin import (
 
 from control_assets import (
 	route_main as route_Assets,
+	route_fgmt_excel_export as route_Assets_fgmt_ExportAsExcel,
 	route_api_excel_export as route_Assets_api_ExportAsExcel,
 	route_api_select_asset as route_Assets_api_GetAsset,
 	route_fgmt_asset_details as route_Assets_fgmt_AssetDetails,
@@ -328,10 +329,20 @@ def build_app(
 			route_Assets
 		),
 
+
 			web_GET(
-				"/api/assets/export-as-excel",
-				route_Assets_api_ExportAsExcel,
+				"/fgmt/assets/export-as-excel",
+				route_Assets_fgmt_ExportAsExcel
 			),
+
+				web_GET(
+					"/api/assets/export-as-excel",
+					route_Assets_api_ExportAsExcel,
+				),
+				web_POST(
+					"/api/assets/export-as-excel",
+					route_Assets_api_ExportAsExcel,
+				),
 
 
 			web_GET(

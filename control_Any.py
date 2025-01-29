@@ -408,7 +408,7 @@ async def response_fullpage_ext(
 	)
 	if devmode_css:
 		styles.extend(
-			util_css_gather(
+			await util_css_gather(
 				path_programdir
 			)
 		)

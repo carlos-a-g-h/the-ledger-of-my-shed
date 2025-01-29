@@ -1,7 +1,7 @@
 #!/usr/bin/python3.9
 
 from asyncio import to_thread as async_run_block
-from datetime import datetime
+# from datetime import datetime
 from pathlib import Path
 from secrets import token_hex
 from typing import Optional,Mapping
@@ -16,12 +16,13 @@ from symbols_Any import (
 	_LANG_EN,_LANG_ES,
 	_KEY_DATE,_KEY_COMMENT,
 	_KEY_TAG,
-	_KEY_SIGN
+	# _KEY_SIGN
 )
 
 from symbols_assets import (
 	_KEY_ASSET,_KEY_NAME,_KEY_VALUE,_KEY_HISTORY,
-	_KEY_RECORD_UID,_KEY_RECORD_MOD
+	# _KEY_RECORD_UID,
+	_KEY_RECORD_MOD
 )
 
 from dbi_assets import dbi_assets_AssetQuery
@@ -32,6 +33,8 @@ from internals import (
 	util_excel_dectocol
 )
 
+_KEY_ATYPE="atype"
+
 _ExExErr="E.E. Error"
 _ExExWarn="E.E. Warning"
 
@@ -39,6 +42,7 @@ def conversion_process(
 		path_base:Path,
 		list_of_assets:list,
 		lang:str=_LANG_EN,
+		atype:int=0,
 	)->Optional[Path]:
 
 	path_output=path_base.joinpath("temp").joinpath(f"assets_x{token_hex(8)}.xlsx")
@@ -48,7 +52,7 @@ def conversion_process(
 	ws:Worksheet=wb.active
 	ws.title="SHLED_ASSETS"
 
-	# A, B, C, D, E, F
+	# A, B, C, D, E, (F)
 	col_headers=[
 		{
 			_LANG_EN:"Asset ID",
@@ -74,19 +78,31 @@ def conversion_process(
 			_LANG_EN:"Supply",
 			_LANG_ES:"Suministro"
 		}[lang],
+	]
 
-		# Current supply - Initial supply
-		{
+	if not atype==0:
+		tl={
 			_LANG_EN:"Performance",
 			_LANG_ES:"Desempeño"
-		}[lang],
+		}[lang]
 
-		# # Net total of mods
-		# {
-		# 	_LANG_EN:"Volume",
-		# 	_LANG_ES:"Volúmen"
-		# }[lang]
-	]
+		# Positive
+		# CS - IS
+		if atype==1:
+			tl=tl+" ("+{
+				_LANG_EN:"Uphill",
+				_LANG_ES:"Al alza"
+			}[lang]+")"
+
+		# Negative
+		# IS - CS
+		if atype==-1:
+			tl=tl+" ("+{
+				_LANG_EN:"Downhill",
+				_LANG_ES:"A la baja"
+			}[lang]+")"
+
+		col_headers.append(tl)
 
 	# Taking the first row as column headers
 	ws.append(col_headers)
@@ -102,7 +118,7 @@ def conversion_process(
 	for asset in list_of_assets:
 		row=row+1
 
-		print(asset)
+		# print(asset)
 
 		asset_name=asset.get(_KEY_NAME)
 		asset_id=asset.get(_KEY_ASSET)
@@ -126,7 +142,7 @@ def conversion_process(
 		if asset_history_size==0:
 			print(_ExExWarn,f"{asset_id} has history of lengh zero")
 
-		col_h_end=col_h_start+asset_history_size
+		col_h_end=col_h_start+asset_history_size-1
 
 		# Row E: The supply
 
@@ -134,13 +150,19 @@ def conversion_process(
 			f"=SUM({util_excel_dectocol(col_h_start)}{row}:{util_excel_dectocol(col_h_end)}{row})"
 		)
 
-		# Row F: The breakdown
+		# (Optional) Row F: The Performance
 
-		ws[f"F{row}"]=(
-			f"=SUM({util_excel_dectocol(col_supply)}{row}-{util_excel_dectocol(col_h_start)}{row})"
-		)
+		if atype==1:
+			ws[f"F{row}"]=(
+				f"=SUM({util_excel_dectocol(col_supply)}{row}-{util_excel_dectocol(col_h_start)}{row})"
+			)
 
-		# Row G and beyond: Full history
+		if atype==-1:
+			ws[f"F{row}"]=(
+				f"=SUM({util_excel_dectocol(col_h_start)}{row}-{util_excel_dectocol(col_supply)}{row})"
+			)
+
+		# Row G (or F) and beyond: Full history
 
 		col_idx=-1
 
@@ -215,7 +237,7 @@ def conversion_process(
 async def main(
 		path_base:Path,
 		rdbc:AsyncIOMotorClient,
-		rdbn:str,lang="en"
+		rdbn:str,lang="en",atype=0,
 	)->Optional[Path]:
 
 	result_aq=await dbi_assets_AssetQuery(
@@ -231,7 +253,8 @@ async def main(
 	return (
 		await async_run_block(
 			conversion_process,
-			path_base,result_aq,lang
+			path_base,result_aq,
+			lang,atype
 		)
 	)
 

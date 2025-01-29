@@ -239,12 +239,13 @@ def write_html_input_radio(
 		html_text=(
 			f"{html_text}\n"
 
-			"<div>"
+			"<div>\n"
 				f"""<input type=radio id="{unique_id}" """
 					f"""name="{name}" """
 					f"""value="{value}" """
 					f"{tail}>\n"
-				f"""<label for="{unique_id}">{label}</label>"""
+
+				f"""<label for="{unique_id}">{label}</label>""" "\n"
 			"</div>"
 		)
 

@@ -2,7 +2,7 @@
 
 # from asyncio import to_thread
 
-# from pathlib import Path
+from pathlib import Path
 from secrets import token_hex
 
 from typing import (
@@ -46,7 +46,10 @@ from dbi_assets import (
 	dbi_assets_History_GetSingleRecord
 )
 
-from exex_assets import main as export_assets_as_excel_file
+from exex_assets import (
+	_KEY_ATYPE,
+	main as export_assets_as_excel_file
+)
 
 from frontend_Any import (
 
@@ -80,10 +83,11 @@ from frontend_assets import (
 	_ID_FORM_NEW_ASSET,
 	_ID_RESULT_NEW_ASSET,
 
+	write_button_nav_excel_export,
 	write_button_nav_new_asset,
 	write_button_nav_search_assets,
 
-	write_anchor_export_assets_as_excel,
+	write_form_export_assets_as_excel,
 
 	write_form_new_asset,
 	write_html_asset_info,
@@ -253,6 +257,11 @@ async def route_fgmt_new_asset(
 
 	lang=request[_REQ_LANGUAGE]
 
+	nav=[
+		write_button_nav_search_assets(lang),
+		write_button_nav_excel_export(lang),
+	]
+
 	return Response(
 		body=(
 			"<!-- ORDER CREATION FORM-->"
@@ -262,7 +271,7 @@ async def route_fgmt_new_asset(
 			"</section>\n"
 
 			f"""<ul hx-swap-oob="innerHTML:#{_ID_NAV_TWO_OPTS}">""" "\n"
-				f"{write_ul([write_button_nav_search_assets(lang)],full=False)}\n"
+				f"{write_ul(nav,full=False)}\n"
 			"</ul>\n"
 		),
 		content_type=_MIMETYPE_HTML
@@ -445,13 +454,18 @@ async def route_fgmt_search_assets(
 
 	logged_in=request[_REQ_HAS_SESSION]
 
+	nav=[
+		write_button_nav_new_asset(lang),
+		write_button_nav_excel_export(lang)
+	]
+
 	return Response(
 		body=(
 
 			"<!-- ASSETS SEARCH FORM -->\n"
 
 			f"""<ul hx-swap-oob="innerHTML:#{_ID_NAV_TWO_OPTS}">""" "\n"
-				f"{write_ul([write_button_nav_new_asset(lang)],full=False)}\n"
+				f"{write_ul(nav,full=False)}\n"
 			"</ul>\n"
 
 			f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
@@ -517,8 +531,9 @@ async def route_fgmt_asset_details(
 
 	tl=write_ul(
 		[
+			write_button_nav_new_asset(lang),
 			write_button_nav_search_assets(lang),
-			write_button_nav_new_asset(lang)
+			write_button_nav_excel_export(lang)
 		],
 		full=False
 	)
@@ -768,7 +783,7 @@ async def route_api_drop_asset(
 	# DELETE /api/assets/pool/{asset_id}/drop
 	# hx-target: #messages
 
-	# DELETE /api/assets/drop
+	# DELETE /api/assets/drop-asset
 
 	ct=request[_REQ_CLIENT_TYPE]
 	assert_referer(
@@ -807,7 +822,6 @@ async def route_api_drop_asset(
 				maximum=2
 			)
 
-		if ct==_TYPE_BROWSER:
 			delete_as_item=util_valid_bool(
 				request_data.get(_KEY_DELETE_AS_ITEM),
 				False
@@ -818,6 +832,11 @@ async def route_api_drop_asset(
 		# Browser only
 
 		asset_id=request.match_info[_KEY_ASSET]
+
+	if ct==_TYPE_BROWSER:
+		delete_as_item=(
+			Path(request.path).name=="drop-asset"
+		)
 
 	if not isinstance(asset_id,str):
 		return response_errormsg(
@@ -1144,17 +1163,61 @@ async def route_api_get_record(
 		content_type=_MIMETYPE_HTML
 	)
 
+async def route_fgmt_excel_export(
+		request:Request
+	)->Union[json_response,Response]:
+
+	# /fgmt/assets/export-as-excel
+
+	assert_referer(
+		request,
+		_TYPE_BROWSER,
+		_ROUTE_PAGE
+	)
+
+	lang=request[_REQ_LANGUAGE]
+
+	nav=[
+		write_button_nav_new_asset(lang),
+		write_button_nav_search_assets(lang),
+	]
+
+	return Response(
+		body=(
+			"<!-- ORDER CREATION FORM-->"
+
+			f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
+				f"{write_form_export_assets_as_excel(lang)}\n"
+			"</section>\n"
+
+			f"""<ul hx-swap-oob="innerHTML:#{_ID_NAV_TWO_OPTS}">""" "\n"
+				f"{write_ul(nav,full=False)}\n"
+			"</ul>\n"
+		),
+		content_type=_MIMETYPE_HTML
+	)
+
+
 async def route_api_excel_export(
 		request:Request
 	)->Union[json_response,Response]:
 
 	# /api/assets/export-as-excel
 
+	ct=request[_REQ_CLIENT_TYPE]
+
 	assert_referer(
-		request,
-		request[_REQ_CLIENT_TYPE]
+		request,ct
 		,_ROUTE_PAGE
 	)
+
+	atype=0
+	if request.method=="POST":
+		req_data=await get_request_body_dict(ct,request)
+		if isinstance(req_data,Mapping):
+			atype=util_valid_int(
+				req_data.get(_KEY_ATYPE)
+			)
 
 	lang=request[_REQ_LANGUAGE]
 
@@ -1162,7 +1225,7 @@ async def route_api_excel_export(
 		request.app[_APP_PROGRAMDIR],
 		request.app[_APP_RDBC],
 		request.app[_APP_RDBN],
-		lang=lang
+		lang=lang,atype=atype
 	)
 
 	the_name={
@@ -1209,6 +1272,7 @@ async def route_main(
 		[
 			write_button_nav_new_asset(lang),
 			write_button_nav_search_assets(lang),
+			write_button_nav_excel_export(lang),
 		],
 		ul_id=_ID_NAV_TWO_OPTS,
 		ul_classes=[_CSS_CLASS_NAV]
@@ -1219,23 +1283,25 @@ async def route_main(
 			f"{tl}\n"
 		"</section>\n"
 
-		f"""<section id="{_ID_MAIN}">"""
-	)
-
-	if request[_REQ_HAS_SESSION]:
-
-		html_text=(
-			f"{html_text}\n"
-				"<div>\n"
-					"<!-- CENTERED -->"
-					f"{write_anchor_export_assets_as_excel(lang)}\n"
-				"</div>"
-		)
-
-	html_text=(
-			f"{html_text}\n"
+		f"""<section id="{_ID_MAIN}">""" "\n"
+			"<!-- EMPTY -->\n"
 		"</section>"
 	)
+
+	# if request[_REQ_HAS_SESSION]:
+
+	# 	html_text=(
+	# 		f"{html_text}\n"
+	# 			"<div>\n"
+	# 				"<!-- CENTERED -->"
+	# 				f"{write_form_export_assets_as_excel(lang)}\n"
+	# 			"</div>"
+	# 	)
+
+	# html_text=(
+	# 		f"{html_text}\n"
+	# 	"</section>"
+	# )
 
 	return (
 		await response_fullpage_ext(
