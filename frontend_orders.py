@@ -33,13 +33,17 @@ from symbols_orders import (
 	_KEY_LOCKED_BY,
 
 	_KEY_ORDER_KEEP,
+	_KEY_ORDER_DROP,
 	_KEY_ALGSUM,
 	_KEY_COPY_VALUE,
 
 	_ID_FORM_NEW_ORDER,
 	_ID_RESULT_NEW_ORDER,
 
-	_ID_FORM_RUN_ORDER,
+	# _ID_FORM_RUN_ORDER,
+	_ID_FORM_RUN_OR_REVERT_ORDER,
+
+	_CSS_CLASS_ITEM_ORDER,
 
 	html_id_order,
 	html_id_order_asset
@@ -471,10 +475,10 @@ def write_html_order_assets(
 	return html_text
 
 def write_form_run_order(
-		lang:str,
-		order_id:str,
+		lang:str,order_id:str,
 		full:bool=True
 	)->str:
+
 
 	tl={
 		_LANG_EN:"Are you sure?",
@@ -483,8 +487,8 @@ def write_form_run_order(
 	html_text=(
 		f"""<form hx-post="/api/orders/pool/{order_id}/run" """
 			f"""hx-target="#{_ID_MESSAGES}" """
-			"""hx-swap="innerHTML" """
 			f"""hx-confirm="{tl}" """
+			"""hx-swap="innerHTML" """
 			">\n"
 	)
 
@@ -502,13 +506,14 @@ def write_form_run_order(
 		_LANG_ES:"Ejecutar orden"
 	}[lang]
 	html_text=(
-		f"{html_text}\n"
-		f"{write_button_submit(tl)}"
+			f"{html_text}\n"
+			f"{write_button_submit(tl)}\n"
+		"</form>"
 	)
 
 	if full:
 		html_text=(
-			f"""<div id="{_ID_FORM_RUN_ORDER}" """
+			f"""<div id="{_ID_FORM_RUN_OR_REVERT_ORDER}" """
 				f"""class="{_CSS_CLASS_COMMON} {_CSS_CLASS_CONTROLS}" """
 				">\n"
 				f"{html_text}\n"
@@ -517,8 +522,9 @@ def write_form_run_order(
 
 	return html_text
 
-def write_button_revert_order(
-		lang:str,order_id:str
+def write_form_revert_order(
+		lang:str,order_id:str,
+		full:bool=True,
 	)->str:
 
 	tl={
@@ -526,12 +532,22 @@ def write_button_revert_order(
 		_LANG_ES:"Los cambios causados por esta orden serán revertidos ¿Está seguro?"
 	}[lang]
 	html_text=(
-		f"""<button class="{_CSS_CLASS_COMMON} {_CSS_CLASS_DANGER}" """
+		"<form "
 			f"""hx-post="/api/orders/pool/{order_id}/revert" """
 			f"""hx-target="#{_ID_MESSAGES}" """
 			f"""hx-confirm="{tl}" """
 			"""hx-swap="innerHTML" """
 			">\n"
+	)
+
+
+	tl={
+		_LANG_EN:"Delete the order",
+		_LANG_ES:"Eliminar la órden"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		f"{write_html_input_checkbox(_KEY_ORDER_DROP,tl)}\n"
 	)
 
 	tl={
@@ -541,9 +557,18 @@ def write_button_revert_order(
 
 	html_text=(
 		f"{html_text}\n"
-			f"{tl}\n"
-		"</button>"
+			f"{write_button_submit(tl)}\n"
+		"</form>"
 	)
+
+	if full:
+		html_text=(
+			f"""<div id="{_ID_FORM_RUN_OR_REVERT_ORDER}" """
+				f"""class="{_CSS_CLASS_COMMON} {_CSS_CLASS_CONTROLS}" """
+					">\n"
+				f"{html_text}\n"
+			"</div>"
+		)
 
 	return html_text
 
@@ -721,7 +746,7 @@ def write_html_order_as_item(
 
 	if full:
 
-		classes=_CSS_CLASS_COMMON
+		classes=f"{_CSS_CLASS_ITEM_ORDER} {_CSS_CLASS_COMMON}"
 		if focus:
 			classes=f"{classes} {_CSS_CLASS_FOCUSED}"
 
@@ -791,7 +816,9 @@ def write_html_order_details(
 		if locked:
 			html_text=(
 				f"{html_text}\n"
-				f"{write_button_revert_order(lang,order_id)}"
+				# f"""<div class="{_CSS_CLASS_COMMON} {_CSS_CLASS_CONTROLS}">"""
+				f"{write_form_revert_order(lang,order_id)}\n"
+				# "</div>"
 			)
 
 		if not locked:

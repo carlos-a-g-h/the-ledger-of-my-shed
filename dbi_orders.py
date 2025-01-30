@@ -582,6 +582,7 @@ async def dbi_Orders_ApplyOrder(
 async def dbi_Orders_RevertOrder(
 		rdbc:AsyncIOMotorClient,
 		name_db:str,order_id:str,
+		drop_after_revert:bool=False,
 	)->Mapping:
 
 	print("REVERTING ORDER")
@@ -663,5 +664,22 @@ async def dbi_Orders_RevertOrder(
 		return {
 			_ERR:f"results.matched_count != total_ops, results.matched_count = {results.matched_count}, total_ops = {total_ops}"
 		}
+
+	if not drop_after_revert:
+		try:
+			col_orders:AsyncIOMotorCollection=rdbc[name_db][_COL_ORDERS]
+			await col_orders.update_one(
+				{"_id":order_id},
+				{"$unset":{_KEY_LOCKED_BY:True}}
+			)
+		except Exception as exc:
+			return {_ERR:f"{exc}"}
+
+	if drop_after_revert:
+		return (
+			await dbi_orders_DropOrder(
+				rdbc,name_db,order_id
+			)
+		)
 
 	return {}

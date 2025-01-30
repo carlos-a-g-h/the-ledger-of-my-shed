@@ -9,6 +9,10 @@ _LANG_ES="es"
 
 _ONE_MB=1048576
 
+# Local directories
+_DIR_TEMP="temp"
+_DIR_SOURCES="sources"
+
 # Errors
 
 _ERR="error"
@@ -95,7 +99,7 @@ _CFG_DB_URL="db-url"
 
 _CFG_FLAGS="flags"
 _CFG_FLAG_STARTUP_PRINT_ASSETS="startup-print-assets"
-_CFG_FLAG_DEVMODE_CSS="devmode-css"
+_CFG_FLAG_NO_CSS_BAKING="no-css-baking"
 _CFG_FLAG_ROOT_LOCAL_AUTOLOGIN="root-local-autologin"
 # _CFG_FLAG_PUB_READ_ACCESS_TO_ORDERS="pub-read-orders"
 # _CFG_FLAG_PUB_READ_ACCESS_TO_HISTORY="pub-read-history"
@@ -116,3 +120,6 @@ _KEY_DATE="date"
 _KEY_DELETE_AS_ITEM="delete_as_item"
 _KEY_VERBOSE="verbose"
 _KEY_VLEVEL="vlevel"
+
+_KEY_INC_TAG="include_tag"
+_KEY_INC_COMMENT="include_comment"

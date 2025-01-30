@@ -16,7 +16,7 @@ from symbols_Any import (
 	_LANG_EN,_LANG_ES,
 	_KEY_DATE,_KEY_COMMENT,
 	_KEY_TAG,
-	# _KEY_SIGN
+	_DIR_TEMP,
 )
 
 from symbols_assets import (
@@ -43,16 +43,23 @@ def conversion_process(
 		list_of_assets:list,
 		lang:str=_LANG_EN,
 		atype:int=0,
+		inc_history:bool=False,
 	)->Optional[Path]:
 
-	path_output=path_base.joinpath("temp").joinpath(f"assets_x{token_hex(8)}.xlsx")
-	path_output.parent.mkdir(parents=True,exist_ok=True)
+	path_output=path_base.joinpath(
+		_DIR_TEMP
+	).joinpath(
+		f"assets_x{token_hex(8)}.xlsx"
+	)
+	path_output.parent.mkdir(
+		parents=True,
+		exist_ok=True
+	)
 
 	wb:Workbook=Workbook()
 	ws:Worksheet=wb.active
 	ws.title="SHLED_ASSETS"
 
-	# A, B, C, D, E, (F)
 	col_headers=[
 		{
 			_LANG_EN:"Asset ID",
@@ -76,26 +83,25 @@ def conversion_process(
 
 		{
 			_LANG_EN:"Supply",
-			_LANG_ES:"Suministro"
+			_LANG_ES:"Cantidad actual"
 		}[lang],
 	]
 
 	if not atype==0:
+
 		tl={
 			_LANG_EN:"Performance",
 			_LANG_ES:"Desempeño"
 		}[lang]
 
-		# Positive
-		# CS - IS
+		# Uphill (CS - IS)
 		if atype==1:
 			tl=tl+" ("+{
 				_LANG_EN:"Uphill",
 				_LANG_ES:"Al alza"
 			}[lang]+")"
 
-		# Negative
-		# IS - CS
+		# Downhill (IS - CS)
 		if atype==-1:
 			tl=tl+" ("+{
 				_LANG_EN:"Downhill",
@@ -104,18 +110,29 @@ def conversion_process(
 
 		col_headers.append(tl)
 
-	# Taking the first row as column headers
+	if inc_history or (not atype==0):
+
+		# Wether the full history is required or not, the initial supply is needed to calculate the performance
+		col_headers.append(
+			{
+				_LANG_EN:"Initial Supply",
+				_LANG_ES:"Cantidad inicial"
+			}[lang]
+		)
+
+	# Appending the first row of columns
 	ws.append(col_headers)
 	row=1
 
-	# column where the supply is located
+	# column where the supply is located (row E)
 	col_supply=5
 
-	# column where history starts
-	col_h_start=len(col_headers)+1
+	# history (if needed) starts at the last column
+	col_h_start=len(col_headers)
 
 	# Each row is an asset
 	for asset in list_of_assets:
+
 		row=row+1
 
 		# print(asset)
@@ -130,11 +147,16 @@ def conversion_process(
 		ws[f"C{row}"]=asset_tag
 		ws[f"D{row}"]=asset_value
 
-		if not isinstance(asset.get(_KEY_HISTORY),Mapping):
+		if not isinstance(
+			asset.get(_KEY_HISTORY),
+			Mapping
+		):
 			print(_ExExWarn,f"{asset_id} has no history")
 
 			ws[f"E{row}"]=0
-			ws[f"F{row}"]=0
+
+			if not atype==0:
+				ws[f"F{row}"]=0
 
 			continue
 
@@ -144,26 +166,65 @@ def conversion_process(
 
 		col_h_end=col_h_start+asset_history_size-1
 
-		# Row E: The supply
+		# NEXT COLUMN - THE SUPPLY
 
-		ws[f"E{row}"]=(
-			f"=SUM({util_excel_dectocol(col_h_start)}{row}:{util_excel_dectocol(col_h_end)}{row})"
-		)
+		# NOTE: this supply is hardcoded
+		supply=0
 
-		# (Optional) Row F: The Performance
+		if inc_history:
+
+			ws[f"E{row}"]=(
+				f"=SUM({util_excel_dectocol(col_h_start)}{row}:{util_excel_dectocol(col_h_end)}{row})"
+			)
+
+		if not inc_history:
+
+			for uid in asset[_KEY_HISTORY]:
+				record_mod=util_valid_int(
+					asset[_KEY_HISTORY][uid].get(_KEY_RECORD_MOD)
+				)
+				if not isinstance(record_mod,int):
+					continue
+
+				supply=supply+record_mod
+
+			ws[f"E{row}"]=supply
+
+		col_pos=5
+		col_pos_ok=""
+
+		# NEXT COLUMN - THE PERFORMANCE (OPTIONAL)
+
+		if atype==1 or atype==-1:
+
+			col_pos=col_pos+1
+			col_pos_ok=util_excel_dectocol(col_pos)
 
 		if atype==1:
-			ws[f"F{row}"]=(
-				f"=SUM({util_excel_dectocol(col_supply)}{row}-{util_excel_dectocol(col_h_start)}{row})"
+
+			# Uphill (CS - IS)
+
+			ws[f"{col_pos_ok}{row}"]=(
+				f"=SUM({util_excel_dectocol(col_supply)}{row}-{util_excel_dectocol(col_pos+1)}{row})"
 			)
 
 		if atype==-1:
-			ws[f"F{row}"]=(
-				f"=SUM({util_excel_dectocol(col_h_start)}{row}-{util_excel_dectocol(col_supply)}{row})"
+
+			# Downhill (IS - CS)
+
+			ws[f"{col_pos_ok}{row}"]=(
+				f"=SUM({util_excel_dectocol(col_pos+1)}{row}-{util_excel_dectocol(col_supply)}{row})"
 			)
 
-		# Row G (or F) and beyond: Full history
+		if (not inc_history) and atype==0:
+			# Move on to the next asset
+			continue
 
+		# NEXT COLUMN AND BEYOND - FULL HISTORY
+
+		col_pos=col_pos+1
+
+		# history column index
 		col_idx=-1
 
 		for uid in asset[_KEY_HISTORY]:
@@ -219,13 +280,19 @@ def conversion_process(
 					f"{cell_comment}\n\n(WARNING)"
 				)
 
-			tgt_cell:Cell=ws[f"{util_excel_dectocol(col_h_start+col_idx)}{row}"]
+			# tgt_cell:Cell=ws[f"{util_excel_dectocol(col_h_start+col_idx)}{row}"]
+			tgt_cell:Cell=ws[f"{util_excel_dectocol(col_pos+col_idx)}{row}"]
 			tgt_cell.value=record_mod
 			tgt_cell.comment=Comment(
 				cell_comment,
 				"?",
 				height=160,width=160
 			)
+
+			if not inc_history:
+				# 
+				break
+
 	try:
 		wb.save(path_output)
 	except Exception as exc:
@@ -238,6 +305,7 @@ async def main(
 		path_base:Path,
 		rdbc:AsyncIOMotorClient,
 		rdbn:str,lang="en",atype=0,
+		inc_history:bool=False
 	)->Optional[Path]:
 
 	result_aq=await dbi_assets_AssetQuery(
@@ -254,7 +322,7 @@ async def main(
 		await async_run_block(
 			conversion_process,
 			path_base,result_aq,
-			lang,atype
+			lang,atype,inc_history
 		)
 	)
 

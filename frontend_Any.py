@@ -4,7 +4,12 @@ from asyncio import to_thread as async_run_blk
 from pathlib import Path
 from typing import Any,Optional,Union
 
-from symbols_Any import _LANG_EN,_LANG_ES,_ONE_MB
+from symbols_Any import (
+	_LANG_EN,_LANG_ES,
+	_ONE_MB,
+	_DIR_TEMP,
+	_DIR_SOURCES,
+)
 
 _ID_NAVIGATION="navigation"
 _ID_MAIN="main"
@@ -71,7 +76,7 @@ def write_link_stylesheet(filename:str)->str:
 
 def util_css_gather(path_base:Path)->list:
 
-	path_sources:Path=path_base.joinpath("sources")
+	path_sources:Path=path_base.joinpath(_DIR_SOURCES)
 	if not path_sources.is_dir():
 		return []
 
@@ -98,14 +103,14 @@ def util_css_bake(
 		confirm_only:bool=False
 	)->Union[bool,Optional[Path]]:
 
-	path_sources:Path=path_base.joinpath("sources")
+	path_sources:Path=path_base.joinpath(_DIR_SOURCES)
 	if not path_sources.is_dir():
 		if confirm_only:
 			return False
 		return None
 
 	fse_new=path_base.joinpath(
-		"temp"
+		_DIR_TEMP
 	).joinpath(
 		"custom.css"
 	)
@@ -151,7 +156,7 @@ def util_css_bake(
 async def util_css_pull(path_base:Path)->Optional[Path]:
 
 	path_file:Optional[Path]=path_base.joinpath(
-		"temp"
+		_DIR_TEMP
 	).joinpath(
 		"custom.css"
 	)
@@ -205,7 +210,7 @@ def write_html_input_checkbox(
 	return (
 		f"""<div class="{_CSS_CLASS_INPUT_CHECKBOX}">""" "\n"
 			f"""<input name="{name}" type=checkbox {tl}>""" "\n"
-			f"""<label class="{_CSS_CLASS_COMMON}">{label}</label>""" "\n"
+			f"""<label for="{name}" class="{_CSS_CLASS_COMMON}">{label}</label>""" "\n"
 		"</div>"
 	)
 

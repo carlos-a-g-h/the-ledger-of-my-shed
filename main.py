@@ -43,7 +43,7 @@ from control_admin import (
 
 from control_assets import (
 	route_main as route_Assets,
-	route_fgmt_excel_export as route_Assets_fgmt_ExportAsExcel,
+	route_fgmt_export_options as route_Assets_fgmt_ExportOptions,
 	route_api_excel_export as route_Assets_api_ExportAsExcel,
 	route_api_select_asset as route_Assets_api_GetAsset,
 	route_fgmt_asset_details as route_Assets_fgmt_AssetDetails,
@@ -92,6 +92,8 @@ from symbols_Any import (
 
 	# _ROOT_USER,
 
+	_DIR_TEMP,
+
 	_APP_LANG,
 	_LANG_EN,_LANG_ES,
 
@@ -103,7 +105,7 @@ from symbols_Any import (
 
 	_CFG_PORT,_CFG_LANG,_CFG_DB_NAME,_CFG_DB_URL,_CFG_FLAGS,
 
-	_CFG_FLAG_DEVMODE_CSS,
+	_CFG_FLAG_NO_CSS_BAKING,
 	# _CFG_FLAG_ROOT_LOCAL_AUTOLOGIN,
 	# _CFG_FLAG_PUB_READ_ACCESS_TO_HISTORY,
 	# _CFG_FLAG_PUB_READ_ACCESS_TO_ORDERS,
@@ -213,6 +215,11 @@ def build_app(
 		flags:list
 	)->Application:
 
+	path_programdir.joinpath(_DIR_TEMP).mkdir(
+		exist_ok=True,
+		parents=True
+	)
+
 	msg_err:Optional[str]=ldbi_init_sessions(path_programdir)
 	if msg_err is not None:
 		raise Exception(f"LDBI err.1: {msg_err}")
@@ -223,7 +230,7 @@ def build_app(
 	if msg_err is not None:
 		raise Exception(f"LDBI err.2: {msg_err}")
 
-	devmode_css=(_CFG_FLAG_DEVMODE_CSS in flags)
+	devmode_css=(_CFG_FLAG_NO_CSS_BAKING in flags)
 	if not devmode_css:
 		if not util_css_bake(path_programdir,True):
 			print("WARNING: Unable to create the custom.css file")
@@ -331,8 +338,8 @@ def build_app(
 
 
 			web_GET(
-				"/fgmt/assets/export-as-excel",
-				route_Assets_fgmt_ExportAsExcel
+				"/fgmt/assets/export-options",
+				route_Assets_fgmt_ExportOptions
 			),
 
 				web_GET(

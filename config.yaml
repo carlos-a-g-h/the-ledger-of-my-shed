@@ -19,5 +19,5 @@ flags:
   # (Dangerous) Access directly as root in the same machine the server is running. This is useful if you want to run SHLED only as a desktop application completely offline or in a small local network that you trust
   #- root-local-autologin
 
-  # (Debug) Allows all the the CSS files to be reloaded in every /page/ route instead of baking them together at startup
-  #- devmode-css
+  # Allows all the the CSS files in the sources directory to be reloaded in every /page/ request instead of baking them all together at startup
+  #- no-css-baking

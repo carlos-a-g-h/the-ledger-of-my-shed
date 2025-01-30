@@ -138,6 +138,7 @@ from symbols_orders import (
 
 	_KEY_ALGSUM,
 	_KEY_ORDER_KEEP,
+	_KEY_ORDER_DROP,
 	_KEY_ORDER_IS_FLIPPED,
 	_KEY_COPY_VALUE,
 	_KEY_LOCKED_BY,
@@ -1034,18 +1035,10 @@ async def route_api_run_order(
 	request_data=await get_request_body_dict(ct,request)
 	request_data_boken=(request_data is None)
 	if request_data_boken:
-
-		if ct==_TYPE_CUSTOM:
-			return response_errormsg(
-				_ERR_TITLE_RUN_ORDER[lang],
-				_ERR_DETAIL_DATA_NOT_VALID[lang],
-				ct,400
-			)
-
-	if not request_data_boken:
-		order_keep=util_valid_bool(
-			request_data.get(_KEY_ORDER_KEEP),
-			True
+		return response_errormsg(
+			_ERR_TITLE_RUN_ORDER[lang],
+			_ERR_DETAIL_DATA_NOT_VALID[lang],
+			ct,400
 		)
 
 	if ct==_TYPE_BROWSER:
@@ -1055,6 +1048,11 @@ async def route_api_run_order(
 		order_id=util_valid_str(
 			request_data.get(_KEY_ORDER)
 		)
+
+	order_keep=util_valid_bool(
+		request_data.get(_KEY_ORDER_KEEP),
+		True
+	)
 
 	userid:Optional[str]=None
 	if order_keep:
@@ -1121,15 +1119,15 @@ async def route_api_revert_order(
 
 	order_id:Optional[str]=None
 
-	if ct==_TYPE_CUSTOM:
+	request_data=await get_request_body_dict(ct,request)
+	if request_data is None:
+		return response_errormsg(
+			_ERR_TITLE_REVERT_ORDER[lang],
+			_ERR_DETAIL_DATA_NOT_VALID[lang],
+			ct,400
+		)
 
-		request_data=await get_request_body_dict(ct,request)
-		if request_data is None:
-			return response_errormsg(
-				_ERR_TITLE_REVERT_ORDER[lang],
-				_ERR_DETAIL_DATA_NOT_VALID[lang],
-				ct,400
-			)
+	if ct==_TYPE_CUSTOM:
 
 		order_id=util_valid_str(
 			request_data.get(_KEY_ORDER)
@@ -1139,10 +1137,14 @@ async def route_api_revert_order(
 
 		order_id=request.match_info[_KEY_ORDER]
 
+	order_drop=util_valid_bool(
+		request_data.get(_KEY_ORDER_DROP),False
+	)
+
 	result_rev=await dbi_Orders_RevertOrder(
 		request.app[_APP_RDBC],
 		request.app[_APP_RDBN],
-		order_id
+		order_id,order_drop
 	)
 
 	msg_err:Optional[str]=util_valid_str(

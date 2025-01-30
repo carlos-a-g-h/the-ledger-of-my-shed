@@ -62,6 +62,9 @@ from symbols_Any import (
 	_ONE_MB,
 	_ERR,
 
+	_DIR_SOURCES,
+	_DIR_TEMP,
+
 	_APP_PROGRAMDIR,
 	_APP_LANG,_LANG_EN,_LANG_ES,
 
@@ -81,7 +84,7 @@ from symbols_Any import (
 
 	_CFG_FLAGS,
 	_CFG_FLAG_ROOT_LOCAL_AUTOLOGIN,
-	_CFG_FLAG_DEVMODE_CSS,
+	_CFG_FLAG_NO_CSS_BAKING,
 
 	_KEY_SIGN,_KEY_SIGN_UNAME
 )
@@ -404,17 +407,18 @@ async def response_fullpage_ext(
 
 	styles=[_SCRIPT_HTMX]
 	devmode_css=(
-		_CFG_FLAG_DEVMODE_CSS in request.app[_CFG_FLAGS]
+		_CFG_FLAG_NO_CSS_BAKING in request.app[_CFG_FLAGS]
 	)
 	if devmode_css:
 		styles.extend(
-			await util_css_gather(
+			util_css_gather(
 				path_programdir
 			)
 		)
 
 	if not devmode_css:
-		path_css=util_css_pull(
+		path_css=await async_run(
+			util_css_pull,
 			path_programdir
 		)
 		if path_css is not None:
@@ -852,7 +856,7 @@ async def route_src(request:Request)->Response:
 		fse:Optional[Path]=None
 		if srctype=="local":
 			fse=path_base.joinpath(
-				"sources"
+				_DIR_SOURCES
 			).joinpath(
 				filename
 			)
@@ -860,7 +864,7 @@ async def route_src(request:Request)->Response:
 		if srctype=="special":
 			if filename=="custom.css":
 				fse=path_base.joinpath(
-					"temp"
+					_DIR_TEMP
 				).joinpath(filename)
 
 		if fse is None:
@@ -882,7 +886,11 @@ async def route_src(request:Request)->Response:
 		)
 
 	if srctype=="styles":
-		path_style:Path=path_base.joinpath("sources").joinpath(filename)
+		path_style:Path=path_base.joinpath(
+			_DIR_SOURCES
+		).joinpath(
+			filename
+		)
 		if path_style.exists():
 			if path_style.is_file():
 				if path_style.suffix.lower()==".css":

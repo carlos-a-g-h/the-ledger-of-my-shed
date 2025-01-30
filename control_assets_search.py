@@ -39,8 +39,6 @@ from frontend_assets import (
 
 from frontend_assets_search import (
 
-	_KEY_GET_VALUE,_KEY_GET_SUPPLY,
-
 	write_form_search_assets,
 )
 
@@ -48,7 +46,7 @@ from frontend_orders import write_button_add_asset_to_order
 
 from internals import (
 	util_valid_bool,
-	util_valid_int,
+	# util_valid_int,
 	util_valid_str,
 )
 
@@ -79,10 +77,14 @@ from symbols_assets import (
 
 	_KEY_ASSET,
 	_KEY_NAME,
-	_KEY_SUPPLY,
+	# _KEY_SUPPLY,
 
 	_ID_FORM_SEARCH_ASSETS,
 	_ID_RESULT_SEARCH_ASSETS,
+
+	_KEY_INC_VALUE as _KEY_GET_VALUE,
+	_KEY_INC_SUPPLY as _KEY_GET_SUPPLY,
+
 )
 
 from symbols_orders import (

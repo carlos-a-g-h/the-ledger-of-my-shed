@@ -83,7 +83,7 @@ from frontend_assets import (
 	_ID_FORM_NEW_ASSET,
 	_ID_RESULT_NEW_ASSET,
 
-	write_button_nav_excel_export,
+	write_button_nav_export_options,
 	write_button_nav_new_asset,
 	write_button_nav_search_assets,
 
@@ -142,6 +142,9 @@ from symbols_Any import (
 	_KEY_VLEVEL,
 	_KEY_DELETE_AS_ITEM,
 	# _KEY_DATE,
+
+	_KEY_INC_TAG,
+	_KEY_INC_COMMENT,
 )
 
 from symbols_assets import (
@@ -151,6 +154,10 @@ from symbols_assets import (
 	# _KEY_TOTAL,
 	_KEY_RECORD_UID,
 	_KEY_RECORD_MOD,
+
+	_KEY_INC_HISTORY,
+	_KEY_INC_SUPPLY,
+	_KEY_INC_VALUE,
 
 	html_id_asset,
 
@@ -259,7 +266,7 @@ async def route_fgmt_new_asset(
 
 	nav=[
 		write_button_nav_search_assets(lang),
-		write_button_nav_excel_export(lang),
+		write_button_nav_export_options(lang),
 	]
 
 	return Response(
@@ -456,7 +463,7 @@ async def route_fgmt_search_assets(
 
 	nav=[
 		write_button_nav_new_asset(lang),
-		write_button_nav_excel_export(lang)
+		write_button_nav_export_options(lang)
 	]
 
 	return Response(
@@ -533,7 +540,7 @@ async def route_fgmt_asset_details(
 		[
 			write_button_nav_new_asset(lang),
 			write_button_nav_search_assets(lang),
-			write_button_nav_excel_export(lang)
+			write_button_nav_export_options(lang)
 		],
 		full=False
 	)
@@ -595,20 +602,24 @@ async def route_api_select_asset(
 			ct,status_code=406
 		)
 
+	inc_tag=util_valid_bool(
+		request_data.get(_KEY_INC_TAG)
+	)
+
 	inc_history=util_valid_bool(
-		request_data.get("get_history"),
+		request_data.get(_KEY_INC_HISTORY),
 		False
 	)
 	inc_supply=util_valid_bool(
-		request_data.get("get_supply"),
+		request_data.get(_KEY_INC_SUPPLY),
 		False
 	)
 	inc_comment=util_valid_bool(
-		request_data.get("get_comment"),
+		request_data.get(_KEY_INC_COMMENT),
 		False
 	)
 	inc_value=util_valid_bool(
-		request_data.get("get_value"),
+		request_data.get(_KEY_INC_VALUE),
 		False
 	)
 
@@ -616,6 +627,7 @@ async def route_api_select_asset(
 		request.app[_APP_RDBC],
 		request.app[_APP_RDBN],
 		asset_id=asset_id,
+		get_tag=inc_tag,
 		get_comment=inc_comment,
 		get_supply=inc_supply,
 		get_history=inc_history,
@@ -1163,11 +1175,11 @@ async def route_api_get_record(
 		content_type=_MIMETYPE_HTML
 	)
 
-async def route_fgmt_excel_export(
+async def route_fgmt_export_options(
 		request:Request
 	)->Union[json_response,Response]:
 
-	# /fgmt/assets/export-as-excel
+	# /fgmt/assets/export-options
 
 	assert_referer(
 		request,
@@ -1197,7 +1209,6 @@ async def route_fgmt_excel_export(
 		content_type=_MIMETYPE_HTML
 	)
 
-
 async def route_api_excel_export(
 		request:Request
 	)->Union[json_response,Response]:
@@ -1212,11 +1223,15 @@ async def route_api_excel_export(
 	)
 
 	atype=0
+	inc_history=False
 	if request.method=="POST":
 		req_data=await get_request_body_dict(ct,request)
 		if isinstance(req_data,Mapping):
 			atype=util_valid_int(
 				req_data.get(_KEY_ATYPE)
+			)
+			inc_history=util_valid_bool(
+				req_data.get(_KEY_INC_HISTORY),False
 			)
 
 	lang=request[_REQ_LANGUAGE]
@@ -1225,7 +1240,8 @@ async def route_api_excel_export(
 		request.app[_APP_PROGRAMDIR],
 		request.app[_APP_RDBC],
 		request.app[_APP_RDBN],
-		lang=lang,atype=atype
+		lang=lang,atype=atype,
+		inc_history=inc_history
 	)
 
 	the_name={
@@ -1272,7 +1288,7 @@ async def route_main(
 		[
 			write_button_nav_new_asset(lang),
 			write_button_nav_search_assets(lang),
-			write_button_nav_excel_export(lang),
+			write_button_nav_export_options(lang),
 		],
 		ul_id=_ID_NAV_TWO_OPTS,
 		ul_classes=[_CSS_CLASS_NAV]

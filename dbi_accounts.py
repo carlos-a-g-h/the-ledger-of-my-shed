@@ -17,7 +17,8 @@ from motor.motor_asyncio import (
 
 from symbols_Any import (
 	_ERR,
-	_ROOT_USER,_ROOT_USER_ID
+	_ROOT_USER,_ROOT_USER_ID,
+	_DIR_TEMP,
 )
 
 from symbols_accounts import (
@@ -55,7 +56,7 @@ _SQL_COL_SID="SessionID"
 def ldbi_print_table(basedir:Path,table:str):
 	try:
 		con:SQLiteConnection=sqlite_connect(
-			basedir.joinpath(_SQL_FILE_USERS)
+			basedir.joinpath(_DIR_TEMP,_SQL_FILE_USERS)
 		)
 		cur:SQLiteCursor=con.cursor()
 		cur.execute(
@@ -74,7 +75,7 @@ def ldbi_print_table(basedir:Path,table:str):
 
 def ldbi_init_users(basedir:Path,root_id:str)->Optional[str]:
 
-	sql_file_path=basedir.joinpath(_SQL_FILE_USERS)
+	sql_file_path=basedir.joinpath(_DIR_TEMP,_SQL_FILE_USERS)
 	if sql_file_path.is_file():
 		try:
 			sql_file_path.unlink()
@@ -86,7 +87,7 @@ def ldbi_init_users(basedir:Path,root_id:str)->Optional[str]:
 
 	try:
 		con:SQLiteConnection=sqlite_connect(
-			basedir.joinpath(_SQL_FILE_USERS)
+			basedir.joinpath(_DIR_TEMP,_SQL_FILE_USERS)
 		)
 		cur:SQLiteCursor=con.cursor()
 		cur.executescript(
@@ -184,7 +185,7 @@ def ldbi_get_userid(
 
 	try:
 		con:SQLiteConnection=sqlite_connect(
-			basedir.joinpath(_SQL_FILE_USERS)
+			basedir.joinpath(_DIR_TEMP,_SQL_FILE_USERS)
 		)
 		cur:SQLiteCursor=con.cursor()
 		cur.execute(
@@ -227,7 +228,7 @@ def ldbi_get_username(
 
 	try:
 		con:SQLiteConnection=sqlite_connect(
-			basedir.joinpath(_SQL_FILE_USERS)
+			basedir.joinpath(_DIR_TEMP,_SQL_FILE_USERS)
 		)
 		cur:SQLiteCursor=con.cursor()
 		cur.execute(
@@ -355,7 +356,7 @@ def ldbi_init_sessions(basedir:Path)->Optional[str]:
 
 	# NOTE: Session candidates do not have user ID, active sessions do
 
-	sql_file_path=basedir.joinpath(_SQL_FILE_SESSIONS)
+	sql_file_path=basedir.joinpath(_DIR_TEMP,_SQL_FILE_SESSIONS)
 	if sql_file_path.is_file():
 		try:
 			sql_file_path.unlink()
@@ -367,7 +368,7 @@ def ldbi_init_sessions(basedir:Path)->Optional[str]:
 
 	try:
 		con:SQLiteConnection=sqlite_connect(
-			basedir.joinpath(_SQL_FILE_SESSIONS)
+			basedir.joinpath(_DIR_TEMP,_SQL_FILE_SESSIONS)
 		)
 		cur:SQLiteCursor=con.cursor()
 		cur.executescript(
@@ -418,7 +419,7 @@ def ldbi_create_session_candidate(
 
 	try:
 		con:SQLiteConnection=sqlite_connect(
-			basedir.joinpath(_SQL_FILE_SESSIONS)
+			basedir.joinpath(_DIR_TEMP,_SQL_FILE_SESSIONS)
 		)
 		cur:SQLiteCursor=con.cursor()
 		cur.execute(
@@ -470,7 +471,7 @@ def ldbi_create_active_session(
 
 	try:
 		con:SQLiteConnection=sqlite_connect(
-			basedir.joinpath(_SQL_FILE_SESSIONS)
+			basedir.joinpath(_DIR_TEMP,_SQL_FILE_SESSIONS)
 		)
 		cur:SQLiteCursor=con.cursor()
 		# cur.execute(query)
@@ -510,7 +511,7 @@ def ldbi_read_session(
 
 	try:
 		con:SQLiteConnection=sqlite_connect(
-			basedir.joinpath(_SQL_FILE_SESSIONS)
+			basedir.joinpath(_DIR_TEMP,_SQL_FILE_SESSIONS)
 		)
 		cur:SQLiteCursor=con.cursor()
 		cur.execute(
@@ -551,7 +552,7 @@ def ldbi_drop_session(
 
 	try:
 		con:SQLiteConnection=sqlite_connect(
-			basedir.joinpath(_SQL_FILE_SESSIONS)
+			basedir.joinpath(_DIR_TEMP,_SQL_FILE_SESSIONS)
 		)
 		cur:SQLiteCursor=con.cursor()
 		cur.execute(
@@ -581,7 +582,7 @@ def ldbi_convert_to_active_session(
 
 	try:
 		con:SQLiteConnection=sqlite_connect(
-			basedir.joinpath(_SQL_FILE_SESSIONS)
+			basedir.joinpath(_DIR_TEMP,_SQL_FILE_SESSIONS)
 		)
 		cur:SQLiteCursor=con.cursor()
 
@@ -622,7 +623,7 @@ def ldbi_renovate_active_session(
 
 	try:
 		con:SQLiteConnection=sqlite_connect(
-			basedir.joinpath(_SQL_FILE_SESSIONS)
+			basedir.joinpath(_DIR_TEMP,_SQL_FILE_SESSIONS)
 		)
 		cur:SQLiteCursor=con.cursor()
 

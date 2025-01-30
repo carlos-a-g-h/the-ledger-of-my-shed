@@ -50,9 +50,16 @@ from symbols_assets import (
 	_KEY_RECORD_UID,
 	_KEY_RECORD_MOD,
 
+	_ID_FORM_ASSETS_TO_EXCEL,
 	_ID_FORM_NEW_ASSET,
 	_ID_RESULT_NEW_ASSET,
-	_ID_FORM_AE,
+	_ID_FORM_ASSET_EDITOR,
+
+	_CSS_CLASS_ITEM_ASSET,
+
+	_KEY_INC_HISTORY,
+	# _KEY_INC_SUPPLY,
+	# _KEY_INC_VALUE,
 
 	html_id_asset
 )
@@ -102,15 +109,15 @@ def write_button_nav_search_assets(lang:str)->str:
 		"</button>"
 	)
 
-def write_button_nav_excel_export(lang:str)->str:
+def write_button_nav_export_options(lang:str)->str:
 
 	tl={
-		_LANG_EN:"Export assets",
-		_LANG_ES:"Exportar activos"
+		_LANG_EN:"Export options",
+		_LANG_ES:"Opciones de exportación"
 	}[lang]
 	return (
 		f"""<button class="{_CSS_CLASS_NAV}" """
-			"""hx-get="/fgmt/assets/export-as-excel" """
+			"""hx-get="/fgmt/assets/export-options" """
 			"""hx-swap="innerHTML" """
 			f"""hx-target="#{_ID_MESSAGES}" """
 			">"
@@ -179,7 +186,6 @@ def write_form_new_asset(lang:str,full:bool=True)->str:
 			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
 				f"{write_button_submit(tl)}\n"
 			"</div>\n"
-
 		"</form>"
 	)
 
@@ -204,25 +210,35 @@ def write_form_new_asset(lang:str,full:bool=True)->str:
 
 def write_form_export_assets_as_excel(lang:str):
 
-	radio_opts=[
-		(0,{_LANG_EN:"None",_LANG_ES:"Ninguno"}[lang]),
-		(1,{_LANG_EN:"Uphill",_LANG_ES:"Al alza"}[lang]),
-		(-1,{_LANG_EN:"Downhill",_LANG_ES:"A la baja"}[lang]),
-	]
+	tl={
+		_LANG_EN:"Include full history",
+		_LANG_ES:"Incluir historial completo"
+	}[lang]
+	html_text=(
+		f"""<form method="POST" """
+			"""action="/api/assets/export-as-excel" """
+			">\n"
+
+			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
+				f"{write_html_input_checkbox(_KEY_INC_HISTORY,tl,False)}\n"
+			"</div>\n"
+	)
 
 	tl={
 		_LANG_EN:"Analysis",
 		_LANG_ES:"Análisis"
 	}[lang]
+	radio_opts=[
+		(0,{_LANG_EN:"None",_LANG_ES:"Ninguno"}[lang]),
+		(1,{_LANG_EN:"Uphill",_LANG_ES:"Al alza"}[lang]),
+		(-1,{_LANG_EN:"Downhill",_LANG_ES:"A la baja"}[lang]),
+	]
 	html_text=(
-		"""<form method="POST" """
-			"""action="/api/assets/export-as-excel" """
-			">\n"
-
-			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
-				f"""<label for="{_KEY_ATYPE}">{tl}</label>""" "\n"
-				f"{write_html_input_radio(_KEY_ATYPE,radio_opts)}\n"
-			"</div>\n"
+		f"{html_text}\n"
+		f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
+			f"""<label for="{_KEY_ATYPE}">{tl}</label>""" "\n"
+			f"{write_html_input_radio(_KEY_ATYPE,radio_opts)}\n"
+		"</div>\n"
 	)
 
 	tl={
@@ -231,19 +247,23 @@ def write_form_export_assets_as_excel(lang:str):
 	}[lang]
 	html_text=(
 				f"{html_text}\n"
-				f"{write_button_submit(tl,classes=[_CSS_CLASS_COMMON])}\n"
+				f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
+					f"{write_button_submit(tl,classes=[_CSS_CLASS_COMMON])}\n"
+				"</div>\n"
 		"</form>"
 	)
 
 	tl={
-		_LANG_EN:"Assets exportation",
-		_LANG_ES:"Exportación de activos"
+		_LANG_EN:"Spreadsheet",
+		_LANG_ES:"Hoja de cálculo"
 	}[lang]
 
 	html_text=(
 		"<div>\n"
 			f"<h3>{tl}</h3>\n"
-			f"{html_text}\n"
+			f"""<div id="{_ID_FORM_ASSETS_TO_EXCEL}">""" "\n"
+				f"{html_text}\n"
+			"</div>\n"
 		"</div>"
 	)
 
@@ -269,7 +289,6 @@ def write_form_edit_asset_metadata(
 
 			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
 
-				# Group of fields start
 				f"""<div class="{_CSS_CLASS_IG_FIELDS}">"""
 	)
 
@@ -354,7 +373,7 @@ def write_form_edit_asset_metadata(
 
 	if full:
 		html_text=(
-			f"""<details id="{_ID_FORM_AE}" """
+			f"""<details id="{_ID_FORM_ASSET_EDITOR}" """
 				f"""class="{_CSS_CLASS_VER}" """
 				">\n"
 				f"{html_text}\n"
@@ -856,8 +875,10 @@ def write_html_asset_as_item(
 	asset_id=the_asset.get(_KEY_ASSET)
 
 	html_text=(
-		f"{write_html_asset_info(lang,the_asset,False)}\n"
-		f"""<div id="{html_id_asset(asset_id,controls=True)}" "class={_CSS_CLASS_CONTROLS}">""" "\n"
+		"<div>\n"
+			f"{write_html_asset_info(lang,the_asset,False)}\n"
+		"</div>\n"
+		f"""<div id="{html_id_asset(asset_id,controls=True)}" class="{_CSS_CLASS_CONTROLS}">""" "\n"
 			f"{write_button_asset_fullview_or_update(lang,asset_id,False)}\n"
 	)
 	if authorized:
@@ -873,7 +894,7 @@ def write_html_asset_as_item(
 
 	if full:
 
-		classes=f"{_CSS_CLASS_COMMON}"
+		classes=f"{_CSS_CLASS_COMMON} {_CSS_CLASS_ITEM_ASSET}"
 		if focused:
 			classes=f"{classes} {_CSS_CLASS_FOCUSED}"
 

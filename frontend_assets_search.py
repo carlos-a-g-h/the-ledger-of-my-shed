@@ -26,10 +26,9 @@ from symbols_assets import(
 	_KEY_NAME,
 	_ID_FORM_SEARCH_ASSETS,
 	_ID_RESULT_SEARCH_ASSETS,
+	_KEY_INC_SUPPLY as _KEY_GET_SUPPLY,
+	_KEY_INC_VALUE as _KEY_GET_VALUE,
 )
-
-_KEY_GET_VALUE="get_value"
-_KEY_GET_SUPPLY="get_supply"
 
 def write_form_search_assets(
 		lang:str,
@@ -112,7 +111,7 @@ def write_form_search_assets(
 
 		tl={
 			_LANG_EN:"Include supply",
-			_LANG_ES:"Incluir supply"
+			_LANG_ES:"Incluir cantidad actual"
 		}[lang]
 		html_text=(
 			f"{html_text}\n"
