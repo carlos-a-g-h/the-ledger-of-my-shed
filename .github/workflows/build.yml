@@ -136,14 +136,15 @@ jobs:
         run: |
           dir the-output
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: ${{ inputs.DO_NOT_MOVE_ARTIFACTS == false }}
         with:
           if-no-files-found: error
           name: "${{ matrix.os }}"
-          path: |
-            ./repo/the-output/${{ env.THE_NAME }}.bin
-            ./repo/the-output/${{ env.THE_NAME }}.exe
+          path: ./repo/the-output/${{ env.THE_NAME }}.*
+#          path: |
+#            ./repo/the-output/${{ env.THE_NAME }}.bin
+#            ./repo/the-output/${{ env.THE_NAME }}.exe
 #            ./repo/the-output/main.dist
 
   job-release:
@@ -183,7 +184,7 @@ jobs:
           echo "}"
 
       - name: Upload NOTES
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: "NOTES"
           path: "NOTES.txt"
@@ -206,7 +207,7 @@ jobs:
           ref: ${{ inputs.BRANCH_NAME }}
 
       - name: Download Notes
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: "NOTES"
 
@@ -224,7 +225,7 @@ jobs:
 
       - name: Download artifact
         if: ${{ inputs.DO_NOT_MOVE_ARTIFACTS == false }}
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ${{ matrix.binary }}
           path: "${{ env.THE_NAME }}"
