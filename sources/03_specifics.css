@@ -1,0 +1,37 @@
+div.form-inside-a-div > form,
+#form-new-order >form,
+#form-new-asset > form,
+#form-search-assets > form,
+#form-assets-to-excel > form {
+  display:flex;
+  flex-direction: column;
+  gap:12px;
+}
+
+#form-run-or-revert-order > form {
+  display:flex;
+  flex-direction:row;
+  gap:16px;
+  justify-content: space-around;
+}
+
+
+#form-asset-editor > form > div.common,
+div.item-order,
+div.item-asset {
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+div.input-guarded {
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+
+#main-menu > div >button.common {
+  flex-grow: 1;
+  width:128px;
+  padding:16px
+}

@@ -1,0 +1,99 @@
+button.nav {
+	border:2px solid black;
+	background-color:black;
+	color:white;
+}
+button.nav:disabled {font-weight:bold;}
+
+div.anchor-as-button {
+	display:flex;
+	align-items:center;
+	justify-content:center;
+}
+
+a.common {
+	display:inline-block;
+	text-align:center;
+}
+
+a.common,
+div.anchor-as-button > a:link,
+div.anchor-as-button > a:visited {
+	text-decoration: none;
+	color: black;
+}
+
+a.common,
+button.popup-button,
+button.common {
+	border:2px solid black;
+	background-color:white;
+	color:black;
+}
+button.popup-button {
+	padding-left:1.5em;
+	padding-right:1.5em;
+	padding-top:0.5em;
+	padding-bottom: 0.5em;
+}
+
+div.anchor-as-button > a:hover,
+a.common:hover,
+button.nav:hover:enabled,
+button.common:hover:enabled,
+button.popup-button:hover:enabled {
+	background-color: #0074E8;
+	border:2px solid #0074E8;
+	color:white;
+	cursor:pointer;
+}
+
+div.anchor-as-button > a:active,
+a.common:active,
+button.common:active:enabled,
+button.nav:active:enabled,
+button.popup-button:active:enabled {
+	background-color: white;
+	border:2px solid #0074E8;
+	color:#0074E8;
+}
+
+div.anchor-as-button > a:enabled,
+a.common:hover:enabled,
+button.common:hover:enabled,
+button.nav:hover:enabled,
+button.popup-button:hover:enabled {
+	border:2px solid #0074E8;
+	background-color: #0074E8;
+	color:white;
+	cursor:pointer;
+}
+
+div.anchor-as-button {
+	min-width:96px;
+	max-width:192px;
+	text-align: center;
+}
+
+
+a.common:active:enabled,
+button.nav:active:enabled,
+button.common:active:enabled,
+button.popup-button:active:enabled {
+	border:2px solid #0074E8;
+	background-color: white;
+	color:#0074E8;
+}
+
+button.danger:hover:enabled {
+	border:2px solid red;
+	background-color: red;
+}
+button.danger:active:enabled {
+	border:2px solid red;
+	background-color: white;
+	color: red;
+}
+
+
+
