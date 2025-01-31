@@ -220,7 +220,7 @@ def write_form_export_assets_as_excel(lang:str):
 			">\n"
 
 			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
-				f"{write_html_input_checkbox(_KEY_INC_HISTORY,tl,False)}\n"
+				f"{write_html_input_checkbox(_KEY_INC_HISTORY,tl,checked=False)}\n"
 			"</div>\n"
 	)
 
@@ -248,7 +248,7 @@ def write_form_export_assets_as_excel(lang:str):
 	html_text=(
 				f"{html_text}\n"
 				f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
-					f"{write_button_submit(tl,classes=[_CSS_CLASS_COMMON])}\n"
+					f"{write_button_submit(tl)}\n"
 				"</div>\n"
 		"</form>"
 	)
@@ -282,7 +282,7 @@ def write_form_edit_asset_metadata(
 	html_text=(
 		"<!-- ASSET METADATA EDITOR -->\n"
 		f"<summary>{tl}</summary>\n"
-		f"""<form hx-post="/api/assets/pool/{asset_id}/edit-metadata" """ "\n"
+		f"""<form hx-post="/api/assets/pool/{asset_id}/edit" """ "\n"
 			"""hx-swap="innerHTML" """ "\n"
 			f"""hx-target="#{_ID_MESSAGES}" """ "\n"
 			">\n"

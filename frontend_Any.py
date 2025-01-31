@@ -180,25 +180,31 @@ def write_button_submit(
 		label:str,
 		classes:bool=[
 			_CSS_CLASS_COMMON
-		]
+		],
+		hxinc=""
 	)->str:
 
-	tl=""
+	attr_class=""
 	if not len(classes)==0:
 		for c in classes:
-			tl=f"{tl} {c}"
+			attr_class=f"{attr_class} {c}"
 
-		tl=f"""class="{tl}" """
+		attr_class=f"""class="{attr_class.strip()}" """
+
+	attr_hxinc=""
+	if not len(hxinc)==0:
+		attr_hxinc=f"""hx-include="{hxinc}" """
 
 	return (
-		f"""<button type=submit {tl}>"""
+		f"""<button {attr_class}{attr_hxinc}type=submit>"""
 			f"{label}"
 		"</button>"
 	)
 
 def write_html_input_checkbox(
 		name:str,label:str,
-		checked:bool=False
+		checked:bool=False,
+		full:bool=True
 	)->str:
 
 	# Input checkbox with a label next to it
@@ -207,12 +213,19 @@ def write_html_input_checkbox(
 	if checked:
 		tl="checked"
 
-	return (
-		f"""<div class="{_CSS_CLASS_INPUT_CHECKBOX}">""" "\n"
-			f"""<input name="{name}" type=checkbox {tl}>""" "\n"
-			f"""<label for="{name}" class="{_CSS_CLASS_COMMON}">{label}</label>""" "\n"
-		"</div>"
+	html_text=(
+		f"""<input name="{name}" type=checkbox {tl}>""" "\n"
+		f"""<label for="{name}" class="{_CSS_CLASS_COMMON}">{label}</label>"""
 	)
+
+	if full:
+		html_text=(
+			f"""<div class="{_CSS_CLASS_INPUT_CHECKBOX}">""" "\n"
+				f"{html_text}\n"
+			"</div>"
+		)
+
+	return html_text
 
 def write_html_input_radio(
 		name:str,

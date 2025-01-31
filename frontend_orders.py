@@ -44,6 +44,7 @@ from symbols_orders import (
 	_ID_FORM_RUN_OR_REVERT_ORDER,
 
 	_CSS_CLASS_ITEM_ORDER,
+	_CSS_CLASS_ORDER_INFO,
 
 	html_id_order,
 	html_id_order_asset
@@ -230,7 +231,7 @@ def write_button_add_asset_to_order(
 				f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
 
 					f"{write_html_input_number(_KEY_RECORD_MOD,value=0,required=True)}\n"
-					f"{write_html_input_checkbox(_KEY_COPY_VALUE,tl,True)}"
+					f"{write_html_input_checkbox(_KEY_COPY_VALUE,tl,checked=True)}"
 	)
 
 	tl={
@@ -290,7 +291,7 @@ def write_form_update_asset_in_order(
 		f"{html_text}\n"
 		f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
 			f"{write_html_input_number(_KEY_RECORD_MOD,value=0,required=True)}\n"
-			f"{write_html_input_checkbox(_KEY_ALGSUM,tl,False)}\n"
+			f"{write_html_input_checkbox(_KEY_ALGSUM,tl)}\n"
 	)
 
 	tl={
@@ -448,37 +449,41 @@ def write_html_order_assets(
 	html_text=(
 			f"{html_text}\n"
 		"</div>\n"
-		f"""<div id="{html_id_order(order_id,value=True)}">"""
 	)
 
-	order_value=util_valid_int(
-		obj_order.get(_KEY_ORDER_VALUE)
-	)
-	if (order_value is not None):
-		if not order_value==0:
-			tl={
-				_LANG_EN:"TOTAL VALUE",
-				_LANG_ES:"VALOR TOTAL"
-			}[lang]
-			html_text=(
-				f"{html_text}\n"
-				f"""<div class="{_CSS_CLASS_COMMON}">"""
-					f"{tl}: <strong>{order_value}</strong>"
-				"</div>"
-			)
+	# order_value=util_valid_int(
+	# 	obj_order.get(_KEY_ORDER_VALUE)
+	# )
+	# if (order_value is not None):
+	# 	if not order_value==0:
+	# 		tl={
+	# 			_LANG_EN:"TOTAL VALUE",
+	# 			_LANG_ES:"VALOR TOTAL"
+	# 		}[lang]
+	# 		html_text=(
+	# 			f"{html_text}\n"
+	# 			f"""<div class="{_CSS_CLASS_COMMON}">"""
+	# 				f"{tl}: <strong>{order_value}</strong>"
+	# 			"</div>"
+	# 		)
 
-	html_text=(
-			f"{html_text}\n"
-		"</div>"
-	)
+	# html_text=(
+	# 		f"{html_text}\n"
+	# 	"</div>"
+	# )
 
 	return html_text
+
+# NOTE:
+# There is a weird HTMX bug in the functions write_form_run_order() and write_form_revert_order()
+# For some reason I haven't figured out yet, the nested inputs (form>div>input nesting) do not get included in the POST request
+# I double checked, even tripple checked the surrounding code to see if there was a missing parent/surrounding tag and I found nothing, the form even works OK if it is used as a traditional HTML Form
+# The solution (for now) in these functions is to write the checkbox and the label without their divs wrapping them up, so that the form is the direct parent
 
 def write_form_run_order(
 		lang:str,order_id:str,
 		full:bool=True
 	)->str:
-
 
 	tl={
 		_LANG_EN:"Are you sure?",
@@ -487,8 +492,10 @@ def write_form_run_order(
 	html_text=(
 		f"""<form hx-post="/api/orders/pool/{order_id}/run" """
 			f"""hx-target="#{_ID_MESSAGES}" """
-			f"""hx-confirm="{tl}" """
 			"""hx-swap="innerHTML" """
+			f"""hx-confirm="{tl}" """
+			f"""hx-trigger="submit" """
+			# f"""hx-include="[name='{_KEY_ORDER_KEEP}']" """
 			">\n"
 	)
 
@@ -498,7 +505,7 @@ def write_form_run_order(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"{write_html_input_checkbox(_KEY_ORDER_KEEP,tl,True)}"
+		f"{write_html_input_checkbox(_KEY_ORDER_KEEP,tl,checked=True,full=False)}"
 	)
 
 	tl={
@@ -535,8 +542,9 @@ def write_form_revert_order(
 		"<form "
 			f"""hx-post="/api/orders/pool/{order_id}/revert" """
 			f"""hx-target="#{_ID_MESSAGES}" """
-			f"""hx-confirm="{tl}" """
 			"""hx-swap="innerHTML" """
+			f"""hx-confirm="{tl}" """
+			f"""hx-trigger="submit" """
 			">\n"
 	)
 
@@ -547,7 +555,7 @@ def write_form_revert_order(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"{write_html_input_checkbox(_KEY_ORDER_DROP,tl)}\n"
+		f"{write_html_input_checkbox(_KEY_ORDER_DROP,tl,full=False)}\n"
 	)
 
 	tl={
@@ -780,7 +788,7 @@ def write_html_order_details(
 		_LANG_ES:"Activos de la orden"
 	}[lang]
 	html_text=(
-		f"""<div id={html_id_order(order_id,info=True)}>""" "\n"
+		f"""<div id="{html_id_order(order_id)}" class="{_CSS_CLASS_ORDER_INFO}">""" "\n"
 			f"<h3>{tl}</h3>\n"
 			f"{write_html_order_info(lang,data,authorized)}\n"
 			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
@@ -798,14 +806,7 @@ def write_html_order_details(
 		"</div>"
 	)
 
-	# Assets inside the order
-
-	html_text=(
-		f"{html_text}\n"
-		f"{write_html_order_assets(lang,order_id,data,focus)}\n"
-	)
-
-	# Run order form
+	# Run/revert order form
 
 	if authorized:
 
@@ -826,5 +827,41 @@ def write_html_order_details(
 				f"{html_text}\n"
 				f"{write_form_run_order(lang,order_id)}"
 			)
+
+	# Order value
+
+	html_text=(
+		f"{html_text}\n"
+		f"""<div id="{html_id_order(order_id,value=True)}">""" "\n"
+			"<!-- ORDER VALUE GOES HERE -->"
+	)
+
+	order_value=util_valid_int(
+		data.get(_KEY_ORDER_VALUE)
+	)
+	if (order_value is not None):
+		if not order_value==0:
+			tl={
+				_LANG_EN:"TOTAL VALUE",
+				_LANG_ES:"VALOR TOTAL"
+			}[lang]
+			html_text=(
+				f"{html_text}\n"
+				f"""<div class="{_CSS_CLASS_COMMON}">"""
+					f"{tl}: <strong>{order_value}</strong>"
+				"</div>"
+			)
+
+	html_text=(
+			f"{html_text}\n"
+		"</div>"
+	)
+
+	# Assets inside the order
+
+	html_text=(
+		f"{html_text}\n"
+		f"{write_html_order_assets(lang,order_id,data,focus)}\n"
+	)
 
 	return html_text

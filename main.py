@@ -49,7 +49,7 @@ from control_assets import (
 	route_fgmt_asset_details as route_Assets_fgmt_AssetDetails,
 	route_fgmt_new_asset as route_Assets_fgmt_NewAsset,
 	route_api_new_asset as route_Assets_api_NewAsset,
-	route_api_asset_change_metadata as route_Assets_api_ChangeMetadata,
+	route_api_asset_edit_definition as route_Assets_api_EditDefinition,
 	route_fgmt_search_assets as route_Assets_fgmt_SearchAssets,
 	route_api_drop_asset as route_Assets_api_DropAsset,
 	route_api_add_record as route_Assets_api_AddRecord,
@@ -382,8 +382,8 @@ def build_app(
 		
 			),
 				web_POST(
-					"/fgmt/assets/pool/{asset_id}/edit-metadata",
-					route_Assets_api_ChangeMetadata
+					"/api/assets/pool/{asset_id}/edit",
+					route_Assets_api_EditDefinition
 				),
 
 				web_DELETE(

@@ -647,11 +647,11 @@ async def route_api_select_asset(
 
 	return json_response(data=result)
 
-async def route_api_asset_change_metadata(
+async def route_api_asset_edit_definition(
 		request:Request
 	)->Union[json_response,Response]:
 
-	# POST /api/assets/pool/{asset_id}/edit-metadata
+	# POST /api/assets/pool/{asset_id}/edit
 	# POST /api/assets/edit-metadata
 
 	ct=request[_REQ_CLIENT_TYPE]

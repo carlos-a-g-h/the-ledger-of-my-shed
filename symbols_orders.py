@@ -9,8 +9,8 @@ _KEY_ORDER_IS_FLIPPED="order_is_flipped"
 
 _KEY_LOCKED_BY="locked_by"
 
-_KEY_ORDER_KEEP="keep"
-_KEY_ORDER_DROP="drop"
+_KEY_ORDER_KEEP="order-keep"
+_KEY_ORDER_DROP="order-drop"
 _KEY_ALGSUM="algsum"
 _KEY_COPY_VALUE="copy-value"
 
@@ -21,6 +21,7 @@ _ID_FORM_RUN_OR_REVERT_ORDER="form-run-or-revert-order"
 _ID_ORDER_ASSETS="order-assets"
 
 _CSS_CLASS_ITEM_ORDER="item-order"
+_CSS_CLASS_ORDER_INFO="order-info"
 
 def html_id_order(
 		order_id:str,
