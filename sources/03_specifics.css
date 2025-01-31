@@ -12,13 +12,15 @@ div.form-inside-a-div > form,
   display:flex;
   flex-direction:row;
   gap:16px;
+  align-items:center;
   justify-content: space-around;
 }
 
-
 #form-asset-editor > form > div.common,
+#result-search-assets,
 div.item-order,
-div.item-asset {
+div.item-asset,
+div.order-info {
   display:flex;
   flex-direction:column;
   gap:8px;
