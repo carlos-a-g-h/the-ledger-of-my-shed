@@ -236,7 +236,7 @@ jobs:
           rm -rf repo/.git
 
           cat repo/README.md|head -n 1 > "${{ env.THE_NAME }}/README.md"
-          printf "\n\n${{ steps.step_notes.outputs.THE_DATE }}\n" >> "${{ env.THE_NAME }}/README.md"
+          printf "\nVersion ${{ steps.step_notes.outputs.THE_DATE }}\n\n" >> "${{ env.THE_NAME }}/README.md"
           cat repo/README.md|sed -n '3,$p' >> "${{ env.THE_NAME }}/README.md"
 
           cp -va repo/sources "${{ env.THE_NAME }}/"
