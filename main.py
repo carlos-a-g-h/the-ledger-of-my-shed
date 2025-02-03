@@ -105,7 +105,7 @@ from symbols_Any import (
 
 	_CFG_PORT,_CFG_LANG,_CFG_DB_NAME,_CFG_DB_URL,_CFG_FLAGS,
 
-	_CFG_FLAG_NO_CSS_BAKING,
+	_CFG_FLAG_D_STARTUP_CSS_BAKING,
 	# _CFG_FLAG_ROOT_LOCAL_AUTOLOGIN,
 	# _CFG_FLAG_PUB_READ_ACCESS_TO_HISTORY,
 	# _CFG_FLAG_PUB_READ_ACCESS_TO_ORDERS,
@@ -230,7 +230,7 @@ def build_app(
 	if msg_err is not None:
 		raise Exception(f"LDBI err.2: {msg_err}")
 
-	devmode_css=(_CFG_FLAG_NO_CSS_BAKING in flags)
+	devmode_css=(_CFG_FLAG_D_STARTUP_CSS_BAKING in flags)
 	if not devmode_css:
 		if not util_css_bake(path_programdir,True):
 			print("WARNING: Unable to create the custom.css file")

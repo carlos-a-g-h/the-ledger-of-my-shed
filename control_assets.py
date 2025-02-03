@@ -134,7 +134,7 @@ from symbols_Any import (
 	_REQ_CLIENT_TYPE,_REQ_LANGUAGE,
 	_REQ_USERID,_REQ_HAS_SESSION,
 
-	_CFG_FLAGS,_CFG_FLAG_STARTUP_PRINT_ASSETS,
+	_CFG_FLAGS,_CFG_FLAG_E_STARTUP_PRINT_ASSETS,
 
 	_KEY_TAG,
 	_KEY_SIGN,_KEY_SIGN_UNAME,
@@ -230,7 +230,7 @@ async def util_update_known_assets(
 	size=len(dbi_result)
 
 	if startup:
-		if _CFG_FLAG_STARTUP_PRINT_ASSETS in app[_CFG_FLAGS]:
+		if _CFG_FLAG_E_STARTUP_PRINT_ASSETS in app[_CFG_FLAGS]:
 			print("Assets: {",dbi_result,"}")
 
 	if size==0:

@@ -137,7 +137,7 @@ from symbols_orders import (
 	_KEY_ORDER_VALUE,
 
 	_KEY_ALGSUM,
-	_KEY_ORDER_KEEP,
+	# _KEY_ORDER_KEEP,
 	_KEY_ORDER_DROP,
 	_KEY_ORDER_IS_FLIPPED,
 	_KEY_COPY_VALUE,
@@ -1030,7 +1030,7 @@ async def route_api_run_order(
 	lang=request[_REQ_LANGUAGE]
 
 	order_id:Optional[str]=None
-	order_keep=True
+	order_drop=True
 
 	request_data=await get_request_body_dict(ct,request)
 	request_data_boken=(request_data is None)
@@ -1049,13 +1049,13 @@ async def route_api_run_order(
 			request_data.get(_KEY_ORDER)
 		)
 
-	order_keep=util_valid_bool(
-		request_data.get(_KEY_ORDER_KEEP),
-		True
+	order_drop=util_valid_bool(
+		request_data.get(_KEY_ORDER_DROP),
+		False
 	)
 
 	userid:Optional[str]=None
-	if order_keep:
+	if not order_drop:
 		userid=request[_REQ_USERID]
 
 	result_apply:Mapping=await dbi_Orders_ApplyOrder(

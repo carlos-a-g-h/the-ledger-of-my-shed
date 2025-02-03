@@ -32,7 +32,7 @@ from symbols_orders import (
 	_KEY_ORDER_IS_FLIPPED,
 	_KEY_LOCKED_BY,
 
-	_KEY_ORDER_KEEP,
+	# _KEY_ORDER_KEEP,
 	_KEY_ORDER_DROP,
 	_KEY_ALGSUM,
 	_KEY_COPY_VALUE,
@@ -474,44 +474,69 @@ def write_html_order_assets(
 
 	return html_text
 
-# NOTE:
-# There is a weird HTMX bug in the functions write_form_run_order() and write_form_revert_order()
-# For some reason I haven't figured out yet, the nested inputs (form>div>input nesting) do not get included in the POST request
-# I double checked, even tripple checked the surrounding code to see if there was a missing parent/surrounding tag and I found nothing, the form even works OK if it is used as a traditional HTML Form
-# The solution (for now) in these functions is to write the checkbox and the label without their divs wrapping them up, so that the form is the direct parent
-
-def write_form_run_order(
+def write_form_run_or_revert(
 		lang:str,order_id:str,
+		revert_variant:bool=False,
 		full:bool=True
 	)->str:
 
-	tl={
-		_LANG_EN:"Are you sure?",
-		_LANG_ES:"¿Está seguro?"
-	}[lang]
+	url_path=f"/api/orders/pool/{order_id}"
+	if not revert_variant:
+		url_path=f"{url_path}/run"
+	if revert_variant:
+		url_path=f"{url_path}/revert"
+
+	tl=""
+	if not revert_variant:
+		tl={
+			_LANG_EN:"Are you sure?",
+			_LANG_ES:"¿Está seguro?"
+		}[lang]
+
+	if revert_variant:
+		tl={
+			_LANG_EN:"The changes made by this order will be reverted. Are you sure you want to proceed?",
+			_LANG_ES:"Los cambios hechos por esta orden serán revertidos. ¿Está seguro?"
+		}[lang]
+
 	html_text=(
-		f"""<form hx-post="/api/orders/pool/{order_id}/run" """
+		f"""<form hx-post="{url_path}" """
 			f"""hx-target="#{_ID_MESSAGES}" """
 			"""hx-swap="innerHTML" """
 			f"""hx-confirm="{tl}" """
 			f"""hx-trigger="submit" """
-			# f"""hx-include="[name='{_KEY_ORDER_KEEP}']" """
 			">\n"
 	)
 
-	tl={
-		_LANG_EN:"Keep after running",
-		_LANG_ES:"Conservar tras ejecutar"
-	}[lang]
+	if not revert_variant:
+		tl={
+			_LANG_EN:"Do not preserve the order",
+			_LANG_ES:"No preservar la orden"
+		}[lang]
+
+	if revert_variant:
+		tl={
+			_LANG_EN:"Delete the order after reverting",
+			_LANG_ES:"Borrar la orden al revertir"
+		}[lang]
+
 	html_text=(
 		f"{html_text}\n"
-		f"{write_html_input_checkbox(_KEY_ORDER_KEEP,tl,checked=True,full=False)}"
+		f"{write_html_input_checkbox(_KEY_ORDER_DROP,tl)}"
 	)
 
-	tl={
-		_LANG_EN:"Run order",
-		_LANG_ES:"Ejecutar orden"
-	}[lang]
+	if not revert_variant:
+		tl={
+			_LANG_EN:"Run order",
+			_LANG_ES:"Ejecutar orden"
+		}[lang]
+
+	if revert_variant:
+		tl={
+			_LANG_EN:"Revert order",
+			_LANG_ES:"Revertir orden"
+		}[lang]
+
 	html_text=(
 			f"{html_text}\n"
 			f"{write_button_submit(tl)}\n"
@@ -529,56 +554,105 @@ def write_form_run_order(
 
 	return html_text
 
-def write_form_revert_order(
-		lang:str,order_id:str,
-		full:bool=True,
-	)->str:
+# def write_form_run_order(
+# 		lang:str,order_id:str,
+# 		full:bool=True
+# 	)->str:
 
-	tl={
-		_LANG_EN:"Changes that came from this order will be reverted. Are you sure?",
-		_LANG_ES:"Los cambios causados por esta orden serán revertidos ¿Está seguro?"
-	}[lang]
-	html_text=(
-		"<form "
-			f"""hx-post="/api/orders/pool/{order_id}/revert" """
-			f"""hx-target="#{_ID_MESSAGES}" """
-			"""hx-swap="innerHTML" """
-			f"""hx-confirm="{tl}" """
-			f"""hx-trigger="submit" """
-			">\n"
-	)
+# 	tl={
+# 		_LANG_EN:"Are you sure?",
+# 		_LANG_ES:"¿Está seguro?"
+# 	}[lang]
+# 	html_text=(
+# 		f"""<form hx-post="/api/orders/pool/{order_id}/run" """
+# 			f"""hx-target="#{_ID_MESSAGES}" """
+# 			"""hx-swap="innerHTML" """
+# 			f"""hx-confirm="{tl}" """
+# 			f"""hx-trigger="submit" """
+# 			# f"""hx-include="[name='{_KEY_ORDER_KEEP}']" """
+# 			">\n"
+# 	)
+
+# 	tl={
+# 		_LANG_EN:"Keep after running",
+# 		_LANG_ES:"Conservar tras ejecutar"
+# 	}[lang]
+# 	html_text=(
+# 		f"{html_text}\n"
+# 		f"{write_html_input_checkbox(_KEY_ORDER_DROP,tl)}"
+# 	)
+
+# 	tl={
+# 		_LANG_EN:"Run order",
+# 		_LANG_ES:"Ejecutar orden"
+# 	}[lang]
+# 	html_text=(
+# 			f"{html_text}\n"
+# 			f"{write_button_submit(tl)}\n"
+# 		"</form>"
+# 	)
+
+# 	if full:
+# 		html_text=(
+# 			f"""<div id="{_ID_FORM_RUN_OR_REVERT_ORDER}" """
+# 				f"""class="{_CSS_CLASS_COMMON} {_CSS_CLASS_CONTROLS}" """
+# 				">\n"
+# 				f"{html_text}\n"
+# 			"</div>"
+# 		)
+
+# 	return html_text
+
+# def write_form_revert_order(
+# 		lang:str,order_id:str,
+# 		full:bool=True,
+# 	)->str:
+
+# 	tl={
+# 		_LANG_EN:"Changes that came from this order will be reverted. Are you sure?",
+# 		_LANG_ES:"Los cambios causados por esta orden serán revertidos ¿Está seguro?"
+# 	}[lang]
+# 	html_text=(
+# 		"<form "
+# 			f"""hx-post="/api/orders/pool/{order_id}/revert" """
+# 			f"""hx-target="#{_ID_MESSAGES}" """
+# 			"""hx-swap="innerHTML" """
+# 			f"""hx-confirm="{tl}" """
+# 			f"""hx-trigger="submit" """
+# 			">\n"
+# 	)
 
 
-	tl={
-		_LANG_EN:"Delete the order",
-		_LANG_ES:"Eliminar la órden"
-	}[lang]
-	html_text=(
-		f"{html_text}\n"
-		f"{write_html_input_checkbox(_KEY_ORDER_DROP,tl,full=False)}\n"
-	)
+# 	tl={
+# 		_LANG_EN:"Delete the order",
+# 		_LANG_ES:"Eliminar la órden"
+# 	}[lang]
+# 	html_text=(
+# 		f"{html_text}\n"
+# 		f"{write_html_input_checkbox(_KEY_ORDER_DROP,tl,full=False)}\n"
+# 	)
 
-	tl={
-		_LANG_EN:"Revert",
-		_LANG_ES:"Revertir"
-	}[lang]
+# 	tl={
+# 		_LANG_EN:"Revert",
+# 		_LANG_ES:"Revertir"
+# 	}[lang]
 
-	html_text=(
-		f"{html_text}\n"
-			f"{write_button_submit(tl)}\n"
-		"</form>"
-	)
+# 	html_text=(
+# 		f"{html_text}\n"
+# 			f"{write_button_submit(tl)}\n"
+# 		"</form>"
+# 	)
 
-	if full:
-		html_text=(
-			f"""<div id="{_ID_FORM_RUN_OR_REVERT_ORDER}" """
-				f"""class="{_CSS_CLASS_COMMON} {_CSS_CLASS_CONTROLS}" """
-					">\n"
-				f"{html_text}\n"
-			"</div>"
-		)
+# 	if full:
+# 		html_text=(
+# 			f"""<div id="{_ID_FORM_RUN_OR_REVERT_ORDER}" """
+# 				f"""class="{_CSS_CLASS_COMMON} {_CSS_CLASS_CONTROLS}" """
+# 					">\n"
+# 				f"{html_text}\n"
+# 			"</div>"
+# 		)
 
-	return html_text
+# 	return html_text
 
 
 def write_button_delete_order(
@@ -814,19 +888,24 @@ def write_html_order_details(
 			data.get(_KEY_LOCKED_BY),str
 		)
 
-		if locked:
-			html_text=(
-				f"{html_text}\n"
-				# f"""<div class="{_CSS_CLASS_COMMON} {_CSS_CLASS_CONTROLS}">"""
-				f"{write_form_revert_order(lang,order_id)}\n"
-				# "</div>"
-			)
+		html_text=(
+			f"{html_text}\n"
+			f"{write_form_run_or_revert(lang,order_id,revert_variant=locked)}"
+		)
 
-		if not locked:
-			html_text=(
-				f"{html_text}\n"
-				f"{write_form_run_order(lang,order_id)}"
-			)
+		# if locked:
+		# 	html_text=(
+		# 		f"{html_text}\n"
+		# 		# f"""<div class="{_CSS_CLASS_COMMON} {_CSS_CLASS_CONTROLS}">"""
+		# 		f"{write_form_revert_order(lang,order_id)}\n"
+		# 		# "</div>"
+		# 	)
+
+		# if not locked:
+		# 	html_text=(
+		# 		f"{html_text}\n"
+		# 		f"{write_form_run_order(lang,order_id)}"
+		# 	)
 
 	# Order value
 

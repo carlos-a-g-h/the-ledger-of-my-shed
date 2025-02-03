@@ -209,6 +209,8 @@ def write_html_input_checkbox(
 
 	# Input checkbox with a label next to it
 
+	# NOTE: checkboxes active by default cause problems
+
 	tl=""
 	if checked:
 		tl="checked"

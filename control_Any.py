@@ -83,8 +83,8 @@ from symbols_Any import (
 	_REQ_HAS_SESSION,_REQ_LANGUAGE,
 
 	_CFG_FLAGS,
-	_CFG_FLAG_ROOT_LOCAL_AUTOLOGIN,
-	_CFG_FLAG_NO_CSS_BAKING,
+	_CFG_FLAG_E_ROOT_LOCAL_AUTOLOGIN,
+	_CFG_FLAG_D_STARTUP_CSS_BAKING,
 
 	_KEY_SIGN,_KEY_SIGN_UNAME
 )
@@ -286,7 +286,7 @@ def is_root_local_autologin_allowed(request:Request)->bool:
 	if request.remote not in ("::1","127.0.0.1"):
 		return False
 
-	if _CFG_FLAG_ROOT_LOCAL_AUTOLOGIN not in request.app[_CFG_FLAGS]:
+	if _CFG_FLAG_E_ROOT_LOCAL_AUTOLOGIN not in request.app[_CFG_FLAGS]:
 		return False
 
 	return True
@@ -407,7 +407,7 @@ async def response_fullpage_ext(
 
 	styles=[_SCRIPT_HTMX]
 	devmode_css=(
-		_CFG_FLAG_NO_CSS_BAKING in request.app[_CFG_FLAGS]
+		_CFG_FLAG_D_STARTUP_CSS_BAKING in request.app[_CFG_FLAGS]
 	)
 	if devmode_css:
 		styles.extend(

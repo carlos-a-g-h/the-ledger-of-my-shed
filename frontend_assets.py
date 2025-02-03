@@ -220,7 +220,7 @@ def write_form_export_assets_as_excel(lang:str):
 			">\n"
 
 			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
-				f"{write_html_input_checkbox(_KEY_INC_HISTORY,tl,checked=False)}\n"
+				f"{write_html_input_checkbox(_KEY_INC_HISTORY,tl)}\n"
 			"</div>\n"
 	)
 
