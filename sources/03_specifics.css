@@ -5,7 +5,14 @@ div.form-inside-a-div > form,
 #form-assets-to-excel > form {
   display:flex;
   flex-direction: column;
-  gap:12px;
+  gap:16px;
+}
+
+#form-assets-to-excel > form > div {
+  display:flex;
+  flex-direction: row;
+  gap:8px;
+  flex-wrap:wrap;
 }
 
 #form-run-or-revert-order > form {
@@ -26,6 +33,7 @@ div.order-info {
   gap:8px;
 }
 
+div.input-date,
 div.input-guarded {
   display:flex;
   flex-direction:column;

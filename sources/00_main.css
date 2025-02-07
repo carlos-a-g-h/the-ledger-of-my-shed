@@ -104,15 +104,15 @@ div.popup-button-area {
 
 div.ig-checkboxes {
 	display:flex;
-	flex-direction:row;
-	flex-wrap: wrap;
-	gap:4em;
+	flex-direction:column;
+	flex-wrap: nowrap;
+	gap:4px;
 }
 div.ig-fields {
 	display:flex;
 	flex-direction:row;
 	flex-wrap: wrap;
-	gap:2em;
+	gap:24px;
 }
 div.input-field {
 	display:flex;
@@ -127,7 +127,12 @@ form > div.common > div.ig-fields,
 form > div.common > div.input-guarded {margin-bottom:4px;}
 */
 
-div.asset-history {margin-top:4em;}
+div.asset-history {
+	display:flex;
+	flex-direction:column;
+	flex-wrap:nowrap;
+	gap: 4px;
+}
 
 div.asset-in-order > div > div.controls {
 	justify-content: space-between;
