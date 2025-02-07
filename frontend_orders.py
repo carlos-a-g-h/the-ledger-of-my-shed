@@ -52,7 +52,7 @@ from symbols_orders import (
 
 from frontend_Any import (
 
-	_ID_MESSAGES,
+	_ID_MSGZONE,
 	_ID_MAIN_TWO,
 
 	_CSS_CLASS_NAV,
@@ -93,7 +93,7 @@ def write_button_nav_new_order(lang:str)->str:
 		f"""<button class="{_CSS_CLASS_NAV}" """
 			"""hx-get="/fgmt/orders/new" """
 			"""hx-swap="innerHTML" """
-			f"""hx-target="#{_ID_MESSAGES}" """
+			f"""hx-target="#{_ID_MSGZONE}" """
 			">"
 			f"{tl}"
 		"</button>"
@@ -110,7 +110,7 @@ def write_button_nav_list_orders(lang:str)->str:
 		f"""<button class="{_CSS_CLASS_NAV}" """
 			"""hx-get="/fgmt/orders/all-orders" """
 			"""hx-swap="innerHTML" """
-			f"""hx-target="#{_ID_MESSAGES}" """
+			f"""hx-target="#{_ID_MSGZONE}" """
 			">"
 			f"{tl}"
 		"</button>"
@@ -121,7 +121,7 @@ def write_form_new_order(lang:str,full:bool=True)->str:
 	html_text=(
 		"""<form hx-post="/api/orders/new" """
 			"""hx-trigger=submit """
-			f"""hx-target="#{_ID_MESSAGES}" """
+			f"""hx-target="#{_ID_MSGZONE}" """
 			"""hx-swap="innerHTML" """
 			">\n"
 	)
@@ -203,7 +203,7 @@ def write_button_order_details(
 		f"""<button class="{_CSS_CLASS_COMMON}" """
 			f"""hx-get="{url_path}" """
 			"""hx-swap="innerHTML" """
-			f"""hx-target="#{_ID_MESSAGES}" """
+			f"""hx-target="#{_ID_MSGZONE}" """
 			">"
 			f"{tl}"
 		"</button>"
@@ -222,7 +222,7 @@ def write_button_add_asset_to_order(
 	html_text=(
 		f"""<div>""" "\n"
 			f"""<form hx-post="/api/orders/pool/{order_id}/add-asset" """
-				f"""hx-target="#{_ID_MESSAGES}" """
+				f"""hx-target="#{_ID_MSGZONE}" """
 				"""hx-swap="innerHTML" """
 				">\n"
 
@@ -258,7 +258,7 @@ def write_button_remove_asset_from_order(
 	}[lang]
 	return (
 		f"""<form hx-delete="/api/orders/pool/{order_id}/remove-asset" """
-			f"""hx-target="#{_ID_MESSAGES}" """
+			f"""hx-target="#{_ID_MSGZONE}" """
 			"""hx-swap="innerHTML">"""
 
 			f"""<input type=hidden name="{_KEY_ASSET}" value="{asset_id}">""" "\n"
@@ -276,7 +276,7 @@ def write_form_update_asset_in_order(
 
 	html_text=(
 		f"""<form hx-post="/api/orders/pool/{order_id}/update-asset" """
-			f"""hx-target="#{_ID_MESSAGES}" """
+			f"""hx-target="#{_ID_MSGZONE}" """
 			"""hx-swap="innerHTML" """
 			">\n"
 
@@ -501,7 +501,7 @@ def write_form_run_or_revert(
 
 	html_text=(
 		f"""<form hx-post="{url_path}" """
-			f"""hx-target="#{_ID_MESSAGES}" """
+			f"""hx-target="#{_ID_MSGZONE}" """
 			"""hx-swap="innerHTML" """
 			f"""hx-confirm="{tl}" """
 			f"""hx-trigger="submit" """
@@ -672,7 +672,7 @@ def write_button_delete_order(
 	}[lang]
 	html_text=(
 		f"""<form hx-delete="{the_route}" """
-			f"""hx-target="#{_ID_MESSAGES}" """
+			f"""hx-target="#{_ID_MSGZONE}" """
 			"""hx-swap="innerHTML" """
 			f"""hx-confirm="{tl}" """
 			">\n"

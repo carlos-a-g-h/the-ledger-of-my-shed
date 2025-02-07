@@ -2,6 +2,7 @@
 
 # from asyncio import to_thread
 
+from datetime import datetime
 from pathlib import Path
 from secrets import token_hex
 
@@ -58,7 +59,7 @@ from frontend_Any import (
 	_ID_MAIN,
 	_ID_MAIN_ONE,
 	_ID_MAIN_TWO,
-	_ID_MESSAGES,
+	_ID_MSGZONE,
 
 	_ID_NAV_TWO_OPTS,
 
@@ -94,7 +95,7 @@ from frontend_assets import (
 	write_html_asset_as_item,
 	write_html_asset_details,
 	write_html_asset_history,
-	write_form_edit_asset_metadata,
+	write_form_edit_asset_definition,
 
 	write_form_add_record,
 	write_html_record,
@@ -108,6 +109,8 @@ from internals import (
 	util_valid_int,
 	util_valid_int_ext,
 	util_valid_str,
+	util_valid_date,
+	util_dt_to_str,
 )
 
 from symbols_Any import (
@@ -141,7 +144,8 @@ from symbols_Any import (
 	_KEY_COMMENT,
 	_KEY_VLEVEL,
 	_KEY_DELETE_AS_ITEM,
-	# _KEY_DATE,
+	# _KEY_DATE_UTC,
+	_KEY_DATE_MIN,_KEY_DATE_MAX,
 
 	_KEY_INC_TAG,
 	_KEY_INC_COMMENT,
@@ -668,6 +672,7 @@ async def route_api_asset_edit_definition(
 	lang=request[_REQ_LANGUAGE]
 
 	request_data=await get_request_body_dict(ct,request)
+	print(request_data)
 	if not isinstance(request_data,Mapping):
 		return response_errormsg(
 			_ERR_TITLE_METADATA_CHANGE[lang],
@@ -780,7 +785,7 @@ async def route_api_asset_edit_definition(
 			"</div>\n"
 
 			f"""<details hx-swap-oob="innerHTML:#{html_id_asset(asset_id,editor=True)}">""" "\n"
-				f"{write_form_edit_asset_metadata(lang,asset_id,data=result_nv,full=False)}\n"
+				f"{write_form_edit_asset_definition(lang,asset_id,data=result_nv,full=False)}\n"
 			"</details>\n"
 
 			f"<!-- CHANGED METADATA FOR {asset_id}-->"
@@ -1209,7 +1214,7 @@ async def route_fgmt_export_options(
 		content_type=_MIMETYPE_HTML
 	)
 
-async def route_api_excel_export(
+async def route_api_export_as_excel(
 		request:Request
 	)->Union[json_response,Response]:
 
@@ -1218,14 +1223,20 @@ async def route_api_excel_export(
 	ct=request[_REQ_CLIENT_TYPE]
 
 	assert_referer(
-		request,ct
-		,_ROUTE_PAGE
+		request,ct,
+		_ROUTE_PAGE
 	)
 
 	atype=0
 	inc_history=False
+
+	# date_utc:bool=False
+	date_min:Optional[datetime]=None
+	date_max:Optional[datetime]=None
+
 	if request.method=="POST":
 		req_data=await get_request_body_dict(ct,request)
+		print("Request body data:",req_data)
 		if isinstance(req_data,Mapping):
 			atype=util_valid_int(
 				req_data.get(_KEY_ATYPE)
@@ -1233,6 +1244,40 @@ async def route_api_excel_export(
 			inc_history=util_valid_bool(
 				req_data.get(_KEY_INC_HISTORY),False
 			)
+			# date_utc=util_valid_bool(
+			# 	req_data.get(_KEY_DATE_UTC),
+			# 	dval=False
+			# )
+			date_min=util_valid_date(
+				req_data.get(_KEY_DATE_MIN),
+				get_dt=True
+			)
+			date_max=util_valid_date(
+				req_data.get(_KEY_DATE_MAX),
+				get_dt=True
+			)
+
+	has_time_frame=(
+		(date_min is not None) and
+		(date_max is not None)
+	)
+
+	if has_time_frame:
+
+		if not date_min<date_max:
+
+			print("WARNING: date_min is larger than date_max, both have been nullified for this request")
+			has_time_frame=False
+			date_min=None
+			date_max=None
+
+	# if has_time_frame and date_utc:
+
+	# 	if isinstance(date_min,datetime):
+	# 		date_min=date_min.utcnow()
+
+	# 	if isinstance(date_max,datetime):
+	# 		date_max=date_max.utcnow()
 
 	lang=request[_REQ_LANGUAGE]
 
@@ -1241,18 +1286,41 @@ async def route_api_excel_export(
 		request.app[_APP_RDBC],
 		request.app[_APP_RDBN],
 		lang=lang,atype=atype,
-		inc_history=inc_history
+		inc_history=inc_history,
+		date_min=date_min,
+		date_max=date_max
 	)
 
 	the_name={
 		_LANG_EN:"Assets",
 		_LANG_ES:"Activos"
 	}[lang]
+
+	if date_min is not None:
+		the_name=f"{the_name}_"+{
+			_LANG_EN:"from",
+			_LANG_ES:"desde"
+		}[lang]+f"_{util_dt_to_str(date_min)}"
+
+	if date_max is not None:
+		the_name=f"{the_name}_"+{
+			_LANG_EN:"to",
+			_LANG_ES:"hasta"
+		}[lang]+f"_{util_dt_to_str(date_max)}"
+
+	print("\nDelivering the excel file")
+	print("includes history?",inc_history)
+	print("analysis type",atype)
+
+	content_dispositon=(
+		f"""  filename="{the_name}.xlsx"  """
+	)
+
 	return FileResponse(
 		the_file,
 		headers={
 			_HEADER_CONTENT_TYPE:_MIMETYPE_EXCEL,
-			_HEADER_CONTENT_DISPOSITION:f"filename={the_name}.xlsx"
+			_HEADER_CONTENT_DISPOSITION:content_dispositon.strip()
 		}
 	)
 
@@ -1271,7 +1339,7 @@ async def route_main(
 	tl=await render_html_user_section(request,lang,userid)
 
 	html_text=(
-		f"""<section id="{_ID_MESSAGES}">""" "\n"
+		f"""<section id="{_ID_MSGZONE}">""" "\n"
 			"<!-- MESSAGES GO HERE -->\n"
 		"</section>\n"
 
@@ -1303,21 +1371,6 @@ async def route_main(
 			"<!-- EMPTY -->\n"
 		"</section>"
 	)
-
-	# if request[_REQ_HAS_SESSION]:
-
-	# 	html_text=(
-	# 		f"{html_text}\n"
-	# 			"<div>\n"
-	# 				"<!-- CENTERED -->"
-	# 				f"{write_form_export_assets_as_excel(lang)}\n"
-	# 			"</div>"
-	# 	)
-
-	# html_text=(
-	# 		f"{html_text}\n"
-	# 	"</section>"
-	# )
 
 	return (
 		await response_fullpage_ext(

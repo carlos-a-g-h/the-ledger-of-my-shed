@@ -41,7 +41,7 @@ from control_Any import (
 
 from frontend_Any import (
 
-	_ID_MESSAGES,
+	_ID_MSGZONE,
 	_ID_MAIN,
 	_ID_NAV_ONE,
 	_ID_NAV_TWO,
@@ -247,7 +247,7 @@ async def route_api_login(request:Request)->Union[json_response,Response]:
 		)
 
 		stored_date=util_valid_date(
-			session_candidate[1],True
+			session_candidate[1],get_dt=True
 		)
 		if not util_date_calc_expiration(
 			stored_date,60,
@@ -478,7 +478,7 @@ async def route_api_login_otp(request:Request)->Union[json_response,Response]:
 	if util_date_calc_expiration(
 		util_valid_date(
 			session_candidate[1],
-			True
+			get_dt=True
 		),60,
 		get_age=False,
 		get_exp_date=False
@@ -717,7 +717,7 @@ async def route_main(request:Request)->Union[json_response,Response]:
 	tl=await render_html_user_section(request,lang,userid)
 
 	html_text=(
-		f"""<section id="{_ID_MESSAGES}">""" "\n"
+		f"""<section id="{_ID_MSGZONE}">""" "\n"
 			"<!-- MESSAGES GO HERE -->\n"
 		"</section>\n"
 

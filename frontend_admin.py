@@ -25,6 +25,7 @@ from frontend_Any import (
 
 	_CSS_CLASS_COMMON,
 	_CSS_CLASS_CONTROLS,
+	_CSS_CLASS_NAV,
 
 	_CSS_CLASS_IG_FIELDS,
 
@@ -42,7 +43,7 @@ def write_button_nav_users(lang:str)->str:
 		_LANG_ES:"Panel de control de usuarios"
 	}[lang]
 	return (
-		f"""<button class="{_CSS_CLASS_COMMON}" """
+		f"""<button class="{_CSS_CLASS_NAV}" """
 			"""hx-get="/fgmt/admin/users" """
 			"""hx-target="#messages" """
 			"""hx-swap="innerHTML">"""
@@ -56,7 +57,7 @@ def write_button_nav_misc_settings(lang:str)->str:
 		_LANG_ES:"Ajustes varios"
 	}[lang]
 	return (
-		f"""<button class="{_CSS_CLASS_COMMON}" """
+		f"""<button class="{_CSS_CLASS_NAV}" """
 			"""hx-get="/fgmt/admin/misc" """
 			"""hx-target="#messages" """
 			"""hx-swap="innerHTML">"""

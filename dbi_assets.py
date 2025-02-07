@@ -167,7 +167,6 @@ async def dbi_assets_EditAssetMetadata(
 		if tag_ok:
 			changes_set.update({_KEY_TAG:asset_tag})
 		if not tag_ok:
-			# changes_unset.update({"$unset":{_KEY_TAG:1}})
 			changes_unset.append(_KEY_TAG)
 
 	if change_comment:
@@ -178,7 +177,7 @@ async def dbi_assets_EditAssetMetadata(
 			changes_unset.append(_KEY_COMMENT)
 
 	if change_value:
-		value_ok=util_valid_str(asset_value)
+		value_ok=util_valid_int(asset_value)
 		if value_ok:
 			changes_set.update({_KEY_VALUE:asset_value})
 		if not value_ok:

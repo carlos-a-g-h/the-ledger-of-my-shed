@@ -20,14 +20,20 @@ _ID_NAV_ONE="nav-1"
 _ID_NAV_ONE_OPTS="nav-1-opts"
 _ID_NAV_TWO="nav-2"
 _ID_NAV_TWO_OPTS="nav-2-opts"
-_ID_MESSAGES="messages"
+_ID_MSGZONE="msgzone"
 
-_CSS_CLASS_TITLE_UNIQUE="title-uniq"
-_CSS_CLASS_TITLE="title"
+_ID_MSGZONE_BACKGROUND="msgzone-background"
+_ID_MSGZONE_OUTERBODY="msgzone-outerbody"
+_ID_MSGZONE_CONTAINER="msgzone-container"
+_CSS_CLASS_MSGZONE_TITLE="msgzone-title"
+_CSS_CLASS_MSGZONE_CONTENT="msgzone-content"
+_CSS_CLASS_MSGZONE_CONTROLS="msgzone-controls"
+_CSS_CLASS_MSGZONE_BUTTON="msgzone-button"
+
+# _CSS_CLASS_TITLE_UNIQUE="title-uniq"
+# _CSS_CLASS_TITLE="title"
 
 _CSS_CLASS_NAV="nav"
-_CSS_CLASS_CONTAINER="container"
-_CSS_CLASS_CONTENT="content"
 
 _CSS_CLASS_IG_CHECKBOXES="ig-checkboxes"
 _CSS_CLASS_IG_FIELDS="ig-fields"
@@ -40,12 +46,13 @@ _CSS_CLASS_INPUT_CHECKBOX="input-checkbox"
 _CSS_CLASS_INPUT_RADIO="input-radio"
 _CSS_CLASS_INPUT_FIELD="input-field"
 _CSS_CLASS_INPUT_TEXTBOX="input-textbox"
+_CSS_CLASS_INPUT_DATE="input-date"
 _CSS_CLASS_INPUT_GUARDED="input-guarded"
 
 _CSS_CLASS_COMMON="common"
 _CSS_CLASS_HORIZONTAL="horizontal"
 _CSS_CLASS_CONTROLS="controls"
-_CSS_CLASS_VER="vertical"
+# _CSS_CLASS_VER="vertical"
 # _CSS_CLASS_VDOWN="vertical-2"
 
 _CSS_CLASS_ASSET_IN_ORDER="asset-in-order"
@@ -385,15 +392,49 @@ def write_html_input_textbox(
 		)
 	html_text=f"{html_text}></textarea>"
 
-	if not isinstance(label,str):
-		return html_text
+	if isinstance(label,str):
+
+		html_text=(
+			f"""<div class="{_CSS_CLASS_INPUT_TEXTBOX}">""" "\n"
+				f"""<label for="{name}" class="{_CSS_CLASS_COMMON}">{label}</label>""" "\n"
+				f"{html_text}\n"
+			"</div>"
+		)
+
+	return html_text
+
+def write_html_input_date(
+		name:str,
+		label:Optional[str]=None,
+		value:Optional[str]=None
+	)->str:
 
 	html_text=(
-		f"""<div class="{_CSS_CLASS_INPUT_TEXTBOX}">""" "\n"
-			f"""<label for="{name}" class="{_CSS_CLASS_COMMON}">{label}</label>""" "\n"
-			f"{html_text}\n"
-		"</div>"
+		"""<input type="date" """
+			f"""class="{_CSS_CLASS_COMMON}" """
+			f"""name="{name}" """
 	)
+
+	if value is not None:
+		html_text=(
+			f"{html_text}"
+			f"""value="{value}" """
+		)
+
+	html_text=(
+			f"{html_text}"
+		">"
+	)
+
+	if label is not None:
+		html_text=(
+			f"""<div class="{_CSS_CLASS_INPUT_DATE}">""" "\n"
+				f"""<label for="{name}" class="{_CSS_CLASS_COMMON}">"""
+					f"{label}"
+				"</label>\n"
+				f"{html_text}\n"
+			"</div>"
+		)
 
 	return html_text
 
@@ -488,9 +529,9 @@ def write_link_homepage(lang:str)->str:
 
 def write_popupmsg_closemsg(okbtn:bool=False)->str:
 
-	classes="popup-button"
+	classes=_CSS_CLASS_MSGZONE_BUTTON
 	if not okbtn:
-		classes=f"{classes} danger"
+		classes=f"{classes} {_CSS_CLASS_DANGER}"
 
 	label={
 		True:"OK",
@@ -499,30 +540,44 @@ def write_popupmsg_closemsg(okbtn:bool=False)->str:
 
 	return (
 		"""<button class="popup-button" """
-			"""onclick="document.getElementById('messages').children[0].outerHTML='<\!-- MESSAGE BOX CLOSED -->'">""" "\n"
+			f"""onclick="document.getElementById('{_ID_MSGZONE}').children[0].outerHTML='<\!-- MESSAGE CLOSED -->'">""" "\n"
 				f"{label}\n"
 		"""</button>"""
 	)
 
-def write_popupmsg(html_content:str)->str:
-	return (
-		"""<div class="popup-background">""" "\n"
-			"""<div class="popup-area">""" "\n"
-				"""<div class="popup-body">""" "\n"
-					"""<div class="popup-content">""" "\n"
-						f"{html_content}\n"
+def write_popupmsg(
+		content:str,
+		title:Optional[str]=None
+	)->str:
+
+	html_text=(
+		f"""<div id="{_ID_MSGZONE_BACKGROUND}">""" "\n"
+			f"""<div id="{_ID_MSGZONE_OUTERBODY}">""" "\n"
+				f"""<div id="{_ID_MSGZONE_CONTAINER}">"""
+	)
+
+	if title is not None:
+		html_text=(
+			f"{html_text}\n"
+				f"""<div class="{_CSS_CLASS_MSGZONE_TITLE}">""" "\n"
+					f"{title}\n"
+				"</div>"
+		)
+
+	html_text=(
+					f"{html_text}\n"
+					f"""<div class="{_CSS_CLASS_MSGZONE_CONTENT}">""" "\n"
+						f"{content}\n"
 					"</div>\n"
-					f"""<div class="popup-button-area">""" "\n"
+					f"""<div class="{_CSS_CLASS_MSGZONE_CONTROLS}">""" "\n"
 						f"{write_popupmsg_closemsg(True)}\n"
-						# """<button class="popup-button" onclick="this.parentElement.parentElement.parentElement.parentElement.style.display='none';">""" "\n"
-						# "<!-- × -->"
-							# "<strong>OK</strong>"
-						# "</button>\n"
 					"</div>\n"
 				"</div>\n"
 			"</div>\n"
 		"</div>"
 	)
+
+	return html_text
 
 def write_fullpage(
 		lang:str,

@@ -29,7 +29,7 @@ from frontend_Any import (
 	_ID_NAV_ONE,
 	_ID_NAV_TWO,_ID_NAV_TWO_OPTS,
 	_ID_MAIN,_ID_MAIN_ONE,_ID_MAIN_TWO,
-	_ID_MESSAGES,
+	_ID_MSGZONE,
 
 	_CSS_CLASS_NAV,
 
@@ -391,7 +391,7 @@ async def route_main(
 	tl=await render_html_user_section(request,lang,userid)
 
 	html_text=(
-		f"""<section id="{_ID_MESSAGES}">""" "\n"
+		f"""<section id="{_ID_MSGZONE}">""" "\n"
 			"<!-- MESSAGES GO HERE -->\n"
 		"</section>\n"
 

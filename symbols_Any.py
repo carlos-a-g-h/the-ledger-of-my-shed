@@ -35,6 +35,14 @@ _APP_BAKED_CSS="Baked_CSS"
 _APP_RDBN="MongoDB-DB-Name"
 _APP_RDBC="MongoDB-Client"
 
+# Date conversio formats
+
+_FMT_DATE_YMDHMS="%Y-%m-%d-%H-%M-%S"
+_FMT_DATE_YMDHM="%Y-%m-%d-%H-%M"
+_FMT_DATE_YMDH="%Y-%m-%d-%H"
+_FMT_DATE_YMD="%Y-%m-%d"
+_FMT_DATE_YM="%Y-%m"
+
 # Client Types
 
 _TYPE_CUSTOM="CustomClient"
@@ -116,6 +124,10 @@ _KEY_SIGN_UNAME="sign_uname"
 _KEY_TAG="tag"
 _KEY_COMMENT="comment"
 _KEY_DATE="date"
+
+_KEY_DATE_UTC="date_utc"
+_KEY_DATE_MIN="date_min"
+_KEY_DATE_MAX="date_max"
 
 _KEY_DELETE_AS_ITEM="delete_as_item"
 _KEY_VERBOSE="verbose"

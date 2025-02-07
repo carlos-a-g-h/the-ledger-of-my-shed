@@ -21,7 +21,7 @@ from symbols_Any import (
 
 from frontend_Any import (
 
-	_ID_MESSAGES,
+	_ID_MSGZONE,
 
 	_CSS_CLASS_COMMON,
 	# _CSS_CLASS_HORIZONTAL,
@@ -62,7 +62,7 @@ def write_button_login(lang:str)->str:
 	return (
 		f"""<button class="{_CSS_CLASS_NAV}" """
 			"""hx-get="/fgmt/accounts/login" """
-			f"""hx-target=#{_ID_MESSAGES} """
+			f"""hx-target=#{_ID_MSGZONE} """
 			"""hx-swap="innerHTML" """
 			">"
 			f"{tl}"
@@ -77,7 +77,7 @@ def write_form_login(lang:str,full:bool=True)->str:
 	html_text=(
 		"""<form """
 			"""hx-post="/api/accounts/login" """
-			f"""hx-target="#{_ID_MESSAGES}" """
+			f"""hx-target="#{_ID_MSGZONE}" """
 			"""hx-swap="innerHTML" """
 			">"
 	)
@@ -262,7 +262,7 @@ def write_button_logout(lang:str)->str:
 	html_text=(
 		f"""<button class="{_CSS_CLASS_NAV}" """
 			"""hx-delete="/api/accounts/logout" """
-			f"""hx-target="#{_ID_MESSAGES}" """
+			f"""hx-target="#{_ID_MSGZONE}" """
 			"""hx-swap="innerHTML" """
 			f"""hx-confirm="{tl}" """
 			">\n"

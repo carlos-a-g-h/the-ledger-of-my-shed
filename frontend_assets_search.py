@@ -12,7 +12,7 @@ from symbols_Any import (
 
 from frontend_Any import (
 
-	_ID_MESSAGES,
+	_ID_MSGZONE,
 
 	_CSS_CLASS_COMMON,
 	_CSS_CLASS_CONTROLS,
@@ -47,7 +47,7 @@ def write_form_search_assets(
 	html_text=(
 		f"""<form hx-post="{the_route}" """
 			"""hx-trigger="submit" """
-			f"""hx-target="#{_ID_MESSAGES}" """
+			f"""hx-target="#{_ID_MSGZONE}" """
 			"""hx-swap="innerHTML" """
 			">\n"
 

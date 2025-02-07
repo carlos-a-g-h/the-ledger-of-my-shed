@@ -20,7 +20,13 @@ from yaml import (
 from symbols_Any import (
 	_excel_columns,
 	_COOKIE_AKEY,_COOKIE_USER,
-	_HEADER_USER_AGENT
+	_HEADER_USER_AGENT,
+
+	_FMT_DATE_YM,
+	_FMT_DATE_YMD,
+	_FMT_DATE_YMDH,
+	_FMT_DATE_YMDHM,
+	_FMT_DATE_YMDHMS
 )
 
 # excel related
@@ -100,17 +106,35 @@ def util_date_calc_age(
 
 def util_valid_date(
 		dt_string:str,
-		get_dt:bool=False
+		get_dt:bool=False,
+		date_min:Optional[datetime]=None,
+		date_max:Optional[datetime]=None
 	)->Optional[Union[str,datetime]]:
+
+	if len(dt_string)==0:
+		return None
 
 	if not isinstance(dt_string,str):
 		return None
+
+	the_format=""
+	parts=len(dt_string.split("-"))
+	if parts==2:
+		the_format=_FMT_DATE_YM
+	if parts==3:
+		the_format=_FMT_DATE_YMD
+	if parts==4:
+		the_format=_FMT_DATE_YMDH
+	if parts==5:
+		the_format=_FMT_DATE_YMDHM
+	if parts==6:
+		the_format=_FMT_DATE_YMDHMS
 
 	dtobj:Optional[datetime]=None
 	try:
 		dtobj=datetime.strptime(
 			dt_string,
-			"%Y-%m-%d-%H-%M-%S"
+			the_format
 		)
 	except Exception as exc:
 		print("date parsing error:",exc)
@@ -118,19 +142,43 @@ def util_valid_date(
 			return None
 		return None
 
+	if isinstance(date_min,datetime):
+		if dtobj<date_min:
+			return None
+
+	if isinstance(date_max,datetime):
+		if dtobj>date_max:
+			return None
+
 	if get_dt:
 		return dtobj
 
 	return dt_string
 
-def util_rnow()->str:
+def util_dt_to_str(dtobj:datetime)->str:
+
+	return (
+		f"{dtobj.year}-"
+		f"{str(dtobj.month).zfill(2)}-"
+		f"{str(dtobj.day).zfill(2)}-"
+		f"{str(dtobj.hour).zfill(2)}-"
+		f"{str(dtobj.minute).zfill(2)}-"
+		f"{str(dtobj.second).zfill(2)}"
+	)
+
+def util_rnow(level=4)->str:
 	now=datetime.now().utcnow()
 	t=f"{now.year}"
 	t=f"{t}-{str(now.month).zfill(2)}"
 	t=f"{t}-{str(now.day).zfill(2)}"
-	t=f"{t}-{str(now.hour).zfill(2)}"
-	t=f"{t}-{str(now.minute).zfill(2)}"
-	return f"{t}-{str(now.second).zfill(2)}"
+	if level>1:
+		t=f"{t}-{str(now.hour).zfill(2)}"
+	if level>2:
+		t=f"{t}-{str(now.minute).zfill(2)}"
+	if level>3:
+		t=f"{t}-{str(now.second).zfill(2)}"
+
+	return t
 
 def util_date_calc_expiration(
 		pit:Optional[datetime],

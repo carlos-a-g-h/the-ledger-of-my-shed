@@ -1,7 +1,7 @@
 #!/usr/bin/python3.9
 
 from asyncio import to_thread as async_run_block
-# from datetime import datetime
+from datetime import datetime
 from pathlib import Path
 from secrets import token_hex
 from typing import Optional,Mapping
@@ -38,12 +38,141 @@ _KEY_ATYPE="atype"
 _ExExErr="E.E. Error"
 _ExExWarn="E.E. Warning"
 
+_TL_SPEC_RANGE={
+	_LANG_EN:"Within the requested time frame",
+	_LANG_ES:"Dentro del marco de tiempo especificado"
+}
+
+def util_get_limits(
+		history:Mapping,
+		date_min:Optional[datetime]=None,
+		date_max:Optional[datetime]=None
+	)->tuple:
+
+	# ( min , max )
+
+	get_min=isinstance(date_min,datetime)
+	get_max=isinstance(date_max,datetime)
+
+	if (not get_min) and (not get_max):
+		return (
+			0,
+			len(history)-1
+		)
+
+	index=-1
+
+	index_min=-1
+	index_max=-1
+
+	for record_uid in history:
+
+		index=index+1
+
+		record_date=util_valid_date(
+			history[record_uid].get(_KEY_DATE),
+			get_dt=True
+		)
+		if record_date is None:
+			continue
+
+		if get_min and index_min==-1:
+			if not record_date<date_min:
+				index_min=index
+
+		if index_min==-1:
+			continue
+
+		if get_max and index_max==-1:
+			if record_date>date_max:
+				index_max=index
+				break
+
+	if index_min==-1:
+		index_min=0
+	if index_max==-1:
+		index_max=len(history)-1
+
+	return (index_min,index_max)
+
+def util_get_initial_supply(
+		history:Mapping,
+		# date_min:Optional[datetime]=None,
+		index_min:int=0,
+		index_instead_of_supply:bool=False
+	)->int:
+
+	index=-1
+	supply=0
+
+	for record_uid in history:
+
+		index=index+1
+
+		record_mod=util_valid_int(
+			history[record_uid].get(_KEY_RECORD_MOD),
+		)
+		if record_mod is None:
+			continue
+
+		supply=supply+record_mod
+
+		if index==index_min:
+			break
+
+	print(
+		"found initial supply:",
+		index,supply
+	)
+	print(
+		"return index instad of value?",
+		index_instead_of_supply
+	)
+
+	if index_instead_of_supply:
+		return index
+
+	return supply
+
+def util_get_current_supply(
+		history:Mapping,
+		index_min:int=0,
+		index_max:int=-1,
+	)->int:
+
+	supply=0
+
+	index=-1
+
+	for record_uid in history:
+
+		index=index+1
+
+		if index<index_min:
+			continue
+
+		if not index_max==-1:
+			if index>index_max:
+				continue
+
+		record_mod=util_valid_int(
+			history[record_uid].get(_KEY_RECORD_MOD),
+		)
+		if record_mod is None:
+			continue
+
+		supply=supply+record_mod
+
+	return supply
+
 def conversion_process(
 		path_base:Path,
 		list_of_assets:list,
 		lang:str=_LANG_EN,
 		atype:int=0,
 		inc_history:bool=False,
+		date_min:Optional[datetime]=None,
+		date_max:Optional[datetime]=None
 	)->Optional[Path]:
 
 	path_output=path_base.joinpath(
@@ -56,36 +185,67 @@ def conversion_process(
 		exist_ok=True
 	)
 
+	has_tc=(
+		isinstance(date_min,datetime) or
+		isinstance(date_max,datetime)
+	)
+
+	print("Is there a time frame?",has_tc)
+	print("\tdate_min",date_min)
+	print("\tdate_max",date_max)
+
 	wb:Workbook=Workbook()
 	ws:Worksheet=wb.active
 	ws.title="SHLED_ASSETS"
 
 	col_headers=[
+		# Column A
 		{
 			_LANG_EN:"Asset ID",
 			_LANG_ES:"ID del activo"
 		}[lang],
 
+		# Column B
 		{
 			_LANG_EN:"Name",
 			_LANG_ES:"Nombre"
 		}[lang],
 
+		# Column C
 		{
 			_LANG_EN:"Tag",
 			_LANG_ES:"Etiqueta"
 		}[lang],
 
+		# Column D
 		{
-			_LANG_EN:"Valor",
+			_LANG_EN:"Value",
 			_LANG_ES:"Valor"
 		}[lang],
-
-		{
-			_LANG_EN:"Supply",
-			_LANG_ES:"Cantidad actual"
-		}[lang],
 	]
+
+	# Column E
+	tl={
+		_LANG_EN:"Supply",
+		_LANG_ES:"Cantidad actual"
+	}[lang]
+	if has_tc:
+		tl=f"{tl} ({_TL_SPEC_RANGE[lang]})"
+
+	col_headers.append(tl)
+
+	# Column F
+
+	tl={
+		_LANG_EN:"Initial Supply",
+		_LANG_ES:"Cantidad inicial"
+	}[lang]
+	if has_tc:
+		tl=f"{tl} ({_TL_SPEC_RANGE[lang]})"
+
+	col_headers.append(tl)
+
+	# Column G (Optional)
 
 	if not atype==0:
 
@@ -110,37 +270,29 @@ def conversion_process(
 
 		col_headers.append(tl)
 
-	if inc_history or (not atype==0):
-
-		# Wether the full history is required or not, the initial supply is needed to calculate the performance
-		col_headers.append(
-			{
-				_LANG_EN:"Initial Supply",
-				_LANG_ES:"Cantidad inicial"
-			}[lang]
-		)
-
 	# Appending the first row of columns
 	ws.append(col_headers)
 	row=1
 
-	# column where the supply is located (row E)
 	col_supply=5
+	col_initial_supply=6
 
-	# history (if needed) starts at the last column
-	col_h_start=len(col_headers)
+	# history (if needed) starts AFTER the last column
+	col_h_start=len(col_headers)+1
 
 	# Each row is an asset
 	for asset in list_of_assets:
 
 		row=row+1
 
-		# print(asset)
-
 		asset_name=asset.get(_KEY_NAME)
 		asset_id=asset.get(_KEY_ASSET)
 		asset_tag=asset.get(_KEY_TAG)
 		asset_value=asset.get(_KEY_VALUE)
+
+		print("\n->",asset_id,asset_name)
+
+		# THE FIRST 4 COLUMNS
 
 		ws[f"A{row}"]=asset_id
 		ws[f"B{row}"]=asset_name
@@ -151,7 +303,9 @@ def conversion_process(
 			asset.get(_KEY_HISTORY),
 			Mapping
 		):
-			print(_ExExWarn,f"{asset_id} has no history")
+			print(
+				f"The asset {asset_id} has no history"
+			)
 
 			ws[f"E{row}"]=0
 
@@ -160,40 +314,70 @@ def conversion_process(
 
 			continue
 
+		index_min,index_max=util_get_limits(
+			asset[_KEY_HISTORY],
+			date_min,date_max
+		)
+
+		print("\n\tLimits based on the requested time frame")
+		print("\t\tmin limit",index_min)
+		print("\t\tmax limit",index_max)
+
 		asset_history_size=len(asset[_KEY_HISTORY])
 		if asset_history_size==0:
-			print(_ExExWarn,f"{asset_id} has history of lengh zero")
+			print(
+				_ExExWarn,
+				f"{asset_id} has history of lengh zero"
+			)
 
-		col_h_end=col_h_start+asset_history_size-1
-
-		# NEXT COLUMN - THE SUPPLY
-
-		# NOTE: this supply is hardcoded
-		supply=0
+		# NEXT COLUMN (E) - THE SUPPLY
 
 		if inc_history:
 
 			ws[f"E{row}"]=(
-				f"=SUM({util_excel_dectocol(col_h_start)}{row}:{util_excel_dectocol(col_h_end)}{row})"
+				f"=SUM({util_excel_dectocol(col_h_start+index_min)}{row}:{util_excel_dectocol(col_h_start+index_max)}{row})"
 			)
 
 		if not inc_history:
 
-			for uid in asset[_KEY_HISTORY]:
-				record_mod=util_valid_int(
-					asset[_KEY_HISTORY][uid].get(_KEY_RECORD_MOD)
-				)
-				if not isinstance(record_mod,int):
-					continue
-
-				supply=supply+record_mod
-
-			ws[f"E{row}"]=supply
+			ws[f"E{row}"]=util_get_current_supply(
+				asset[_KEY_HISTORY],
+				index_min=index_min,
+				index_max=index_max
+			)
 
 		col_pos=5
 		col_pos_ok=""
 
-		# NEXT COLUMN - THE PERFORMANCE (OPTIONAL)
+		# NEXT COLUMN (F) - THE INITIAL SUPPLY
+
+		col_pos=col_pos+1
+		col_pos_ok=util_excel_dectocol(col_pos)
+
+		if not inc_history:
+			ws[f"{col_pos_ok}{row}"]=util_get_initial_supply(
+				asset[_KEY_HISTORY],
+				index_min,
+				index_instead_of_supply=inc_history
+			)
+
+		if inc_history:
+
+			if index_min==0:
+				ws[f"{col_pos_ok}{row}"]=(
+					f"={util_excel_dectocol(col_h_start)}{row}"
+				)
+
+			if index_min>0:
+				ws[f"{col_pos_ok}{row}"]=(
+					"=SUM("
+						f"{util_excel_dectocol(col_h_start)}{row}"
+							":"
+						f"{util_excel_dectocol(col_h_start+index_min)}{row}"
+					")"
+				)
+
+		# NEXT COLUMN (G) - THE PERFORMANCE (OPTIONAL)
 
 		if atype==1 or atype==-1:
 
@@ -205,7 +389,7 @@ def conversion_process(
 			# Uphill (CS - IS)
 
 			ws[f"{col_pos_ok}{row}"]=(
-				f"=SUM({util_excel_dectocol(col_supply)}{row}-{util_excel_dectocol(col_pos+1)}{row})"
+				f"=SUM({util_excel_dectocol(col_supply)}{row}-{util_excel_dectocol(col_initial_supply)}{row})"
 			)
 
 		if atype==-1:
@@ -213,23 +397,28 @@ def conversion_process(
 			# Downhill (IS - CS)
 
 			ws[f"{col_pos_ok}{row}"]=(
-				f"=SUM({util_excel_dectocol(col_pos+1)}{row}-{util_excel_dectocol(col_supply)}{row})"
+				f"=SUM({util_excel_dectocol(col_initial_supply)}{row}-{util_excel_dectocol(col_supply)}{row})"
 			)
 
-		if (not inc_history) and atype==0:
-			# Move on to the next asset
-			continue
-
 		# NEXT COLUMN AND BEYOND - FULL HISTORY
+
+		if not inc_history:
+			continue
 
 		col_pos=col_pos+1
 
 		# history column index
 		col_idx=-1
 
+		print("\tReading history")
+
 		for uid in asset[_KEY_HISTORY]:
 
 			col_idx=col_idx+1
+
+			record_date=util_valid_date(
+				asset[_KEY_HISTORY][uid].get(_KEY_DATE)
+			)
 
 			record_mod=util_valid_int(
 				asset[_KEY_HISTORY][uid].get(_KEY_RECORD_MOD)
@@ -239,15 +428,22 @@ def conversion_process(
 				asset[_KEY_HISTORY][uid].get(_KEY_COMMENT)
 			)
 
-			record_date=util_valid_date(
-				asset[_KEY_HISTORY][uid].get(_KEY_DATE)
-			)
-
 			record_tag=util_valid_str(
 				asset[_KEY_HISTORY][uid].get(_KEY_TAG),True
 			)
 
 			cell_comment=f"ID: {uid}"
+
+			if has_tc:
+
+				if (
+					(not col_idx<index_min) and
+					(not col_idx>index_max)
+				):
+					cell_comment=(
+						f"{cell_comment}\n\n"
+						f"[ {_TL_SPEC_RANGE[lang]} ]"
+					)
 
 			if record_date is not None:
 				tl={
@@ -275,23 +471,22 @@ def conversion_process(
 					f"{record_comment}"
 				)
 
-			if record_mod is None:
-				cell_comment=(
-					f"{cell_comment}\n\n(WARNING)"
-				)
-
-			# tgt_cell:Cell=ws[f"{util_excel_dectocol(col_h_start+col_idx)}{row}"]
-			tgt_cell:Cell=ws[f"{util_excel_dectocol(col_pos+col_idx)}{row}"]
-			tgt_cell.value=record_mod
-			tgt_cell.comment=Comment(
-				cell_comment,
-				"?",
-				height=160,width=160
+			print(
+				"\t\t-",uid,
+				record_date,
+				record_mod
 			)
 
-			if not inc_history:
-				# 
-				break
+			tgt_cell:Cell=ws[f"{util_excel_dectocol(col_pos+col_idx)}{row}"]
+
+			tgt_cell.value=record_mod
+
+			tgt_cell.comment=Comment(
+				cell_comment,
+				"SHLED",
+				height=160,
+				width=160
+			)
 
 	try:
 		wb.save(path_output)
@@ -305,8 +500,14 @@ async def main(
 		path_base:Path,
 		rdbc:AsyncIOMotorClient,
 		rdbn:str,lang="en",atype=0,
-		inc_history:bool=False
+		inc_history:bool=False,
+		date_min:Optional[datetime]=None,
+		date_max:Optional[datetime]=None
 	)->Optional[Path]:
+
+	print("Exporting assets to excel file")
+	print("\tdate_min",date_min)
+	print("\tdate_max",date_max)
 
 	result_aq=await dbi_assets_AssetQuery(
 		rdbc,rdbn,
@@ -315,27 +516,34 @@ async def main(
 		get_history=True
 	)
 	if len(result_aq)==0:
-		print(_ExExErr,"there are no assets")
+		print(
+			_ExExErr,
+			"there are no assets"
+		)
 		return None
 
 	return (
 		await async_run_block(
 			conversion_process,
 			path_base,result_aq,
-			lang,atype,inc_history
+			lang,atype,inc_history,
+			date_min,date_max,
 		)
 	)
 
 if __name__=="__main__":
 
-	# NOTE: This is how you test it
-
 	from asyncio import run as async_run
-	from sys import argv as sys_argv
-	from sys import exit as sys_exit
+	from subprocess import run as sub_run
+
+	from sys import (
+		argv as sys_argv,
+		exit as sys_exit,
+		platform as sys_platform
+	)
 
 	rdbc=AsyncIOMotorClient()
-	rdbn="my-inventory"
+	rdbn="my-inventory1"
 
 	all_assets=async_run(
 		dbi_assets_AssetQuery(
@@ -349,7 +557,31 @@ if __name__=="__main__":
 		print(_ExExErr,"You have no assets")
 		sys_exit(1)
 
-	conversion_process(
+	path_file=conversion_process(
 		Path(sys_argv[0]).parent,
-		all_assets
+		all_assets,
+		atype=1,
+		inc_history=True,
+		date_min=datetime(2025,2,6,18,0,0)
 	)
+	if path_file is None:
+		print("Unable to create the excel file")
+		sys_exit(1)
+
+	on_windows=sys_platform.startswith("win")
+	on_linux=sys_platform.startswith("linux")
+
+	if on_linux or on_windows:
+
+		program=""
+		if on_linux:
+			program="libreoffice"
+		if on_windows:
+			program="explorer"
+
+		proc=sub_run(
+			[
+				program,
+				f"{str(path_file)}"
+			]
+		)

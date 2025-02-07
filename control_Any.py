@@ -361,8 +361,8 @@ def response_errormsg(
 
 	return Response(
 		body=write_popupmsg(
-			f"<h2>{text_error}</h2>\n"
-			f"<p>{text_details}</p>\n"
+			f"<p>{text_details}</p>",
+			f"<h2>{text_error}</h2>"
 		),
 		content_type=_MIMETYPE_HTML
 	)
@@ -516,7 +516,7 @@ async def process_session_checkin(request:Request,test_only:bool=False)->Optiona
 
 	stored_date=util_valid_date(
 		active_session[2],
-		True
+		get_dt=True
 	)
 	if not access_key==active_session[3]:
 		return "The stored access key does not match"

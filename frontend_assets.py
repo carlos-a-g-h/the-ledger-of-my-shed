@@ -5,11 +5,11 @@ from typing import Optional
 
 from frontend_Any import (
 
-	_ID_MESSAGES,
+	_ID_MSGZONE,
 
 	_CSS_CLASS_DANGER,
 	_CSS_CLASS_FOCUSED,
-	_CSS_CLASS_VER,
+	# _CSS_CLASS_VER,
 	_CSS_CLASS_COMMON,
 	_CSS_CLASS_NAV,
 	_CSS_CLASS_CONTROLS,
@@ -31,12 +31,14 @@ from frontend_Any import (
 	write_html_input_string,
 	write_html_input_textbox,
 	write_html_input_radio,
+	write_html_input_date
 )
 
 from internals import (
 	util_valid_int,
 	util_valid_str,
-	util_valid_date
+	util_valid_date,
+	util_rnow
 )
 
 from symbols_assets import (
@@ -73,6 +75,9 @@ from symbols_Any import (
 
 	# _KEY_DELETE_AS_ITEM,
 	_KEY_DATE,
+	# _KEY_DATE_UTC,
+	_KEY_DATE_MAX,
+	_KEY_DATE_MIN
 )
 
 from exex_assets import _KEY_ATYPE
@@ -87,7 +92,7 @@ def write_button_nav_new_asset(lang:str)->str:
 		f"""<button class="{_CSS_CLASS_NAV}" """
 			"""hx-get="/fgmt/assets/new" """
 			"""hx-swap="innerHTML" """
-			f"""hx-target="#{_ID_MESSAGES}" """
+			f"""hx-target="#{_ID_MSGZONE}" """
 			">"
 			f"{tl}"
 		"</button>"
@@ -103,7 +108,7 @@ def write_button_nav_search_assets(lang:str)->str:
 		f"""<button class="{_CSS_CLASS_NAV}" """
 			"""hx-get="/fgmt/assets/search-assets" """
 			"""hx-swap="innerHTML" """
-			f"""hx-target="#{_ID_MESSAGES}" """
+			f"""hx-target="#{_ID_MSGZONE}" """
 			">"
 			f"{tl}"
 		"</button>"
@@ -119,7 +124,7 @@ def write_button_nav_export_options(lang:str)->str:
 		f"""<button class="{_CSS_CLASS_NAV}" """
 			"""hx-get="/fgmt/assets/export-options" """
 			"""hx-swap="innerHTML" """
-			f"""hx-target="#{_ID_MESSAGES}" """
+			f"""hx-target="#{_ID_MSGZONE}" """
 			">"
 			f"{tl}"
 		"</button>"
@@ -133,7 +138,7 @@ def write_form_new_asset(lang:str,full:bool=True)->str:
 		"<form "
 			"""hx-post="/api/assets/new" """
 			"""hx-trigger="submit" """
-			f"""hx-target="#{_ID_MESSAGES}" """
+			f"""hx-target="#{_ID_MSGZONE}" """
 			"""hx-swap="innerHTML" """
 			">\n"
 
@@ -210,23 +215,49 @@ def write_form_new_asset(lang:str,full:bool=True)->str:
 
 def write_form_export_assets_as_excel(lang:str):
 
+	html_text=(
+		"""<form method="POST" """
+			"""action="/api/assets/export-as-excel" """
+			">"
+	)
+
+
 	tl={
 		_LANG_EN:"Include full history",
 		_LANG_ES:"Incluir historial completo"
 	}[lang]
 	html_text=(
-		f"""<form method="POST" """
-			"""action="/api/assets/export-as-excel" """
-			">\n"
-
-			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
+			f"{html_text}\n"
+			# f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
+			"<div>\n"
 				f"{write_html_input_checkbox(_KEY_INC_HISTORY,tl)}\n"
 			"</div>\n"
 	)
 
 	tl={
-		_LANG_EN:"Analysis",
-		_LANG_ES:"Análisis"
+		_LANG_EN:"Initial date",
+		_LANG_ES:"Fecha inicial"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		# f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
+		"<div>\n"
+			f"{write_html_input_date(_KEY_DATE_MIN,tl,util_rnow(1))}"
+	)
+
+	tl={
+		_LANG_EN:"Final date",
+		_LANG_ES:"Fecha final"
+	}[lang]
+	html_text=(
+			f"{html_text}\n"
+			f"{write_html_input_date(_KEY_DATE_MAX,tl)}\n"
+		"</div>"
+	)
+
+	tl={
+		_LANG_EN:"Performance analysis",
+		_LANG_ES:"Análisis de rendimiento"
 	}[lang]
 	radio_opts=[
 		(0,{_LANG_EN:"None",_LANG_ES:"Ninguno"}[lang]),
@@ -235,10 +266,13 @@ def write_form_export_assets_as_excel(lang:str):
 	]
 	html_text=(
 		f"{html_text}\n"
-		f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
-			f"""<label for="{_KEY_ATYPE}">{tl}</label>""" "\n"
-			f"{write_html_input_radio(_KEY_ATYPE,radio_opts)}\n"
-		"</div>\n"
+		# f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
+		"<div>\n"
+			"<div>\n"
+				f"""<label for="{_KEY_ATYPE}">{tl}</label>""" "\n"
+				f"{write_html_input_radio(_KEY_ATYPE,radio_opts)}\n"
+			"</div>\n"
+		"</div>"
 	)
 
 	tl={
@@ -247,19 +281,20 @@ def write_form_export_assets_as_excel(lang:str):
 	}[lang]
 	html_text=(
 				f"{html_text}\n"
-				f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
-					f"{write_button_submit(tl)}\n"
-				"</div>\n"
+			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
+				f"{write_button_submit(tl)}\n"
+			"</div>\n"
 		"</form>"
 	)
 
 	tl={
-		_LANG_EN:"Spreadsheet",
-		_LANG_ES:"Hoja de cálculo"
+		_LANG_EN:"Asset report",
+		_LANG_ES:"Informe de activos"
 	}[lang]
 
 	html_text=(
-		"<div>\n"
+		# "<div>\n"
+		f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
 			f"<h3>{tl}</h3>\n"
 			f"""<div id="{_ID_FORM_ASSETS_TO_EXCEL}">""" "\n"
 				f"{html_text}\n"
@@ -269,7 +304,7 @@ def write_form_export_assets_as_excel(lang:str):
 
 	return html_text
 
-def write_form_edit_asset_metadata(
+def write_form_edit_asset_definition(
 		lang:str,asset_id:str,
 		data:Mapping={},
 		full:bool=True,
@@ -284,7 +319,7 @@ def write_form_edit_asset_metadata(
 		f"<summary>{tl}</summary>\n"
 		f"""<form hx-post="/api/assets/pool/{asset_id}/edit" """ "\n"
 			"""hx-swap="innerHTML" """ "\n"
-			f"""hx-target="#{_ID_MESSAGES}" """ "\n"
+			f"""hx-target="#{_ID_MSGZONE}" """ "\n"
 			">\n"
 
 			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
@@ -373,9 +408,7 @@ def write_form_edit_asset_metadata(
 
 	if full:
 		html_text=(
-			f"""<details id="{_ID_FORM_ASSET_EDITOR}" """
-				f"""class="{_CSS_CLASS_VER}" """
-				">\n"
+			f"""<details id="{_ID_FORM_ASSET_EDITOR}">""" "\n"
 				f"{html_text}\n"
 			"</details>"
 		)
@@ -402,7 +435,7 @@ def write_button_asset_fullview_or_update(
 	return (
 		f"""<button class="{_CSS_CLASS_COMMON}" """
 			f"""hx-get="/fgmt/assets/pool/{asset_id}" """
-			f"""hx-target="#{_ID_MESSAGES}" """
+			f"""hx-target="#{_ID_MSGZONE}" """
 			"""hx-swap="innerHTML" """
 			">"
 			f"{tl}"
@@ -428,7 +461,7 @@ def write_form_drop_asset(
 	html_text=(
 		f"""<form hx-delete="{the_path}" """
 			"""hx-trigger="submit" """
-			f"""hx-target="#{_ID_MESSAGES}" """
+			f"""hx-target="#{_ID_MSGZONE}" """
 			"""hx-swap="innerHTML" """
 			f"""hx-confirm="{tl}" """
 			">\n"
@@ -456,7 +489,7 @@ def write_form_add_record(lang:str,asset_id:str)->str:
 
 	html_text=(
 		f"""<form hx-post="/api/assets/pool/{asset_id}/history/add" """
-			f"""hx-target="#{_ID_MESSAGES}" """
+			f"""hx-target="#{_ID_MSGZONE}" """
 			"""hx-swap="innerHTML" """
 			">\n"
 
@@ -532,7 +565,7 @@ def write_button_record_details(
 	return (
 		f"""<button class="{_CSS_CLASS_COMMON}" """
 			f"""hx-get="/fgmt/assets/pool/{asset_id}/history/records/{record_uid}" """
-			f"""hx-target="#{_ID_MESSAGES}" """
+			f"""hx-target="#{_ID_MSGZONE}" """
 			"""hx-swap="innerHTML" """
 			">"
 			f"{tl}"
@@ -931,7 +964,7 @@ def write_html_asset_details(
 	if authorized:
 		html_text=(
 			f"{html_text}\n"
-			f"{write_form_edit_asset_metadata(lang,asset_id,data=the_asset)}"
+			f"{write_form_edit_asset_definition(lang,asset_id,data=the_asset)}"
 		)
 
 	tl=html_id_asset(asset_id,controls=True)

@@ -44,7 +44,7 @@ from control_admin import (
 from control_assets import (
 	route_main as route_Assets,
 	route_fgmt_export_options as route_Assets_fgmt_ExportOptions,
-	route_api_excel_export as route_Assets_api_ExportAsExcel,
+	route_api_export_as_excel as route_Assets_api_ExportAsExcel,
 	route_api_select_asset as route_Assets_api_GetAsset,
 	route_fgmt_asset_details as route_Assets_fgmt_AssetDetails,
 	route_fgmt_new_asset as route_Assets_fgmt_NewAsset,
