@@ -183,6 +183,29 @@ async def util_css_pull(path_base:Path)->Optional[Path]:
 
 # Components... ?
 
+def write_button_reset(
+		lang,
+		classes:bool=[
+			_CSS_CLASS_COMMON
+		]
+	)->str:
+
+	attr_class=""
+	if not len(classes)==0:
+		for c in classes:
+			attr_class=f"{attr_class} {c}"
+
+		attr_class=f"""class="{attr_class.strip()}" """
+
+	label={
+		_LANG_EN:"Reset this form",
+		_LANG_ES:"Resetear este formulario"
+	}[lang]
+
+	return (
+		f"""<input type=reset {attr_class} value={label}>"""
+	)
+
 def write_button_submit(
 		label:str,
 		classes:bool=[
@@ -203,7 +226,7 @@ def write_button_submit(
 		attr_hxinc=f"""hx-include="{hxinc}" """
 
 	return (
-		f"""<button {attr_class}{attr_hxinc}type=submit>"""
+		f"""<button {attr_class} {attr_hxinc} type=submit>"""
 			f"{label}"
 		"</button>"
 	)

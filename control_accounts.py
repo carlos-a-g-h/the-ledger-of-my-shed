@@ -76,7 +76,8 @@ from frontend_accounts import (
 from internals import (
 	util_valid_str,util_valid_date,
 	util_date_calc_expiration,
-	util_get_pid_from_request
+	util_get_pid_from_request,
+	util_rnow,
 )
 
 from symbols_Any import (
@@ -640,6 +641,29 @@ async def route_api_login_magical(request:Request)->Union[json_response,Response
 	the_redirect.set_cookie(_COOKIE_USER,_ROOT_USER_ID)
 
 	raise the_redirect
+
+async def route_api_checkin(request:Request)->Union[json_response,Response]:
+
+	# POST /api/accounts/check-in
+
+	# This one responds in comments only
+
+	if get_client_type(request)==_TYPE_CUSTOM:
+		return json_response(data={})
+
+	user_id=request[_REQ_USERID]
+	has_session=request[_REQ_HAS_SESSION]
+
+	return Response(
+		body=(
+			"<!--\n"
+				f"last-checkin={util_rnow()};\n"
+				f"user-id={user_id};\n"
+				f"has-session={has_session};\n"
+			"-->"
+		)
+	)
+
 
 async def route_api_logout(request:Request)->Union[json_response,Response]:
 

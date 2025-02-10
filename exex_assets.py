@@ -38,10 +38,21 @@ _KEY_ATYPE="atype"
 _ExExErr="E.E. Error"
 _ExExWarn="E.E. Warning"
 
-_TL_SPEC_RANGE={
+_TL_TF_SPEC={
 	_LANG_EN:"Within the requested time frame",
-	_LANG_ES:"Dentro del marco de tiempo especificado"
+	_LANG_ES:"Dentro del rango de tiempo especificado"
 }
+
+_TL_TF_START={
+	_LANG_EN:"Time frame start",
+	_LANG_ES:"Inicio del rango de tiempo"
+}
+
+_TL_TF_END={
+	_LANG_EN:"Time frame end",
+	_LANG_ES:"Fin del rango de tiempo"
+}
+
 
 def util_get_limits(
 		history:Mapping,
@@ -97,10 +108,13 @@ def util_get_limits(
 
 def util_get_initial_supply(
 		history:Mapping,
-		# date_min:Optional[datetime]=None,
 		index_min:int=0,
-		index_instead_of_supply:bool=False
 	)->int:
+
+	# NOTE: The initial supply is the total supply BEFORE the given index, so at index zero, the supply is zero
+
+	if index_min==0:
+		return 0
 
 	index=-1
 	supply=0
@@ -115,28 +129,20 @@ def util_get_initial_supply(
 		if record_mod is None:
 			continue
 
-		supply=supply+record_mod
-
 		if index==index_min:
 			break
 
+		supply=supply+record_mod
+
 	print(
-		"found initial supply:",
+		"\tfound initial supply:",
 		index,supply
 	)
-	print(
-		"return index instad of value?",
-		index_instead_of_supply
-	)
-
-	if index_instead_of_supply:
-		return index
 
 	return supply
 
 def util_get_current_supply(
 		history:Mapping,
-		index_min:int=0,
 		index_max:int=-1,
 	)->int:
 
@@ -147,9 +153,6 @@ def util_get_current_supply(
 	for record_uid in history:
 
 		index=index+1
-
-		if index<index_min:
-			continue
 
 		if not index_max==-1:
 			if index>index_max:
@@ -222,28 +225,21 @@ def conversion_process(
 			_LANG_EN:"Value",
 			_LANG_ES:"Valor"
 		}[lang],
+
+		# Column E
+		{
+			_LANG_EN:"Initial Supply",
+			_LANG_ES:"Cant. inicial"
+		}[lang],
+
+		# Column F
+		{
+			_LANG_EN:"Supply",
+			_LANG_ES:"Cant. actual"
+		}[lang],
+
 	]
 
-	# Column E
-	tl={
-		_LANG_EN:"Supply",
-		_LANG_ES:"Cantidad actual"
-	}[lang]
-	if has_tc:
-		tl=f"{tl} ({_TL_SPEC_RANGE[lang]})"
-
-	col_headers.append(tl)
-
-	# Column F
-
-	tl={
-		_LANG_EN:"Initial Supply",
-		_LANG_ES:"Cantidad inicial"
-	}[lang]
-	if has_tc:
-		tl=f"{tl} ({_TL_SPEC_RANGE[lang]})"
-
-	col_headers.append(tl)
 
 	# Column G (Optional)
 
@@ -274,8 +270,8 @@ def conversion_process(
 	ws.append(col_headers)
 	row=1
 
-	col_supply=5
-	col_initial_supply=6
+	# col_supply=5
+	# col_initial_supply=6
 
 	# history (if needed) starts AFTER the last column
 	col_h_start=len(col_headers)+1
@@ -314,15 +310,6 @@ def conversion_process(
 
 			continue
 
-		index_min,index_max=util_get_limits(
-			asset[_KEY_HISTORY],
-			date_min,date_max
-		)
-
-		print("\n\tLimits based on the requested time frame")
-		print("\t\tmin limit",index_min)
-		print("\t\tmax limit",index_max)
-
 		asset_history_size=len(asset[_KEY_HISTORY])
 		if asset_history_size==0:
 			print(
@@ -330,52 +317,76 @@ def conversion_process(
 				f"{asset_id} has history of lengh zero"
 			)
 
-		# NEXT COLUMN (E) - THE SUPPLY
+		index_min=1
+		index_max=asset_history_size-1
 
-		if inc_history:
-
-			ws[f"E{row}"]=(
-				f"=SUM({util_excel_dectocol(col_h_start+index_min)}{row}:{util_excel_dectocol(col_h_start+index_max)}{row})"
-			)
-
-		if not inc_history:
-
-			ws[f"E{row}"]=util_get_current_supply(
+		if has_tc:
+			index_min,index_max=util_get_limits(
 				asset[_KEY_HISTORY],
-				index_min=index_min,
-				index_max=index_max
+				date_min,date_max
 			)
 
-		col_pos=5
+		print("\n\tLimits based on the requested time frame")
+		print("\t\tmin limit",index_min)
+		print("\t\tmax limit",index_max)
+
+		col_pos=4
 		col_pos_ok=""
 
-		# NEXT COLUMN (F) - THE INITIAL SUPPLY
+		# NEXT COLUMN (E) - THE INITIAL SUPPLY
 
 		col_pos=col_pos+1
 		col_pos_ok=util_excel_dectocol(col_pos)
+		sheet_cell=f"{util_excel_dectocol(col_pos)}{row}"
+
+		sheet_cell_isup=sheet_cell
 
 		if not inc_history:
-			ws[f"{col_pos_ok}{row}"]=util_get_initial_supply(
+			ws[sheet_cell]=util_get_initial_supply(
 				asset[_KEY_HISTORY],
 				index_min,
-				index_instead_of_supply=inc_history
 			)
 
 		if inc_history:
 
 			if index_min==0:
-				ws[f"{col_pos_ok}{row}"]=(
-					f"={util_excel_dectocol(col_h_start)}{row}"
-				)
+
+				# NOTE: before index zero there is no supply count
+
+				ws[sheet_cell]=0
+
+				# ws[sheet_cell]=(
+				# 	f"={util_excel_dectocol(col_h_start)}{row}"
+				# )
 
 			if index_min>0:
-				ws[f"{col_pos_ok}{row}"]=(
+				ws[sheet_cell]=(
 					"=SUM("
 						f"{util_excel_dectocol(col_h_start)}{row}"
 							":"
-						f"{util_excel_dectocol(col_h_start+index_min)}{row}"
+						f"{util_excel_dectocol(col_h_start+index_min-1)}{row}"
 					")"
 				)
+
+		# NEXT COLUMN (F) - THE SUPPLY
+
+		col_pos=col_pos+1
+		col_pos_ok=util_excel_dectocol(col_pos)
+		sheet_cell=f"{util_excel_dectocol(col_pos)}{row}"
+		sheet_cell_csup=sheet_cell
+
+		if inc_history:
+
+			ws[sheet_cell]=(
+				f"={sheet_cell_isup} + SUM({util_excel_dectocol(col_h_start+index_min)}{row}:{util_excel_dectocol(col_h_start+index_max)}{row})"
+			)
+
+		if not inc_history:
+
+			ws[sheet_cell]=util_get_current_supply(
+				asset[_KEY_HISTORY],
+				index_max=index_max
+			)
 
 		# NEXT COLUMN (G) - THE PERFORMANCE (OPTIONAL)
 
@@ -383,22 +394,23 @@ def conversion_process(
 
 			col_pos=col_pos+1
 			col_pos_ok=util_excel_dectocol(col_pos)
+			sheet_cell=f"{util_excel_dectocol(col_pos)}{row}"
 
-		if atype==1:
+			if atype==1:
 
-			# Uphill (CS - IS)
+				# Uphill (CS - IS)
+	
+				ws[f"{col_pos_ok}{row}"]=(
+					f"=SUM({sheet_cell_csup}-{sheet_cell_isup})"
+				)
 
-			ws[f"{col_pos_ok}{row}"]=(
-				f"=SUM({util_excel_dectocol(col_supply)}{row}-{util_excel_dectocol(col_initial_supply)}{row})"
-			)
+			if atype==-1:
+	
+				# Downhill (IS - CS)
 
-		if atype==-1:
-
-			# Downhill (IS - CS)
-
-			ws[f"{col_pos_ok}{row}"]=(
-				f"=SUM({util_excel_dectocol(col_initial_supply)}{row}-{util_excel_dectocol(col_supply)}{row})"
-			)
+				ws[f"{col_pos_ok}{row}"]=(
+					f"=SUM({sheet_cell_isup}-{sheet_cell_csup})"
+				)
 
 		# NEXT COLUMN AND BEYOND - FULL HISTORY
 
@@ -434,6 +446,18 @@ def conversion_process(
 
 			cell_comment=f"ID: {uid}"
 
+			if not has_tc:
+
+				if col_idx==0:
+					tl={
+						_LANG_EN:"Initial supply record",
+						_LANG_ES:"Registro del suministro inicial"
+					}[lang]
+					cell_comment=(
+						f"{cell_comment}\n\n"
+						f"* {tl}\n"
+					)
+
 			if has_tc:
 
 				if (
@@ -442,7 +466,19 @@ def conversion_process(
 				):
 					cell_comment=(
 						f"{cell_comment}\n\n"
-						f"[ {_TL_SPEC_RANGE[lang]} ]"
+						f"* {_TL_TF_SPEC[lang]}\n"
+					)
+
+				if col_idx==index_min:
+					cell_comment=(
+						f"{cell_comment}\n"
+						f"* {_TL_TF_START[lang]}\n"
+					)
+
+				if col_idx==index_max:
+					cell_comment=(
+						f"{cell_comment}\n"
+						f"* {_TL_TF_END[lang]}\n"
 					)
 
 			if record_date is not None:
@@ -560,9 +596,10 @@ if __name__=="__main__":
 	path_file=conversion_process(
 		Path(sys_argv[0]).parent,
 		all_assets,
+		lang="es",
 		atype=1,
 		inc_history=True,
-		date_min=datetime(2025,2,6,18,0,0)
+		# date_min=datetime(2025,2,10,6,46)
 	)
 	if path_file is None:
 		print("Unable to create the excel file")

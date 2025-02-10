@@ -90,8 +90,11 @@ from symbols_Any import (
 )
 from symbols_assets import _ROUTE_PAGE as _ROUTE_PAGE_ASSETS
 from symbols_orders import _ROUTE_PAGE as _ROUTE_PAGE_ORDERS
-from symbols_accounts import _ROUTE_PAGE as _ROUTE_PAGE_ACCOUNTS
 from symbols_admin import _ROUTE_PAGE as _ROUTE_PAGE_ADMIN
+from symbols_accounts import (
+	_ROUTE_CHECKIN,
+	_ROUTE_PAGE as _ROUTE_PAGE_ACCOUNTS
+)
 
 from dbi_accounts import (
 
@@ -693,6 +696,16 @@ async def the_middleware_factory(app,handler):
 				the_referer:Optional[str]=None
 				if not by_htmx:
 					the_referer=util_get_correct_referer(request)
+
+				# if request.path==_ROUTE_CHECKIN:
+				# 	# status_code={
+				# 	# 	True:200,False:403
+				# 	# }[by_htmx]
+					
+				# 	return Response(
+				# 		body="<!-- illegal checkin detected -->",
+				# 		# status=status_code
+				# 	)
 
 				if not url_is_account:
 					if (not url_is_page) and (not has_session):

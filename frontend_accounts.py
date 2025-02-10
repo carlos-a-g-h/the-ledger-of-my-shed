@@ -5,6 +5,7 @@ from typing import Optional
 from aiohttp.web import Request
 
 from symbols_accounts import (
+	_ROUTE_CHECKIN,
 	_KEY_EMAIL,_KEY_TELEGRAM,
 	_KEY_VM,_KEY_OTP,_KEY_USERNAME
 )
@@ -251,6 +252,13 @@ def write_button_login_magical(lang:str)->str:
 		"</form>"
 	)
 
+def write_html_keepalive(interval:int=30)->str:
+	return (
+		f"""<div hx-post={_ROUTE_CHECKIN} hx-trigger="every {interval}s">""" "\n"
+			"<!-- KEEPING THE SESSION ALIVE -->"
+		"</div>"
+	)
+
 def write_button_logout(lang:str)->str:
 
 	# Sends: DELETE /api/accounts/logout
@@ -302,7 +310,8 @@ async def render_html_user_section(
 		html_text=(
 			f"{html_text}\n"
 			f"<div>{username}</div>\n"
-			f"{write_button_logout(lang)}"
+			f"{write_button_logout(lang)}\n"
+			f"{write_html_keepalive()}"
 		)
 
 	if anonymous:

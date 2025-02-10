@@ -1,6 +1,7 @@
 #!/usr/bin/python3.9
 
 _ROUTE_PAGE="/page/accounts"
+_ROUTE_CHECKIN="/api/accounts/check-in"
 
 _KEY_USERID="userid"
 _KEY_EMAIL="email"

@@ -30,6 +30,7 @@ from control_accounts import (
 	route_api_login_otp as route_Accounts_api_LoginOTP,
 	route_api_login_magical as route_Accounts_api_LoginMagical,
 	route_api_logout as route_Accounts_api_Logout,
+	route_api_checkin as route_Accounts_api_CheckIn
 )
 
 from control_admin import (
@@ -115,9 +116,12 @@ from symbols_Any import (
 	_CFG_PORT_MAX
 )
 
+from symbols_accounts import (
+	_ROUTE_PAGE as _ROUTE_PAGE_ACCOUNTS,
+	_ROUTE_CHECKIN
+)
 from symbols_assets import _ROUTE_PAGE as _ROUTE_PAGE_ASSETS
 from symbols_orders import _ROUTE_PAGE as _ROUTE_PAGE_ORDERS
-from symbols_accounts import _ROUTE_PAGE as _ROUTE_PAGE_ACCOUNTS
 from symbols_admin import _ROUTE_PAGE as _ROUTE_PAGE_ADMIN
 
 def read_config(path_config:Path)->dict:
@@ -308,6 +312,10 @@ def build_app(
 			_ROUTE_PAGE_ACCOUNTS,
 			route_Accounts,
 		),
+			web_POST(
+				"/api/accounts/check-in",
+				route_Accounts_api_CheckIn
+			),
 			web_GET(
 				"/fgmt/accounts/login",
 				route_Accounts_fgmt_Login

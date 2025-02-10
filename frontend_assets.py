@@ -24,6 +24,7 @@ from frontend_Any import (
 
 	_CSS_CLASS_INPUT_GUARDED,
 
+	# write_button_reset,
 	write_button_submit,
 	write_div_display_error,
 	write_html_input_checkbox,
@@ -38,7 +39,7 @@ from internals import (
 	util_valid_int,
 	util_valid_str,
 	util_valid_date,
-	util_rnow
+	# util_rnow
 )
 
 from symbols_assets import (
@@ -242,7 +243,7 @@ def write_form_export_assets_as_excel(lang:str):
 		f"{html_text}\n"
 		# f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
 		"<div>\n"
-			f"{write_html_input_date(_KEY_DATE_MIN,tl,util_rnow(1))}"
+			f"{write_html_input_date(_KEY_DATE_MIN,tl)}"
 	)
 
 	tl={
@@ -283,6 +284,7 @@ def write_form_export_assets_as_excel(lang:str):
 				f"{html_text}\n"
 			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
 				f"{write_button_submit(tl)}\n"
+				# f"{write_button_reset(lang)}\n"
 			"</div>\n"
 		"</form>"
 	)
