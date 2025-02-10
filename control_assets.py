@@ -124,7 +124,8 @@ from symbols_Any import (
 	# _APP_ROOT_USERID,
 	_APP_PROGRAMDIR,
 
-	_TYPE_BROWSER,_TYPE_CUSTOM,
+	_TYPE_BROWSER,
+	_TYPE_CUSTOM,
 
 	_MIMETYPE_HTML,
 	_MIMETYPE_EXCEL,
@@ -145,6 +146,7 @@ from symbols_Any import (
 	_KEY_VLEVEL,
 	_KEY_DELETE_AS_ITEM,
 	# _KEY_DATE_UTC,
+	_KEY_DATE,
 	_KEY_DATE_MIN,_KEY_DATE_MAX,
 
 	_KEY_INC_TAG,
@@ -1025,10 +1027,16 @@ async def route_api_add_record(
 			ct,status_code=406
 		)
 
-	record_tag=util_valid_str(
+	record_date:Optional[str]=None
+	if request[_REQ_USERID]==_ROOT_USER_ID and ct==_TYPE_CUSTOM:
+		record_date=util_valid_date(
+			request_data.get(_KEY_DATE)
+		)
+
+	record_tag:Optional[str]=util_valid_str(
 		request_data.get(_KEY_TAG)
 	)
-	record_comment=util_valid_str(
+	record_comment:Optional[str]=util_valid_str(
 		request_data.get(_KEY_COMMENT)
 	)
 
@@ -1042,9 +1050,9 @@ async def route_api_add_record(
 	result_arecord=await dbi_assets_History_AddRecord(
 		request.app[_APP_RDBC],
 		request.app[_APP_RDBN],
-		asset_id,
-		record_sign,record_mod,
+		asset_id,record_sign,record_mod,
 		record_tag=record_tag,
+		record_date=record_date,
 		record_comment=record_comment,
 		vlevel=vlevel
 	)

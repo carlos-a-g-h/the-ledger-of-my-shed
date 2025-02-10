@@ -24,7 +24,7 @@ from internals import (
 	util_rnow,
 	util_valid_int,
 	util_valid_str,
-	# util_valid_date
+	util_valid_date
 )
 
 from symbols_Any import (
@@ -327,10 +327,9 @@ async def dbi_assets_DropAsset(
 
 async def dbi_assets_History_AddRecord(
 		rdbc:AsyncIOMotorClient,name_db:str,
-		asset_id:str,
-		record_sign:str,
-		record_mod:int,
+		asset_id:str,record_sign:str,record_mod:int,
 		record_tag:Optional[str]=None,
+		record_date:Optional[str]=None,
 		record_comment:Optional[str]=None,
 		vlevel:int=2
 	)->Mapping:
@@ -339,13 +338,16 @@ async def dbi_assets_History_AddRecord(
 	if vlevel not in range(0,3):
 		v=2
 
-	record_date=util_rnow()
 	record_uid=secrets.token_hex(8)
 
+	record_date_ok:Optional[str]=util_valid_date(record_date)
+	if record_date_ok is None:
+		record_date_ok=util_rnow()
+
 	record_object={
-		_KEY_DATE:record_date,
 		_KEY_RECORD_MOD:record_mod,
 		_KEY_SIGN:record_sign,
+		_KEY_DATE:record_date_ok,
 	}
 
 	if isinstance(record_tag,str):
