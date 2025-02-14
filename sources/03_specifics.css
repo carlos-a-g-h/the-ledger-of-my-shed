@@ -25,11 +25,13 @@ div.form-inside-a-div > form,
 
 #form-asset-editor > form > div.common,
 #result-search-assets,
+result-new-asset,
 div.item-order,
 div.item-asset,
 div.order-info {
   display:flex;
   flex-direction:column;
+  flex-wrap: nowrap;
   gap:8px;
 }
 
@@ -44,4 +46,8 @@ div.input-guarded {
   flex-grow: 1;
   width:128px;
   padding:16px
+}
+
+#layout-assets-search button.common {
+  align-self: end;
 }
