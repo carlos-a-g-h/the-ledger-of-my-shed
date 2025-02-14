@@ -129,6 +129,7 @@ _KEY_DATE_UTC="date_utc"
 _KEY_DATE_MIN="date_min"
 _KEY_DATE_MAX="date_max"
 
+# _KEY_GO_STRAIGHT="go_straight"
 _KEY_DELETE_AS_ITEM="delete_as_item"
 _KEY_VERBOSE="verbose"
 _KEY_VLEVEL="vlevel"

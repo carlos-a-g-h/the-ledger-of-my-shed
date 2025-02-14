@@ -13,7 +13,8 @@ from aiohttp.web import (
 
 from control_Any import (
 
-	_ERR_DETAIL_DATA_NOT_VALID,_ERR_DETAIL_DBI_FAIL,
+	_ERR_DETAIL_DATA_NOT_VALID,
+	_ERR_DETAIL_DBI_FAIL,
 
 	assert_referer,
 
@@ -67,6 +68,7 @@ from symbols_Any import (
 
 	_KEY_TAG,
 	_KEY_SIGN,
+	# _KEY_GO_STRAIGHT
 )
 
 from symbols_assets import (
@@ -102,44 +104,76 @@ def util_asset_fuzzy_finder(
 		app:Application,
 		text_raw:str,
 		find_exact_only:bool=False,
+		first_one_only:bool=False,
 	)->Union[list,Mapping]:
 
-	text=text_raw.lower().strip()
-	if len(text)==0:
-		return []
-
-	lookup_result:Union[list,Mapping]={
+	query_result:Union[list,Mapping]={
 		True:{},
 		False:[]
 	}[find_exact_only]
 
+	text=text_raw.lower().strip()
+	if len(text)==0:
+		return query_result
+
+	exact_match={}
+	exact_match_found=False
+
+	print(
+		"Query by name:",
+		text_raw
+	)
+
 	for asset_id in app[_APP_CACHE_ASSETS]:
 		asset_name=app[_APP_CACHE_ASSETS][asset_id]
 		row=asset_name.lower().strip()
+		print("{",text,"}:in:{",row,"}")
 		if row.find(text)<0:
 			continue
 
-		exact=(row==text)
+		if not exact_match_found:
+			if row==text:
 
-		if find_exact_only:
-			if exact:
-				lookup_result.update({
+				print(
+					"\tEXACT_MATCH",
+					asset_name
+				)
+
+				exact_match.update({
 					_KEY_ASSET:asset_id,
 					_KEY_NAME:asset_name,
+					"exact":True
 				})
-				break
+				exact_match_found=True
+				if find_exact_only:
+					break
 
-			continue
+				continue
 
-		lookup_result.append(
-			{
-				_KEY_ASSET:asset_id,
-				_KEY_NAME:asset_name,
-				"exact":exact,
-			}
+		print(
+			"\tPARTIAL_MATCH",
+			asset_name
 		)
 
-	return lookup_result
+		query_result.append({
+			_KEY_ASSET:asset_id,
+			_KEY_NAME:asset_name,
+			"exact":False
+		})
+
+	if find_exact_only:
+		return exact_match
+
+	if (not first_one_only) and exact_match_found:
+		query_result.append(exact_match)
+
+	if first_one_only:
+		if exact_match_found:
+			return exact_match
+
+		return query_result.pop()
+
+	return query_result
 
 async def util_search_assets(
 		app:Application,
@@ -155,85 +189,50 @@ async def util_search_assets(
 
 	)->list:
 
-	exact_name_match:Optional[Mapping]=None
-	search_results=[]
-	if_id_list=[]
+	list_match_names=[]
 
-	buffer=[]
+	query_by_name=isinstance(by_name,str)
 
-	# NOTE
-	# The exact match by name (if found) is appended at the end of the results list
-	# the default frontend will REVERSE the list
+	if query_by_name:
 
-	if isinstance(by_name,str):
-		buffer.extend(
+		list_match_names.extend(
 			util_asset_fuzzy_finder(
 				app,by_name
 			)
 		)
-		x=len(buffer)
-		while True:
-			x=x-1
-			if x<0:
-				break
 
-			if_id=buffer[x][_KEY_ASSET]
-			if_exact=buffer[x]["exact"]
-			if if_id in if_id_list:
-				buffer.pop()
-				continue
-
-			if_id_list.append(if_id)
-			if (
-				if_exact and
-				(not isinstance(exact_name_match,str))
-			):
-				exact_name_match=buffer.pop()
-				continue
-
-			search_results.append(
-				buffer.pop()
-			)
-
-	get_all=(
-		(not isinstance(by_name,str)) and
-		(not isinstance(by_sign,str)) and
-		(not isinstance(by_tag,str))
+	beyond_name=(
+		isinstance(by_sign,str) or
+		isinstance(by_tag,str) or
+		grab_value or grab_supply
 	)
 
-	if get_all or isinstance(by_sign,str) or isinstance(by_tag,str):
-		buffer.extend(
-			await dbi_assets_AssetQuery(
-				app[_APP_RDBC],
-				app[_APP_RDBN],
-				asset_tag=by_tag,
-				asset_sign=by_sign,
-				get_supply=grab_supply,
-				get_value=grab_value
-			)
-		)
-		x=len(buffer)
-		while True:
-			x=x-1
-			if x<0:
-				break
+	if (not beyond_name) and query_by_name:
 
-			if_id=buffer[x][_KEY_ASSET]
-			if if_id in if_id_list:
-				buffer.pop()
-				continue
+		return list_match_names
 
-			if_id_list.append(if_id)
-			search_results.append(
-				buffer.pop()
-			)
+	asset_id_list=[]
+	for found in list_match_names:
+		asset_id=found.get(_KEY_ASSET)
+		if asset_id is None:
+			continue
+		asset_id_list.append(asset_id)
 
-	if exact_name_match is not None:
-		search_results.append(
-			exact_name_match
-		)
+	list_match_other=await dbi_assets_AssetQuery(
 
-	return search_results
+		app[_APP_RDBC],
+		app[_APP_RDBN],
+
+		asset_id_list=asset_id_list,
+
+		asset_tag=by_tag,
+		asset_sign=by_sign,
+
+		get_value=grab_value,
+		get_supply=grab_supply,
+	)
+
+	return list_match_other
 
 async def route_api_search_assets(
 		request:Request
@@ -267,6 +266,12 @@ async def route_api_search_assets(
 			_ERR_DETAIL_DATA_NOT_VALID[lang],
 			ct,status_code=406
 		)
+
+	# straight_to_the_item=False
+	# if not ct==_TYPE_CUSTOM:
+	# 	straight_to_the_item=util_valid_bool(
+	# 		request_data.get(_KEY_GO_STRAIGHT)
+	# 	)
 
 	search_name=util_valid_str(
 		request_data.get(_KEY_NAME)

@@ -22,7 +22,6 @@ from control_Any import (
 
 )
 
-
 from control_accounts import (
 	route_main as route_Accounts,
 	route_fgmt_login as route_Accounts_fgmt_Login,
@@ -203,14 +202,6 @@ def read_config(path_config:Path)->dict:
 		_CFG_FLAGS:util_valid_list(rawconfig.get(_CFG_FLAGS),True)
 	}
 
-# def print_request_info(request:Request):
-# 	user_agent=request.headers.get("User-Agent")
-# 	print(
-# 		"\n" f"- Recieved: {request.method}:{request.url}" "\n"
-# 		"\t" f"Client: {request.remote} {user_agent}" "\n"
-# 		"\t" f"Cookies: {request.cookies}"
-# 	)
-
 def build_app(
 		path_programdir:Path,
 		lang:str,
@@ -313,7 +304,7 @@ def build_app(
 			route_Accounts,
 		),
 			web_POST(
-				"/api/accounts/check-in",
+				_ROUTE_CHECKIN,
 				route_Accounts_api_CheckIn
 			),
 			web_GET(
@@ -378,10 +369,16 @@ def build_app(
 					route_Assets_api_SearchAssets
 				),
 
-			# NOTE: For custom clients only
 			web_POST(
+				# NOTE: For custom clients only
 				"/api/assets/get-asset",
 				route_Assets_api_GetAsset
+			),
+
+			web_POST(
+				# NOTE: nope, this is not a mistake
+				"/api/assets/exact-match",
+				route_Assets_fgmt_AssetDetails
 			),
 
 			web_GET(

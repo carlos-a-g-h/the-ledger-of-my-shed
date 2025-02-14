@@ -678,7 +678,7 @@ async def route_api_update_asset_in_order(
 			obj_asset=await dbi_assets_AssetQuery(
 				request.app[_APP_RDBC],
 				request.app[_APP_RDBN],
-				asset_id,
+				asset_id_list=[asset_id],
 				get_value=True
 			)
 			msg_err=obj_asset.get(_ERR)

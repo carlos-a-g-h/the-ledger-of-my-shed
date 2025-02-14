@@ -6,7 +6,7 @@ from aiohttp.web import Request
 
 from symbols_accounts import (
 	_ROUTE_CHECKIN,
-	_KEY_EMAIL,_KEY_TELEGRAM,
+	_KEY_CON_EMAIL,_KEY_CON_TELEGRAM,
 	_KEY_VM,_KEY_OTP,_KEY_USERNAME
 )
 
@@ -105,11 +105,11 @@ def write_form_login(lang:str,full:bool=True)->str:
 
 		"<div>\n"
 			"<div>\n"
-				f"""<input id=vm-email name="{_KEY_VM}" type=radio value="{_KEY_EMAIL}" checked>""" "\n"
+				f"""<input id=vm-email name="{_KEY_VM}" type=radio value="{_KEY_CON_EMAIL}" checked>""" "\n"
 				"""<label for="vm-email">E-Mail</label>""" "\n"
 			"</div>"
 			"<div>\n"
-				f"""<input id=vm-telegram name="{_KEY_VM}" type=radio value="{_KEY_TELEGRAM}">""" "\n"
+				f"""<input id=vm-telegram name="{_KEY_VM}" type=radio value="{_KEY_CON_TELEGRAM}">""" "\n"
 				"""<label for="vm-telegram">Telegram</label>""" "\n"
 			"</div>\n"
 			"<div>\n"
@@ -191,14 +191,14 @@ def write_form_otp(
 
 		tl=""
 
-		if vmethod==_KEY_EMAIL:
+		if vmethod==_KEY_CON_EMAIL:
 			known=True
 			tl={
 				_LANG_EN:"The generated password has been sent to your e-mail",
 				_LANG_ES:"La contraseña generada fue enviada a su correo electrónico"
 			}[lang]
 
-		if vmethod==_KEY_TELEGRAM:
+		if vmethod==_KEY_CON_TELEGRAM:
 			known=True
 			tl={
 				_LANG_EN:"The generated password has been sent to you through the Telegram bot",

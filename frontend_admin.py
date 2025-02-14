@@ -17,8 +17,8 @@ from symbols_accounts import (
 	# _KEY_USERID,
 	_KEY_USERNAME,
 
-	_KEY_EMAIL,
-	_KEY_TELEGRAM
+	_KEY_CON_EMAIL,
+	_KEY_CON_TELEGRAM
 )
 
 from frontend_Any import (
@@ -97,7 +97,7 @@ def write_form_create_user(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"{write_html_input_string(_KEY_EMAIL,label=tl,maxlen=24,input_type=1)}"
+		f"{write_html_input_string(_KEY_CON_EMAIL,label=tl,maxlen=24,input_type=1)}"
 	)
 
 	tl={
@@ -106,7 +106,7 @@ def write_form_create_user(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"{write_html_input_string(_KEY_TELEGRAM,label=tl,maxlen=24)}"
+		f"{write_html_input_string(_KEY_CON_TELEGRAM,label=tl,maxlen=24)}"
 	)
 
 	tl={
@@ -177,7 +177,7 @@ def write_form_search_users(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"{write_html_input_string(_KEY_EMAIL,label=tl,maxlen=24,input_type=1)}"
+		f"{write_html_input_string(_KEY_CON_EMAIL,label=tl,maxlen=24,input_type=1)}"
 	)
 
 	tl={
@@ -186,7 +186,7 @@ def write_form_search_users(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"{write_html_input_string(_KEY_TELEGRAM,label=tl,maxlen=24)}"
+		f"{write_html_input_string(_KEY_CON_TELEGRAM,label=tl,maxlen=24)}"
 	)
 
 	tl={

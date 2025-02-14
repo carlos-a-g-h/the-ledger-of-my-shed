@@ -104,7 +104,7 @@ from symbols_accounts import (
 	_ROUTE_PAGE,
 
 	_KEY_USERNAME,
-	_KEY_EMAIL,_KEY_TELEGRAM,
+	_KEY_CON_EMAIL,_KEY_CON_TELEGRAM,
 	_KEY_OTP,_KEY_VM,
 
 )
@@ -291,7 +291,7 @@ async def route_api_login(request:Request)->Union[json_response,Response]:
 
 	if not is_root:
 
-		if vmethod not in (_KEY_EMAIL,_KEY_TELEGRAM):
+		if vmethod not in (_KEY_CON_EMAIL,_KEY_CON_TELEGRAM):
 			return response_errormsg(
 				_ERR_TITLE_LOGIN[lang],
 				{

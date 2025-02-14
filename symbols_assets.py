@@ -17,12 +17,15 @@ _KEY_INC_HISTORY="include_history"
 _KEY_INC_SUPPLY="include_supply"
 _KEY_INC_VALUE="include_value"
 
+_ID_LAYOUT_ASSETS_SEARCH="layout-assets-search"
+
 _ID_FORM_ASSETS_TO_EXCEL="form-assets-to-excel"
 _ID_FORM_ASSET_EDITOR="form-asset-editor"
 _ID_FORM_NEW_ASSET="form-new-asset"
 _ID_RESULT_NEW_ASSET="result-new-asset"
 _ID_FORM_SEARCH_ASSETS="form-search-assets"
 _ID_RESULT_SEARCH_ASSETS="result-search-assets"
+_ID_FORM_ASSET_EMATCH="form-asset-ematch"
 
 _CSS_CLASS_ITEM_ASSET="item-asset"
 

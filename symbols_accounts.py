@@ -3,9 +3,9 @@
 _ROUTE_PAGE="/page/accounts"
 _ROUTE_CHECKIN="/api/accounts/check-in"
 
+_KEY_CON_EMAIL="email"
+_KEY_CON_TELEGRAM="telegram"
 _KEY_USERID="userid"
-_KEY_EMAIL="email"
-_KEY_TELEGRAM="telegram"
 _KEY_USERNAME="username"
 
 _KEY_OTP="otp"

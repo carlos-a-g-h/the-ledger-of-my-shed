@@ -25,7 +25,7 @@ from symbols_accounts import (
 
 	_KEY_USERID,_KEY_USERNAME,
 
-	_KEY_EMAIL,_KEY_TELEGRAM,
+	_KEY_CON_EMAIL,_KEY_CON_TELEGRAM,
 )
 
 
@@ -116,18 +116,18 @@ def util_user_serialize(the_user:Mapping)->Mapping:
 
 	userid=the_user.get(_KEY_USERID)
 	username=the_user.get(_KEY_USERNAME)
-	email:Optional[str]=the_user.get(_KEY_EMAIL)
+	email:Optional[str]=the_user.get(_KEY_CON_EMAIL)
 	if email is None:
 		email=f"None.{userid}"
-	telegram:Optional[str]=the_user.get(_KEY_TELEGRAM)
+	telegram:Optional[str]=the_user.get(_KEY_CON_TELEGRAM)
 	if telegram is None:
 		telegram=f"None.{userid}"
 
 	return {
 		"_id":userid,
 		_KEY_USERNAME:username,
-		_KEY_EMAIL:email,
-		_KEY_TELEGRAM:telegram,
+		_KEY_CON_EMAIL:email,
+		_KEY_CON_TELEGRAM:telegram,
 	}
 
 def util_user_deserialize(the_user:Mapping)->Mapping:
@@ -136,8 +136,8 @@ def util_user_deserialize(the_user:Mapping)->Mapping:
 
 	userid=the_user.get("_id")
 	username=the_user.get(_KEY_USERNAME)
-	email=the_user.get(_KEY_EMAIL)
-	telegram=the_user.get(_KEY_TELEGRAM)
+	email=the_user.get(_KEY_CON_EMAIL)
+	telegram=the_user.get(_KEY_CON_TELEGRAM)
 
 	noneval=f"None.{userid}"
 
@@ -146,9 +146,9 @@ def util_user_deserialize(the_user:Mapping)->Mapping:
 		_KEY_USERNAME:username,
 	}
 	if not email==noneval:
-		ready.update({_KEY_EMAIL:email})
+		ready.update({_KEY_CON_EMAIL:email})
 	if not telegram==noneval:
-		ready.update({_KEY_TELEGRAM:telegram})
+		ready.update({_KEY_CON_TELEGRAM:telegram})
 
 	return ready
 

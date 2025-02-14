@@ -22,6 +22,9 @@ _ID_NAV_TWO="nav-2"
 _ID_NAV_TWO_OPTS="nav-2-opts"
 _ID_MSGZONE="msgzone"
 
+
+# _CSS_CLASS_HX_SWAPPABLE="swappable"
+
 _ID_MSGZONE_BACKGROUND="msgzone-background"
 _ID_MSGZONE_OUTERBODY="msgzone-outerbody"
 _ID_MSGZONE_CONTAINER="msgzone-container"

@@ -228,7 +228,8 @@ async def dbi_assets_AssetQuery(
 
 		rdbc:AsyncIOMotorClient,name_db:str,
 
-		asset_id:Optional[str]=None,
+		# asset_id:Optional[str]=None,
+		asset_id_list:list=[],
 		asset_sign:Optional[str]=None,
 		asset_tag:Optional[str]=None,
 
@@ -241,18 +242,28 @@ async def dbi_assets_AssetQuery(
 
 	)->Union[Mapping,list]:
 
-	only_one=isinstance(asset_id,str)
-
 	spec_sign=isinstance(asset_sign,str)
 	spec_tag=isinstance(asset_tag,str)
 
 	find_match={}
 	projection={"_id":1,_KEY_NAME:1}
-	if isinstance(asset_id,str):
-		find_match.update({"_id":asset_id})
+
+	only_one=False
+	only_one=len(asset_id_list)==1
+
+	if not len(asset_id_list)==0:
+		if only_one:
+			find_match.update({"_id":asset_id_list[0]})
+
+		if not only_one:
+			find_match.update({
+				"_id":{"$in":asset_id_list}
+			})
+
 	if spec_tag:
 		find_match.update({_KEY_TAG:asset_tag})
 		projection.update({_KEY_TAG:asset_tag})
+
 	if spec_sign:
 		find_match.update({_KEY_SIGN:asset_sign})
 		projection.update({_KEY_SIGN:asset_sign})
@@ -267,6 +278,8 @@ async def dbi_assets_AssetQuery(
 		projection.update({_KEY_HISTORY:1})
 	if get_value:
 		projection.update({_KEY_VALUE:1})
+
+	print("AGGR MATCH",find_match)
 
 	list_of_assets=[]
 	try:

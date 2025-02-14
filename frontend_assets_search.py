@@ -3,16 +3,11 @@
 # from typing import Mapping
 from typing import Optional
 
-from symbols_Any import (
-	_LANG_EN,_LANG_ES,
-	_KEY_TAG,
-	_KEY_SIGN,
-	# _KEY_DATE,
-)
-
 from frontend_Any import (
 
 	_ID_MSGZONE,
+
+	# _CSS_CLASS_HX_SWAPPABLE,
 
 	_CSS_CLASS_COMMON,
 	_CSS_CLASS_CONTROLS,
@@ -20,21 +15,85 @@ from frontend_Any import (
 	_CSS_CLASS_IG_CHECKBOXES,
 	write_html_input_checkbox,
 	write_html_input_string,
+	write_button_submit
+)
+
+from symbols_Any import (
+	_LANG_EN,_LANG_ES,
+	_KEY_TAG,
+	_KEY_SIGN,
+	# _KEY_DATE,
+	# _KEY_GO_STRAIGHT
 )
 
 from symbols_assets import(
 	_KEY_NAME,
+	_ID_FORM_ASSET_EMATCH,
 	_ID_FORM_SEARCH_ASSETS,
 	_ID_RESULT_SEARCH_ASSETS,
 	_KEY_INC_SUPPLY as _KEY_GET_SUPPLY,
 	_KEY_INC_VALUE as _KEY_GET_VALUE,
 )
 
+def write_form_asset_ematch(lang:str,full:bool=True)->str:
+
+	blank=""
+
+	tl={
+		_LANG_EN:"Name",
+		_LANG_ES:"Nombre"
+	}[lang]
+	html_text=f"{write_html_input_string(_KEY_NAME,tl,value=blank)}"
+
+	tl={
+		_LANG_EN:"Go",
+		_LANG_ES:"Ir"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		f"{write_button_submit(tl)}"
+	)
+
+	html_text=(
+		"""<form hx-post="/api/assets/exact-match" """
+			"""hx-trigger="submit" """
+			f"""hx-target=#{_ID_MSGZONE} """
+			"""hx-swap=innerHTML"""
+			">\n"
+			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
+				f"{html_text}\n"
+			"</div>\n"
+		"</form>"
+	)
+
+	if full:
+		tl={
+			_LANG_EN:"Exact search",
+			_LANG_ES:"Búsqueda precisa"
+		}[lang]
+		html_text=(
+			# f"""<div id="{_ID_FORM_ASSET_EMATCH}" """
+			# "<div>\n"
+			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
+
+				f"<h3>{tl}</h3>\n"
+
+				# f"""<div class="{_CSS_CLASS_HX_SWAPPABLE}">""" "\n"
+				f"""<div id="{_ID_FORM_ASSET_EMATCH}" """
+					f"{html_text}\n"
+				"</div>\n"
+
+			"</div>"
+		)
+
+	return html_text
+
 def write_form_search_assets(
 		lang:str,
 		order_id:Optional[str]=None,
 		authorized:bool=True,
 		full:bool=True,
+		decorate:bool=False,
 	)->str:
 
 	order_specific=isinstance(order_id,str)
@@ -149,8 +208,12 @@ def write_form_search_assets(
 			_LANG_ES:"Buscador de activos"
 		}[lang]
 
+		attr_class=""
+		if decorate:
+			attr_class=f""" class="{_CSS_CLASS_COMMON}" """
+
 		html_text=(
-			"<div>\n"
+			f"<div {attr_class}>\n"
 				f"<h3>{tl}</h3>\n"
 				f"""<div id={_ID_FORM_SEARCH_ASSETS}>""" "\n"
 					f"{html_text}\n"

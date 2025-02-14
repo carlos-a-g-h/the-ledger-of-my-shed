@@ -34,6 +34,7 @@ from control_Any import (
 )
 
 from control_assets_search import (
+	_ERR_TITLE_SEARCH_ASSETS,
 	util_asset_fuzzy_finder,
 )
 
@@ -71,18 +72,19 @@ from frontend_Any import (
 	# _CSS_CLASS_CONTAINER,
 	# _CSS_CLASS_CONTENT,
 	_CSS_CLASS_NAV,
+	# _CSS_CLASS_HX_SWAPPABLE,
 
 	write_popupmsg,
 	write_ul,
 	write_html_nav_pages
 )
 
-from frontend_assets_search import write_form_search_assets
+from frontend_assets_search import (
+	write_form_search_assets,
+	write_form_asset_ematch
+)
 
 from frontend_assets import (
-
-	_ID_FORM_NEW_ASSET,
-	_ID_RESULT_NEW_ASSET,
 
 	write_button_nav_export_options,
 	write_button_nav_new_asset,
@@ -154,6 +156,11 @@ from symbols_Any import (
 )
 
 from symbols_assets import (
+
+	_ID_FORM_NEW_ASSET,
+	_ID_RESULT_NEW_ASSET,
+	_ID_LAYOUT_ASSETS_SEARCH,
+
 	_KEY_ASSET,
 	_KEY_NAME,
 	_KEY_VALUE,
@@ -188,10 +195,6 @@ _ERR_TITLE_METADATA_CHANGE={
 	_LANG_ES:"Error de edición de metadatos"
 }
 
-_ERR_TITLE_GET_ASSET={
-	_LANG_EN:"Asset request error",
-	_LANG_ES:"Error de petición de activo"
-}
 _ERR_TITLE_DROP_ASSET={
 	_LANG_EN:"Asset deletion error",
 	_LANG_ES:"Error de eliminación de activo"
@@ -242,9 +245,10 @@ async def util_update_known_assets(
 	if size==0:
 		return False
 
+	x=-1
 	while True:
-		size=size-1
-		if size<0:
+		x=x+1
+		if x==size:
 			break
 
 		app[_APP_CACHE_ASSETS].update(
@@ -326,7 +330,9 @@ async def route_api_new_asset(
 		)
 
 	ematch=util_asset_fuzzy_finder(
-		request.app,asset_name,True
+		request.app,
+		asset_name,
+		find_exact_only=True
 	)
 	if len(ematch)>0:
 
@@ -475,14 +481,17 @@ async def route_fgmt_search_assets(
 	return Response(
 		body=(
 
-			"<!-- ASSETS SEARCH FORM -->\n"
+			"<!-- ASSETS SEARCH FORMS -->\n"
 
 			f"""<ul hx-swap-oob="innerHTML:#{_ID_NAV_TWO_OPTS}">""" "\n"
 				f"{write_ul(nav,full=False)}\n"
 			"</ul>\n"
 
 			f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
-				f"{write_form_search_assets(lang,authorized=logged_in)}\n"
+				f"""<div id={_ID_LAYOUT_ASSETS_SEARCH}>""" "\n"
+					f"{write_form_asset_ematch(lang)}\n"
+					f"{write_form_search_assets(lang,authorized=logged_in,decorate=True)}\n"
+				"<div>\n"
 			"</section>"
 
 		),
@@ -494,6 +503,7 @@ async def route_fgmt_asset_details(
 	)->Union[json_response,Response]:
 
 	# GET /fgmt/assets/pool/{asset_id}
+	# POST /api/assets/exact-match
 	# hx-target: #messages
 
 	assert_referer(
@@ -502,28 +512,66 @@ async def route_fgmt_asset_details(
 		_ROUTE_PAGE
 	)
 
+	ct=request[_REQ_CLIENT_TYPE]
+
 	authorized=request[_REQ_HAS_SESSION]
 
 	lang=request[_REQ_LANGUAGE]
-	# userid=request[_REQ_USERID]
 
-	asset_id=util_valid_str(
-		request.match_info[_KEY_ASSET]
-	)
+	asset_id:Optional[str]=None
+
+	exact_query_by_name=request.path.startswith("/api/")
+
+	if not exact_query_by_name:
+
+		asset_id=util_valid_str(
+			request.match_info[_KEY_ASSET]
+		)
+
+	if exact_query_by_name:
+
+		query_name:Optional[str]=None
+
+		req_data=await get_request_body_dict(ct,request)
+		if req_data is not None:
+			query_name=util_valid_str(
+				req_data.get(_KEY_NAME)
+			)
+
+		if query_name is not None:
+			results_qn=util_asset_fuzzy_finder(
+				request.app,query_name
+			)
+			print("RESULTS",results_qn)
+			if len(results_qn)==1:
+				asset_id=results_qn[0].get(_KEY_ASSET)
+
 	if not isinstance(asset_id,str):
+		# if exact_query_by_name:
+		# 	return Response(
+		# 		body=(
+		# 			f"""<div hx-swap-oob="#{_ID_FORM_ASSET_EMATCH} div.{_CSS_CLASS_HX_SWAPPABLE}">""" "\n"
+		# 				"<div>UNKNOWN NAME, TRY AGAIN...</div>\n"
+		# 				f"{write_form_asset_ematch(lang,False)}\n"
+		# 			"</div>\n"
+		# 			"<!-- FUCK -->"
+		# 		),
+		# 		content_type=_MIMETYPE_HTML
+		# 	)
+
 		return response_errormsg(
-			_ERR_TITLE_GET_ASSET[lang],
+			_ERR_TITLE_SEARCH_ASSETS[lang],
 			{
 				_LANG_EN:"Asset Id not valid",
 				_LANG_ES:"Id de activo no válido"
 			}[lang],
-			_TYPE_BROWSER,status_code=406
+			ct,status_code=406
 		)
 
 	result_aq=await dbi_assets_AssetQuery(
 		request.app[_APP_RDBC],
 		request.app[_APP_RDBN],
-		asset_id=asset_id,
+		asset_id_list=[asset_id],
 		get_sign=True,
 		get_tag=True,
 		get_comment=True,
@@ -534,13 +582,27 @@ async def route_fgmt_asset_details(
 
 	error_msg:Optional[str]=result_aq.get(_ERR)
 	if error_msg is not None:
+		# if exact_query_by_name:
+		# 	return Response(
+		# 		body=(
+		# 			f"""<div hx-swap-oob="#{_ID_FORM_ASSET_EMATCH}>div">""" "\n"
+		# 				"<!-- UNKNOWN NAME, TRY AGAIN -->\n"
+		# 				f"{write_form_asset_ematch(lang,False)}\n"
+		# 			"</div>"
+		# 		),
+		# 		content_type=_MIMETYPE_HTML
+		# 	)
+
 		return response_errormsg(
-			_ERR_TITLE_GET_ASSET[lang],
+			_ERR_TITLE_SEARCH_ASSETS[lang],
 			f"{_ERR_DETAIL_DBI_FAIL[lang]}: {error_msg}",
-			_TYPE_BROWSER,status_code=400
+			ct,status_code=400
 		)
 
 	await util_patch_doc_with_username(request,result_aq)
+
+	if ct==_TYPE_CUSTOM:
+		return json_response(result_aq)
 
 	tl=write_ul(
 		[
@@ -593,7 +655,7 @@ async def route_api_select_asset(
 	request_data=await get_request_body_dict(ct,request)
 	if not isinstance(request_data,Mapping):
 		return response_errormsg(
-			_ERR_TITLE_GET_ASSET[_LANG_EN],
+			_ERR_TITLE_SEARCH_ASSETS[_LANG_EN],
 			_ERR_DETAIL_DATA_NOT_VALID[_LANG_EN],
 			ct,status_code=406
 		)
@@ -603,7 +665,7 @@ async def route_api_select_asset(
 	)
 	if not asset_id:
 		return response_errormsg(
-			_ERR_TITLE_GET_ASSET[_LANG_EN],
+			_ERR_TITLE_SEARCH_ASSETS[_LANG_EN],
 			f"Check the '{_KEY_ASSET}' field",
 			ct,status_code=406
 		)
@@ -632,7 +694,7 @@ async def route_api_select_asset(
 	result=await dbi_assets_AssetQuery(
 		request.app[_APP_RDBC],
 		request.app[_APP_RDBN],
-		asset_id=asset_id,
+		asset_id_list=[asset_id],
 		get_tag=inc_tag,
 		get_comment=inc_comment,
 		get_supply=inc_supply,
@@ -643,7 +705,7 @@ async def route_api_select_asset(
 	error_msg:Optional[str]=result.get(_ERR)
 	if error_msg is not None:
 		return response_errormsg(
-			_ERR_TITLE_GET_ASSET[_LANG_EN],
+			_ERR_TITLE_SEARCH_ASSETS[_LANG_EN],
 			f"{_ERR_DETAIL_DBI_FAIL[_LANG_EN]}"
 			f": {error_msg}",
 			ct,status_code=400
@@ -762,7 +824,7 @@ async def route_api_asset_edit_definition(
 	result_nv=await dbi_assets_AssetQuery(
 		request.app[_APP_RDBC],
 		request.app[_APP_RDBN],
-		asset_id,
+		asset_id_list=[asset_id],
 		get_comment=True,
 		get_sign=True,
 		get_tag=True,
@@ -875,7 +937,7 @@ async def route_api_drop_asset(
 	error_msg:Optional[str]=dbi_result.get(_ERR)
 	if error_msg is not None:
 		return response_errormsg(
-			_ERR_TITLE_GET_ASSET[lang],
+			_ERR_TITLE_SEARCH_ASSETS[lang],
 			f"{_ERR_DETAIL_DBI_FAIL[lang]}"
 			f": {error_msg}",
 			ct,status_code=400
@@ -915,7 +977,12 @@ async def route_api_drop_asset(
 
 			f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
 				"<!-- BACK TO THE SEARCH FORM -->\n"
-				f"{write_form_search_assets(lang,authorized=True)}\n"
+				f"""<div id={_ID_LAYOUT_ASSETS_SEARCH}>""" "\n"
+					f"{write_form_asset_ematch(lang)}\n"
+					# NOTE: fix this later
+					# f"{write_form_search_assets(lang,authorized=True,decorate=True)}\n"
+					f"{write_form_search_assets(lang,authorized=True)}\n"
+				"<div>\n"
 			"</section>"
 		)
 
@@ -1060,7 +1127,7 @@ async def route_api_add_record(
 	error_msg:Optional[str]=result_arecord.get(_ERR)
 	if error_msg is not None:
 		return response_errormsg(
-			_ERR_TITLE_GET_ASSET[lang],
+			_ERR_TITLE_SEARCH_ASSETS[lang],
 			f"{_ERR_DETAIL_DBI_FAIL[lang]}: {error_msg}",
 			ct,status_code=400
 		)

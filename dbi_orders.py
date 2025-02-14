@@ -305,7 +305,8 @@ async def dbi_orders_PatchAsset(
 		)
 
 		the_asset=await dbi_assets_AssetQuery(
-			rdbc,name_db,asset_id=asset_id,
+			rdbc,name_db,
+			asset_id_list=[asset_id],
 			get_value=get_that_value
 		)
 		if get_that_value:
@@ -420,7 +421,8 @@ async def dbi_orders_DropAsset(
 		)
 
 		the_asset=await dbi_assets_AssetQuery(
-			rdbc,name_db,asset_id=asset_id,
+			rdbc,name_db,
+			asset_id_list=[asset_id],
 			get_value=get_that_value
 		)
 		if get_that_value:
