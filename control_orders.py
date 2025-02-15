@@ -395,7 +395,8 @@ async def route_fgmt_list_orders(
 		request.app[_APP_RDBC],
 		request.app[_APP_RDBN],
 	)
-	empty=(len(results_list)==0)
+	the_index=len(results_list)
+	empty=(the_index==0)
 	if not empty:
 		msg_err:Optional[str]=util_valid_str(
 			results_list[0].get(_ERR)
@@ -433,14 +434,20 @@ async def route_fgmt_list_orders(
 		)
 
 	if not empty:
-		first=True
-		for obj_order in results_list:
+		most_recent_one=True
+		# for obj_order in results_list:
+		while True:
+
+			the_index=the_index-1
+			if the_index<0:
+				break
+
 			html_text=(
 				f"{html_text}\n"
-				f"{write_html_order_as_item(lang,results_list.pop(),authorized,focus=first)}"
+				f"{write_html_order_as_item(lang,results_list[the_index],authorized,focus=most_recent_one)}"
 			)
-			if first:
-				first=False
+			if most_recent_one:
+				most_recent_one=False
 
 	html_text=(
 				f"{html_text}\n"

@@ -99,10 +99,15 @@ def util_get_limits(
 				index_max=index
 				break
 
-	if index_min==-1:
-		index_min=0
 	if index_max==-1:
 		index_max=len(history)-1
+		if get_max:
+			index_max=index_max+1
+
+	if index_min==-1:
+		index_min=0
+		if get_min:
+			index_min=index_max
 
 	return (index_min,index_max)
 
@@ -353,7 +358,10 @@ def conversion_process(
 
 				# NOTE: before index zero there is no supply count
 
+				# if not index_max==0:
 				ws[sheet_cell]=0
+				# if asset_history_size==1:
+				# 	ws[sheet_cell]=
 
 				# ws[sheet_cell]=(
 				# 	f"={util_excel_dectocol(col_h_start)}{row}"
@@ -377,9 +385,12 @@ def conversion_process(
 
 		if inc_history:
 
-			ws[sheet_cell]=(
-				f"={sheet_cell_isup} + SUM({util_excel_dectocol(col_h_start+index_min)}{row}:{util_excel_dectocol(col_h_start+index_max)}{row})"
-			)
+			tl=f"={sheet_cell_isup}"
+
+			# if not index_max==index_min:
+			tl=f"{tl} + SUM({util_excel_dectocol(col_h_start+index_min)}{row}:{util_excel_dectocol(col_h_start+index_max)}{row})"
+
+			ws[sheet_cell]=tl
 
 		if not inc_history:
 
@@ -466,7 +477,7 @@ def conversion_process(
 				):
 					cell_comment=(
 						f"{cell_comment}\n\n"
-						f"* {_TL_TF_SPEC[lang]}\n"
+						f"* {_TL_TF_SPEC[lang]} ({index_min},{index_max})\n"
 					)
 
 				if col_idx==index_min:
@@ -579,7 +590,7 @@ if __name__=="__main__":
 	)
 
 	rdbc=AsyncIOMotorClient()
-	rdbn="my-inventory1"
+	rdbn="my-inventory"
 
 	all_assets=async_run(
 		dbi_assets_AssetQuery(
@@ -599,7 +610,7 @@ if __name__=="__main__":
 		lang="es",
 		atype=1,
 		inc_history=True,
-		# date_min=datetime(2025,2,10,6,46)
+		date_min=datetime(2025,2,14)
 	)
 	if path_file is None:
 		print("Unable to create the excel file")
