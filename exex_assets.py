@@ -56,8 +56,9 @@ _TL_TF_END={
 
 def util_get_limits(
 		history:Mapping,
+		history_size:int,
 		date_min:Optional[datetime]=None,
-		date_max:Optional[datetime]=None
+		date_max:Optional[datetime]=None,
 	)->tuple:
 
 	# ( min , max )
@@ -68,11 +69,10 @@ def util_get_limits(
 	if (not get_min) and (not get_max):
 		return (
 			0,
-			len(history)-1
+			history_size-1
 		)
 
 	index=-1
-
 	index_min=-1
 	index_max=-1
 
@@ -100,9 +100,7 @@ def util_get_limits(
 				break
 
 	if index_max==-1:
-		index_max=len(history)-1
-		if get_max:
-			index_max=index_max+1
+		index_max=history_size
 
 	if index_min==-1:
 		index_min=0
@@ -245,7 +243,6 @@ def conversion_process(
 
 	]
 
-
 	# Column G (Optional)
 
 	if not atype==0:
@@ -315,19 +312,20 @@ def conversion_process(
 
 			continue
 
-		asset_history_size=len(asset[_KEY_HISTORY])
-		if asset_history_size==0:
+		history_size=len(asset[_KEY_HISTORY])
+		if history_size==0:
 			print(
 				_ExExWarn,
 				f"{asset_id} has history of lengh zero"
 			)
 
 		index_min=1
-		index_max=asset_history_size-1
+		index_max=history_size-1
 
 		if has_tc:
 			index_min,index_max=util_get_limits(
 				asset[_KEY_HISTORY],
+				history_size,
 				date_min,date_max
 			)
 
@@ -368,6 +366,7 @@ def conversion_process(
 				# )
 
 			if index_min>0:
+
 				ws[sheet_cell]=(
 					"=SUM("
 						f"{util_excel_dectocol(col_h_start)}{row}"
@@ -387,8 +386,10 @@ def conversion_process(
 
 			tl=f"={sheet_cell_isup}"
 
-			# if not index_max==index_min:
-			tl=f"{tl} + SUM({util_excel_dectocol(col_h_start+index_min)}{row}:{util_excel_dectocol(col_h_start+index_max)}{row})"
+			if not index_max==index_min:
+				tl=f"{tl} + SUM({util_excel_dectocol(col_h_start+index_min)}{row}:{util_excel_dectocol(col_h_start+index_max)}{row})"
+			if index_max==index_min:
+				tl=f"{tl} + {util_excel_dectocol(col_h_start+index_min)}{row}"
 
 			ws[sheet_cell]=tl
 
@@ -590,7 +591,8 @@ if __name__=="__main__":
 	)
 
 	rdbc=AsyncIOMotorClient()
-	rdbn="my-inventory"
+	# rdbn="my-inventory"
+	rdbn="stock-feria"
 
 	all_assets=async_run(
 		dbi_assets_AssetQuery(
@@ -608,7 +610,7 @@ if __name__=="__main__":
 		Path(sys_argv[0]).parent,
 		all_assets,
 		lang="es",
-		atype=1,
+		atype=-1,
 		inc_history=True,
 		date_min=datetime(2025,2,14)
 	)

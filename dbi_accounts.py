@@ -1,5 +1,7 @@
 #!/usr/bin/python3.9
 
+from asyncio import to_thread
+
 from pathlib import Path
 from secrets import token_hex
 from sqlite3 import (
@@ -7,13 +9,14 @@ from sqlite3 import (
 	Cursor as SQLiteCursor,
 	connect as sqlite_connect
 )
-from typing import Mapping,Optional
+from typing import Mapping,Optional,Union
 
 from motor.motor_asyncio import (
 	# AsyncIOMotorCursor,
 	AsyncIOMotorClient,
 	AsyncIOMotorCollection
 )
+from pymongo import MongoClient
 
 from symbols_Any import (
 	_ERR,
@@ -23,44 +26,43 @@ from symbols_Any import (
 
 from symbols_accounts import (
 
+	_MONGO_COL_USERS,
+
 	_KEY_USERID,_KEY_USERNAME,
-
 	_KEY_CON_EMAIL,_KEY_CON_TELEGRAM,
+
+	_SQL_FILE_USERS,
+		_SQL_TABLE_USERS,
+
+	_SQL_COL_USERID,
+	_SQL_COL_USERNAME,
+
 )
-
-
-from internals import (
-	util_hash_sha256,util_rnow
-)
-
-_MONGO_COL_USERS="users"
-
-_SQL_FILE_SESSIONS="ldb_sessions.db"
-_SQL_FILE_USERS="ldb_users.db"
-
-_SQL_TABLE_USERS="TheUsers"
-_SQL_TABLE_SESSION_CANDIDATES="SessionCandidates"
-_SQL_TABLE_ACTIVE_SESSIONS="ActiveSessions"
-
-_SQL_COL_DATE="TheDate"
-_SQL_COL_USERID="UserID"
-_SQL_COL_USERNAME="UserName"
-_SQL_COL_TGUID="TelegramUserID"
-_SQL_COL_EMAIL="Email"
-_SQL_COL_OTP="OneTimePassword"
-_SQL_COL_AKEY="AccessKey"
-_SQL_COL_SID="SessionID"
 
 # UserID + Username caching
 
-def ldbi_print_table(basedir:Path,table:str):
+def rdbc_init_users(
+		rdbn:str,
+		con_str:Optional[str]=None
+	):
+
+	print("Ensuring constraints...")
+
+	rdbc:MongoClient=MongoClient(con_str)
+	col=rdbc[rdbn][_MONGO_COL_USERS]
+	col.create_index(_KEY_USERNAME,unique=True)
+	col.create_index(_KEY_CON_EMAIL,unique=True)
+	col.create_index(_KEY_CON_TELEGRAM,unique=True)
+	rdbc.close()
+
+def ldbi_debug_show_users(basedir:Path):
 	try:
 		con:SQLiteConnection=sqlite_connect(
 			basedir.joinpath(_DIR_TEMP,_SQL_FILE_USERS)
 		)
 		cur:SQLiteCursor=con.cursor()
 		cur.execute(
-			f"SELECT {_SQL_COL_SID} FROM {table};"
+			f"SELECT {_SQL_COL_USERID} FROM {_SQL_TABLE_USERS};"
 		)
 		for row in cur.fetchall():
 			print(row)
@@ -73,9 +75,10 @@ def ldbi_print_table(basedir:Path,table:str):
 
 	return None
 
-def ldbi_init_users(basedir:Path,root_id:str)->Optional[str]:
+def ldbi_init_users(basedir:Path)->Optional[str]:
 
 	sql_file_path=basedir.joinpath(_DIR_TEMP,_SQL_FILE_USERS)
+	sql_file_path.parent.mkdir(exist_ok=True,parents=True)
 	if sql_file_path.is_file():
 		try:
 			sql_file_path.unlink()
@@ -110,7 +113,7 @@ def ldbi_init_users(basedir:Path,root_id:str)->Optional[str]:
 
 	return None
 
-def util_user_serialize(the_user:Mapping)->Mapping:
+def util_rdb_user_serialize(the_user:Mapping)->Mapping:
 	# Prepares the user data to be written to the remote database
 	# NOTE: returns an entirely new Mapping
 
@@ -130,8 +133,8 @@ def util_user_serialize(the_user:Mapping)->Mapping:
 		_KEY_CON_TELEGRAM:telegram,
 	}
 
-def util_user_deserialize(the_user:Mapping)->Mapping:
-	# Prepares the userdata from the remote database to be used internally
+def util_rdb_user_deserialize(the_user:Mapping)->Mapping:
+	# Prepares the userdata from the remote database to be used internally by the program
 	# NOTE: returns an entirely new Mapping
 
 	userid=the_user.get("_id")
@@ -154,7 +157,8 @@ def util_user_deserialize(the_user:Mapping)->Mapping:
 
 def ldbi_save_user(
 		basedir:Path,
-		userid:str,username:str
+		userid:str,
+		username:str
 	)->Optional[str]:
 
 	try:
@@ -211,10 +215,6 @@ def ldbi_get_userid(
 			"The requested user does not exist"
 		)
 
-	# print(
-	# 	username,"-->",result
-	# )
-
 	return (_KEY_USERID,result)
 
 def ldbi_get_username(
@@ -262,32 +262,48 @@ def ldbi_get_username(
 	return (_KEY_USERNAME,result)
 
 async def dbi_CreateUser(
+		basedir:Path,
 		rdbc:AsyncIOMotorClient,
 		name_db:str,
 		username:str,
-		extra:dict={},
+		con_telegram:Optional[str]=None,
+		con_email:Optional[str]=None,
 		get_result:bool=False
 	)->Mapping:
 
+	result=await to_thread(
+		ldbi_get_userid,
+		basedir,
+		username
+	)
+	if not result[0]==_ERR:
+		print(result)
+		return {_ERR:"The username already exists"}
+
 	userid=token_hex(24)
 
-	user_data={
-		"_id":userid,
+	user_data=util_rdb_user_serialize({
+		_KEY_USERID:userid,
 		_KEY_USERNAME:username,
-	}
+		_KEY_CON_EMAIL:con_email,
+		_KEY_CON_TELEGRAM:con_telegram
+	})
 
-	poppables=[]
-	if not len(extra)==0:
-		for key in extra:
-			value=extra[key]
-			if value is None:
-				user_data.update({key:f"None.{userid}"})
-				poppables.append(key)
-				continue
+	# poppables=[]
+	# if not len(extra)==0:
+	# 	for key in extra:
+	# 		value=extra[key]
+	# 		if value is None:
+	# 			user_data.update({key:f"None.{userid}"})
+	# 			poppables.append(key)
+	# 			continue
 
-			user_data.update({key:value})
+	# 		user_data.update({key:value})
 
-	print(user_data)
+	print(
+		"User data serialized for mongodb:",
+		user_data
+	)
 
 	try:
 		tgtcol:AsyncIOMotorCollection=rdbc[name_db][_MONGO_COL_USERS]
@@ -295,38 +311,51 @@ async def dbi_CreateUser(
 	except Exception as exc:
 		return {_ERR:f"{exc}"}
 
+	result=await to_thread(
+		ldbi_save_user,
+		basedir,
+		userid,
+		username
+	)
+	if result[0]==_ERR:
+		return {_ERR:result[1]}
+
 	if get_result:
-		return util_user_deserialize(user_data)
+		return util_rdb_user_deserialize(user_data)
 
 	return {}
 
-# async def dbi_GetUsers(
-# 		rdbc:AsyncIOMotorClient,
-# 		name_db:str,
-# 	)->Mapping:
+async def dbi_GetUsers(
+		rdbc:AsyncIOMotorClient,
+		name_db:str,
+	)->Union[list,Mapping]:
 
-# 	the_results=[]
+	list_of_users=[]
 
-# 	try:
-# 		tgtcol:AsyncIOMotorCollection=rdbc[name_db][_MONGO_COL_USERS]
-# 		cursor=tgtcol.find()
+	try:
+		tgtcol:AsyncIOMotorCollection=rdbc[name_db][_MONGO_COL_USERS]
+		cursor=await tgtcol.find({})
+		for user_raw in cursor:
+			print(user_raw)
+			list_of_users.append(
+				util_rdb_user_deserialize(user_raw)
+			)
 
-# 	except Exception as exc:
-# 		return {_ERR:f"{exc}"}
+	except Exception as exc:
+		return {_ERR:f"{exc}"}
+
+	return list_of_users
 
 async def dbi_DeleteUser(
 		rdbc:AsyncIOMotorClient,
 		name_db:str,
-		match_userid:Optional[str]=None,
-		match_username:Optional[str]=None,
+		userid:str,
 		match_extra:Mapping={}
 	)->Mapping:
 
-	match_this={}
-	if match_userid is not None:
-		match_this.update({"_id":match_userid})
-	if match_username is not None:
-		match_this.update({_KEY_USERNAME:match_username})
+	match_this={"_id":userid}
+	# if match_username is not None:
+	# 	match_this.update({_KEY_USERNAME:match_username})
 	if not len(match_extra)==0:
 		match_this.update(match_extra)
 
@@ -338,431 +367,53 @@ async def dbi_DeleteUser(
 
 	return {}
 
-# Active Sessions and Candidate Sessions
+async def dbi_QueryUser(
+		rdbc:AsyncIOMotorClient,
+		name_db:str,
+		user_id:str,
+		username:str,
+		extra:Mapping={},
+	)->Mapping:
 
-def util_get_session_id(
-		userid:str,
-		ip_address:str,
-		user_agent:str
-	)->str:
+	pass
 
-	return util_hash_sha256(
-		f"{userid}\n"
-		f"{ip_address}\n"
-		f"{user_agent}"
+###############################################################################
+
+async def main(basedir,rdbn):
+
+	rdbc=AsyncIOMotorClient()
+
+	username="test_user"
+
+	userdata=await dbi_CreateUser(
+		path_basedir,
+		rdbc,rdbn,
+		username,
+		get_result=True
 	)
+	print("userdata:",userdata)
 
-def ldbi_init_sessions(basedir:Path)->Optional[str]:
-
-	# NOTE: Session candidates do not have user ID, active sessions do
-
-	sql_file_path=basedir.joinpath(_DIR_TEMP,_SQL_FILE_SESSIONS)
-	if sql_file_path.is_file():
-		try:
-			sql_file_path.unlink()
-		except Exception as exc:
-			return f"{exc}"
-
-	if sql_file_path.is_dir():
-		return f"The path to '{_SQL_FILE_SESSIONS}' is occupied by a directory"
-
-	try:
-		con:SQLiteConnection=sqlite_connect(
-			basedir.joinpath(_DIR_TEMP,_SQL_FILE_SESSIONS)
-		)
-		cur:SQLiteCursor=con.cursor()
-		cur.executescript(
-
-			f"CREATE TABLE {_SQL_TABLE_SESSION_CANDIDATES} ("
-				f"{_SQL_COL_SID} varchar(255) UNIQUE,"
-				f"{_SQL_COL_DATE} varchar(255),"
-				f"{_SQL_COL_OTP} varchar(255)"
-				# f"PRIMARY KEY ({_SQL_COL_SID})"
-			");"
-
-			f"CREATE TABLE {_SQL_TABLE_ACTIVE_SESSIONS} ("
-				f"{_SQL_COL_SID} varchar(255) UNIQUE,"
-				f"{_SQL_COL_USERID} varchar(255),"
-				f"{_SQL_COL_DATE} varchar(255),"
-				f"{_SQL_COL_AKEY} varchar(255)"
-				# f"PRIMARY KEY ({_SQL_COL_SID})"
-			");"
-		)
-
-		con.commit()
-		cur.close()
-		con.close()
-
-	except Exception as exc:
-		return f"{exc}"
-
-	# print(_SQL_TABLE_SESSION_CANDIDATES,"{")
-	# ldbi_print_table(basedir,_SQL_TABLE_SESSION_CANDIDATES)
-	# print("}")
-	# print(_SQL_TABLE_ACTIVE_SESSIONS,"{")
-	# ldbi_print_table(basedir,_SQL_TABLE_ACTIVE_SESSIONS)
-	# print("}")
-
-	return None
-
-def ldbi_create_session_candidate(
-		basedir:Path,
-		userid:str,
-		ip_address:str,
-		user_agent:str,
-		otp:str,
-	)->Optional[str]:
-
-	session_id=util_get_session_id(
-		userid,ip_address,user_agent
-	)
-
-	try:
-		con:SQLiteConnection=sqlite_connect(
-			basedir.joinpath(_DIR_TEMP,_SQL_FILE_SESSIONS)
-		)
-		cur:SQLiteCursor=con.cursor()
-		cur.execute(
-			f"INSERT OR REPLACE INTO {_SQL_TABLE_SESSION_CANDIDATES}"
-				f"({_SQL_COL_SID},{_SQL_COL_DATE},{_SQL_COL_OTP})"
-				f""" VALUES ("{session_id}","{util_rnow()}","{otp}");"""
-		)
-		con.commit()
-		cur.close()
-		con.close()
-	except Exception as exc:
-		return f"{exc}"
-
-	return None
-
-def ldbi_create_active_session(
-		basedir:Path,
-		userid:str,
-		ip_address:str,
-		user_agent:str,
-		access_key:str,
-	)->Optional[str]:
-
-	# print(_SQL_TABLE_ACTIVE_SESSIONS,"{")
-	# ldbi_print_table(basedir,_SQL_TABLE_ACTIVE_SESSIONS)
-	# print("}")
-
-	session_id=util_get_session_id(
-		userid,ip_address,user_agent
-	)
-
-	# query=(
-	# 		f"INSERT INTO {_SQL_TABLE_ACTIVE_SESSIONS}"
-	# 			"("
-	# 				f"{_SQL_COL_SID},"
-	# 				f"{_SQL_COL_USERID},"
-	# 				f"{_SQL_COL_DATE},"
-	# 				f"{_SQL_COL_AKEY}"
-	# 			")"
-	# 			" VALUES ("
-	# 				f""" "{session_id}","""
-	# 				f""" "{userid}","""
-	# 				f""" "{util_rnow()}","""
-	# 				f""" "{access_key}" """
-	# 			");"
+	# loaded=ldbi_load_user(
+	# 	Path("./"),
+	# 	username=username
 	# )
-
-	# print(query)
-
-	try:
-		con:SQLiteConnection=sqlite_connect(
-			basedir.joinpath(_DIR_TEMP,_SQL_FILE_SESSIONS)
-		)
-		cur:SQLiteCursor=con.cursor()
-		# cur.execute(query)
-		cur.executemany(
-			f"INSERT OR REPLACE INTO {_SQL_TABLE_ACTIVE_SESSIONS} VALUES (?,?,?,?)",
-			[(session_id,userid,util_rnow(),access_key)]
-		)
-		con.commit()
-		cur.close()
-		con.close()
-	except Exception as exc:
-		return f"{exc}"
-
-	return None
-
-def ldbi_read_session(
-		basedir:Path,
-		userid:str,
-		ip_address:str,
-		user_agent:str,
-		candidate:bool
-	)->tuple:
-
-	session_id=util_get_session_id(
-		userid,ip_address,user_agent
-	)
-	the_table={
-		True:_SQL_TABLE_SESSION_CANDIDATES,
-		False:_SQL_TABLE_ACTIVE_SESSIONS
-	}[candidate]
-
-	print(the_table,"{")
-	ldbi_print_table(basedir,the_table)
-	print("}")
-
-	data:Optional[tuple]
-
-	try:
-		con:SQLiteConnection=sqlite_connect(
-			basedir.joinpath(_DIR_TEMP,_SQL_FILE_SESSIONS)
-		)
-		cur:SQLiteCursor=con.cursor()
-		cur.execute(
-			f"SELECT * "
-				f"FROM {the_table} "
-				f"""WHERE {_SQL_COL_SID}="{session_id}";"""
-		)
-		data=cur.fetchone()
-		cur.close()
-		con.close()
-
-	except Exception as exc:
-		return (_ERR,f"{exc}")
-
-	if data is None:
-		return (_ERR,"Session was not found")
-
-	print("Session:",data)
-
-	return data
+	# print("cached user:",loaded)
 
 
-def ldbi_drop_session(
-		basedir:Path,
-		userid:str,
-		ip_address:str,
-		user_agent:str,
-		candidate:bool,
-	)->Optional[str]:
+if __name__=="__main__":
 
-	client_id=util_get_session_id(
-		userid,ip_address,user_agent
-	)
-	the_table={
-		True:_SQL_TABLE_SESSION_CANDIDATES,
-		False:_SQL_TABLE_ACTIVE_SESSIONS
-	}[candidate]
+	from asyncio import run as async_run
 
-	try:
-		con:SQLiteConnection=sqlite_connect(
-			basedir.joinpath(_DIR_TEMP,_SQL_FILE_SESSIONS)
-		)
-		cur:SQLiteCursor=con.cursor()
-		cur.execute(
-			f"DELETE FROM {the_table} "
-				f"""WHERE {_SQL_COL_SID}="{client_id}";"""
-		)
-		con.commit()
-		cur.close()
-		con.close()
+	rdbn="my-inventory"
 
-	except Exception as exc:
-		return f"{exc}"
+	rdbc_init_users(rdbn)
 
-	return None
+	path_basedir=Path("tests")
 
-def ldbi_convert_to_active_session(
-		basedir:Path,
-		userid:str,
-		ip_address:str,
-		user_agent:str,
-		access_key:str
-	)->Optional[str]:
+	ldbi_init_users(path_basedir)
 
-	session_id=util_get_session_id(
-		userid,ip_address,user_agent
+	async_run(
+		main(path_basedir,rdbn)
 	)
 
-	try:
-		con:SQLiteConnection=sqlite_connect(
-			basedir.joinpath(_DIR_TEMP,_SQL_FILE_SESSIONS)
-		)
-		cur:SQLiteCursor=con.cursor()
-
-		cur.executescript(
-
-			f"INSERT INTO {_SQL_TABLE_ACTIVE_SESSIONS} "
-				"VALUES ("
-					f""" "{session_id}","""
-					f""" "{userid}","""
-					f""" "{util_rnow()}","""
-					f""" "{access_key}" """
-				");"
-
-			f"DELETE FROM {_SQL_TABLE_SESSION_CANDIDATES} "
-				f"""WHERE {_SQL_COL_SID}="{session_id}";"""
-
-		)
-
-		con.commit()
-		cur.close()
-		con.close()
-
-	except Exception as exc:
-		return f"{exc}"
-
-	return None
-
-def ldbi_renovate_active_session(
-		basedir:Path,
-		userid:str,
-		ip_address:str,
-		user_agent:str,
-	)->Optional[str]:
-
-	client_id=util_get_session_id(
-		userid,ip_address,user_agent
-	)
-
-	try:
-		con:SQLiteConnection=sqlite_connect(
-			basedir.joinpath(_DIR_TEMP,_SQL_FILE_SESSIONS)
-		)
-		cur:SQLiteCursor=con.cursor()
-
-		cur.execute(
-			f"UPDATE {_SQL_TABLE_ACTIVE_SESSIONS} "
-			f"""SET {_SQL_COL_DATE}="{util_rnow()}" """ "\n"
-			f"""WHERE {_SQL_COL_SID}="{client_id}";"""
-		)
-
-		con.commit()
-		cur.close()
-		con.close()
-
-	except Exception as exc:
-		return f"{exc}"
-
-	return None
-
-
-# async def dbi_GetUser(
-# 		rdbc:AsyncIOMotorClient,
-# 		name_db:str,username:str
-# 	)->Mapping:
-
-# 	result={}
-
-# 	try:
-# 		tgtcol:AsyncIOMotorCollection=rdbc[name_db][_MONGO_COL_USERS]
-# 		result=await tgtcol.find_one({"_id":f"{username}"})
-
-# 	except Exception as exc:
-
-# 		return {"error":f"{exc}"}
-
-# 	return result
-
-# async def dbi_PatchUser(
-# 		rdbc:AsyncIOMotorClient,
-# 		name_db:str,username:str,
-# 		params:Mapping={"ignore":[_VM_EMAIL,_VM_TELEGRAM]}
-# 	)->Mapping:
-
-# 	ignore_email=False
-# 	ignore_telegram=False
-
-# 	ignored=params.get("ignore")
-# 	if not isinstance(ignored,list):
-# 		if not len(ignored)==0:
-# 			ignore_email=(_VM_EMAIL in ignored)
-# 			ignore_telegram=(_VM_TELEGRAM in ignored)
-
-# 	changes_set={}
-# 	changes_unset=[]
-
-# 	if not ignore_email:
-# 		new_email=util_valid_str(params.get(_VM_EMAIL))
-# 		if new_email is not None:
-# 			changes_set.update({_VM_EMAIL:new_email})
-# 		if new_email is None:
-# 			changes_unset.update({_VM_EMAIL:new_email})
-
-# 	if not ignore_telegram:
-# 		new_telegram=util_valid_str(params.get(_VM_TELEGRAM))
-# 		if new_telegram is not None:
-# 			changes_set.update({_VM_TELEGRAM:new_telegram})
-# 		if new_telegram is None:
-# 			changes_unset.update({_VM_TELEGRAM:new_telegram})
-
-# 	aggr_pipeline=[{"$match":{_KEY_USERNAME:username}}]
-
-# 	if not len(changes_set)==0:
-# 		aggr_pipeline.append({"$set":changes_set})
-
-# 	if not len(changes_unset)==0:
-# 		aggr_pipeline.append({"$unset":changes_unset})
-
-# 	aggr_pipeline.append(
-# 		{
-# 			"$merge":{
-# 				"into":_MONGO_COL_USERS,
-# 				"whenMatched":"replace",
-# 				"whenNotMatched":"insert"
-# 			}
-# 		}
-# 	)
-
-# 	try:
-# 		tgtcol:AsyncIOMotorCollection=rdbc[name_db][_MONGO_COL_USERS]
-# 		cursor:AsyncIOMotorCursor=tgtcol.aggregate(aggr_pipeline)
-# 		async for x in cursor:
-# 			print(x)
-
-# 	except Exception as exc:
-# 		return {"error":f"{exc}"}
-
-
-
-
-
-# 	return {}
-
-# async def main():
-
-# 	print("runnin")
-
-# 	# rdbc=AsyncIOMotorClient()
-# 	# rdbn="my-inventory"
-
-# 	username="test"
-
-# 	# userdata=await dbi_CreateUser(
-# 	# 	rdbc,rdbn,
-# 	# 	"test",extra={_KEY_TELEGRAM:"1234"},
-# 	# 	get_result=True
-# 	# )
-# 	# ldbi_save_user(
-# 	# 	Path("./"),
-# 	# 	userdata[_KEY_USERID],
-# 	# 	username
-# 	# )
-# 	# print("userdata:",userdata)
-
-# 	loaded=ldbi_load_user(
-# 		Path("./"),
-# 		username=username
-# 	)
-# 	print("cached user:",loaded)
-
-
-# if __name__=="__main__":
-
-# 	# from asyncio import run as async_run
-
-# 	# import time
-
-# 	# p=Path("./")
-
-# 	# ldbi_init_users(p)
-
-# 	# print(
-# 	# 	ldbi_get_userid(p,_ROOT_USER)
-# 	# )
+	ldbi_debug_show_users(path_basedir)

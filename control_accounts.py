@@ -12,10 +12,10 @@ from aiohttp.web import (
 	HTTPFound
 )
 
-from dbi_accounts import (
+from dbi_accounts import ldbi_get_userid
 
-	ldbi_get_userid,
-	# ldbi_get_username,
+from dbi_accounts_sessions import (
+
 	ldbi_create_session_candidate,
 	ldbi_convert_to_active_session,
 	ldbi_read_session,
@@ -317,8 +317,10 @@ async def route_api_login(request:Request)->Union[json_response,Response]:
 
 	otp_new=token_hex(4)
 
-	if vmethod is None:
-		print("OTP_FOR_ROOT_USER:",otp_new)
+	print(
+		"OTP for user",username,
+		"is:",otp_new
+	)
 
 	# NOTE:For testing purposses, the OTP will only be printed out, serverside only
 

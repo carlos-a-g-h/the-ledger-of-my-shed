@@ -2,7 +2,7 @@
 
 from pathlib import Path
 from typing import Optional
-from secrets import token_hex
+# from secrets import token_hex
 
 from aiohttp.web import (
 	Application,
@@ -73,8 +73,12 @@ from control_orders import (
 )
 
 from dbi_accounts import (
-	ldbi_init_sessions,
 	ldbi_init_users,
+	rdbc_init_users
+)
+
+from dbi_accounts_sessions import (
+	ldbi_init_sessions,
 	# ldbi_save_user,
 )
 
@@ -99,7 +103,7 @@ from symbols_Any import (
 
 	_APP_CACHE_ASSETS,
 	_APP_PROGRAMDIR,
-	_APP_ROOT_USERID,
+	# _APP_ROOT_USERID,
 	# _APP_BAKED_CSS,
 	_APP_RDBC,_APP_RDBN,
 
@@ -215,13 +219,13 @@ def build_app(
 		parents=True
 	)
 
+	rdbc_init_users(rdb_name,rdb_url)
+
 	msg_err:Optional[str]=ldbi_init_sessions(path_programdir)
 	if msg_err is not None:
 		raise Exception(f"LDBI err.1: {msg_err}")
 
-	userid_root=f"0x{token_hex(24)[:-2]}"
-
-	msg_err:Optional[str]=ldbi_init_users(path_programdir,userid_root)
+	msg_err:Optional[str]=ldbi_init_users(path_programdir)
 	if msg_err is not None:
 		raise Exception(f"LDBI err.2: {msg_err}")
 
@@ -235,8 +239,6 @@ def build_app(
 	)
 
 	app[_CFG_FLAGS]=tuple(flags)
-
-	app[_APP_ROOT_USERID]=userid_root
 
 	app[_APP_PROGRAMDIR]=path_programdir
 

@@ -180,7 +180,8 @@ def write_form_new_order(lang:str,full:bool=True)->str:
 
 def write_button_order_details(
 		lang:str,order_id:str,
-		refresh:bool=False
+		refresh:bool=False,
+		in_msg:bool=False
 	)->str:
 
 	tl={
@@ -195,6 +196,8 @@ def write_button_order_details(
 	}[refresh][lang]
 
 	url_path=f"/fgmt/orders/pool/{order_id}/details"
+	if in_msg:
+		url_path=f"{url_path}-quick"
 
 	if refresh:
 		url_path=f"{url_path}?{_SECTION}={_ID_MAIN_TWO}"
@@ -866,7 +869,7 @@ def write_html_order_details(
 			f"<h3>{tl}</h3>\n"
 			f"{write_html_order_info(lang,data,authorized)}\n"
 			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
-				f"{write_button_order_details(lang,order_id,True)}\n"
+				f"{write_button_order_details(lang,order_id,refresh=True)}\n"
 	)
 	if authorized:
 		html_text=(

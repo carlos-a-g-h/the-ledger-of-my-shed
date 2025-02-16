@@ -25,6 +25,7 @@ from control_Any import (
 	get_username,util_patch_doc_with_username,
 	get_request_body_dict,
 	response_errormsg,
+	response_popupmsg,
 	response_fullpage_ext,
 )
 
@@ -465,6 +466,7 @@ async def route_fgmt_order_details(
 	)->Union[Response,json_response]:
 
 	# GET: /fgmt/orders/pool/{order_id}/details
+	# GET: /fgmt/orders/pool/{order_id}/details-quick
 	# hx-target: #messages
 
 	ct=request[_REQ_CLIENT_TYPE]
@@ -474,16 +476,26 @@ async def route_fgmt_order_details(
 
 	order_id=request.match_info[_KEY_ORDER]
 
-	render_main_1=(request.query.get(_SECTION)==_ID_MAIN_ONE)
-	render_main_2=(request.query.get(_SECTION)==_ID_MAIN_TWO)
-
-	render_all=(
-		(render_main_1 and render_main_2) or
-		(
-			(not render_main_1) or
-			(not render_main_2)
-		)
+	in_a_msgbox=(
+		Path(request.path).name=="details-quick"
 	)
+
+	rendder_main_1=False
+	rendder_main_2=False
+	render_all=in_a_msgbox
+
+	if not in_a_msgbox:
+
+		render_main_1=(request.query.get(_SECTION)==_ID_MAIN_ONE)
+		render_main_2=(request.query.get(_SECTION)==_ID_MAIN_TWO)
+
+		render_all=(
+			(render_main_1 and render_main_2) or
+			(
+				(not render_main_1) or
+				(not render_main_2)
+			)
+		)
 
 	print(
 		"Render what?",
@@ -494,13 +506,15 @@ async def route_fgmt_order_details(
 
 	html_text_order=""
 
+	# include_assets=(not in_a_msgbox)
+
 	if render_all or render_main_2:
 
 		dbi_result=await dbi_orders_QueryOrders(
 			request.app[_APP_RDBC],
 			request.app[_APP_RDBN],
 			order_id=order_id,
-			include_assets=True,
+			include_assets=(not in_a_msgbox),
 			include_comment=True,
 		)
 		msg_err:Optional[str]=dbi_result.get(_ERR)
@@ -521,6 +535,18 @@ async def route_fgmt_order_details(
 			dbi_result,
 			True
 		)
+
+
+		if in_a_msgbox:
+			# TODO: RENDER MESSAGE BOX WITH ORDER DETAILS + VALUE
+
+			return response_popupmsg(
+				write_html_order_as_item(
+					lang,dbi_result,False,
+					full=False
+				)
+			)
+
 
 		html_text_order=f"{write_html_order_details(lang,dbi_result,True)}\n"
 
