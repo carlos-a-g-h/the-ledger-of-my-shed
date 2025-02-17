@@ -27,6 +27,7 @@ from symbols_assets import (
 
 from dbi_assets import dbi_assets_AssetQuery
 from internals import (
+	util_date_in_date,
 	util_valid_int,
 	util_valid_str,
 	util_valid_date,
@@ -57,20 +58,29 @@ _TL_TF_END={
 def util_get_limits(
 		history:Mapping,
 		history_size:int,
+		date:Optional[datetime]=None,
 		date_min:Optional[datetime]=None,
 		date_max:Optional[datetime]=None,
 	)->tuple:
 
 	# ( min , max )
 
-	get_min=isinstance(date_min,datetime)
-	get_max=isinstance(date_max,datetime)
+	date_specific=isinstance(date,datetime)
+
+	get_min=(
+		date_specific or
+		isinstance(date_min,datetime)
+	)
+	get_max=(
+		date_specific or
+		isinstance(date_max,datetime)
+	)
 
 	if (not get_min) and (not get_max):
 		return (
-			0,
-			history_size-1
+			0,history_size-1
 		)
+
 
 	index=-1
 	index_min=-1
@@ -87,6 +97,20 @@ def util_get_limits(
 		if record_date is None:
 			continue
 
+		if date_specific:
+			if index_min==-1:
+				if util_date_in_date(record_date,date):
+					index_min=index
+
+			if index_min==-1:
+				continue
+
+			if index_max==-1:
+				if not util_date_in_date(record_date,date):
+					index_max=index
+
+			continue
+
 		if get_min and index_min==-1:
 			if not record_date<date_min:
 				index_min=index
@@ -100,14 +124,29 @@ def util_get_limits(
 				break
 
 	if index_max==-1:
-		index_max=history_size
+		index_max=history_size-1
 
 	if index_min==-1:
 		index_min=0
 		if get_min:
 			index_min=index_max
 
+	print(
+		"\tLimits",
+		index_min,
+		index_max
+	)
+
 	return (index_min,index_max)
+
+def util_get_bumps(
+		history:Mapping,
+		skip_dates:list
+	)->list:
+
+
+	pass
+
 
 def util_get_initial_supply(
 		history:Mapping,
@@ -138,7 +177,7 @@ def util_get_initial_supply(
 		supply=supply+record_mod
 
 	print(
-		"\tfound initial supply:",
+		"\tFound initial supply:",
 		index,supply
 	)
 
@@ -177,6 +216,7 @@ def conversion_process(
 		lang:str=_LANG_EN,
 		atype:int=0,
 		inc_history:bool=False,
+		date:Optional[datetime]=None,
 		date_min:Optional[datetime]=None,
 		date_max:Optional[datetime]=None
 	)->Optional[Path]:
@@ -326,7 +366,7 @@ def conversion_process(
 			index_min,index_max=util_get_limits(
 				asset[_KEY_HISTORY],
 				history_size,
-				date_min,date_max
+				date,date_min,date_max
 			)
 
 		print("\n\tLimits based on the requested time frame")

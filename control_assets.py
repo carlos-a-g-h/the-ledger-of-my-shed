@@ -1306,6 +1306,7 @@ async def route_api_export_as_excel(
 	inc_history=False
 
 	# date_utc:bool=False
+	date:Optional[datetime]=None
 	date_min:Optional[datetime]=None
 	date_max:Optional[datetime]=None
 
@@ -1319,30 +1320,31 @@ async def route_api_export_as_excel(
 			inc_history=util_valid_bool(
 				req_data.get(_KEY_INC_HISTORY),False
 			)
-			# date_utc=util_valid_bool(
-			# 	req_data.get(_KEY_DATE_UTC),
-			# 	dval=False
-			# )
-			date_min=util_valid_date(
-				req_data.get(_KEY_DATE_MIN),
+			date=util_valid_date(
+				req_data.get(_KEY_DATE),
 				get_dt=True
 			)
-			date_max=util_valid_date(
-				req_data.get(_KEY_DATE_MAX),
-				get_dt=True
-			)
+			if date is None:
+				date_min=util_valid_date(
+					req_data.get(_KEY_DATE_MIN),
+					get_dt=True
+				)
+				date_max=util_valid_date(
+					req_data.get(_KEY_DATE_MAX),
+					get_dt=True
+				)
 
-	has_time_frame=(
+	has_min_max_dates=(
 		(date_min is not None) and
 		(date_max is not None)
 	)
 
-	if has_time_frame:
+	if has_min_max_dates:
 
 		if not date_min<date_max:
 
 			print("WARNING: date_min is larger than date_max, both have been nullified for this request")
-			has_time_frame=False
+			has_min_max_dates=False
 			date_min=None
 			date_max=None
 
@@ -1362,6 +1364,7 @@ async def route_api_export_as_excel(
 		request.app[_APP_RDBN],
 		lang=lang,atype=atype,
 		inc_history=inc_history,
+		date=date,
 		date_min=date_min,
 		date_max=date_max
 	)
@@ -1370,6 +1373,9 @@ async def route_api_export_as_excel(
 		_LANG_EN:"Assets",
 		_LANG_ES:"Activos"
 	}[lang]
+
+	if date is not None:
+		the_name=f"{the_name}_{util_dt_to_str(date)}"
 
 	if date_min is not None:
 		the_name=f"{the_name}_"+{
@@ -1382,6 +1388,24 @@ async def route_api_export_as_excel(
 			_LANG_EN:"to",
 			_LANG_ES:"hasta"
 		}[lang]+f"_{util_dt_to_str(date_max)}"
+
+	if inc_history:
+		the_name=f"{the_name}_"+{
+			_LANG_EN:"with_history",
+			_LANG_ES:"con_historial"
+		}[lang]
+
+	if atype>0:
+		the_name=f"{the_name}_"+{
+			_LANG_EN:"uphill_analysis",
+			_LANG_ES:"Analisis_alcista"
+		}[lang]
+
+	if atype<0:
+		the_name=f"{the_name}_"+{
+			_LANG_EN:"downhill_analysis",
+			_LANG_ES:"Analisis_bajista"
+		}[lang]
 
 	print("\nDelivering the excel file")
 	print("includes history?",inc_history)

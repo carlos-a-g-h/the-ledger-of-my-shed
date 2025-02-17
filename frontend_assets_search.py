@@ -79,7 +79,7 @@ def write_form_asset_ematch(lang:str,full:bool=True)->str:
 				f"<h3>{tl}</h3>\n"
 
 				# f"""<div class="{_CSS_CLASS_HX_SWAPPABLE}">""" "\n"
-				f"""<div id="{_ID_FORM_ASSET_EMATCH}" """
+				f"""<div id="{_ID_FORM_ASSET_EMATCH}">""" "\n"
 					f"{html_text}\n"
 				"</div>\n"
 

@@ -180,6 +180,20 @@ def util_rnow(level=4)->str:
 
 	return t
 
+def util_date_in_date(date:datetime,date_day:datetime)->bool:
+
+	day=date_day.day
+	month=date_day.month
+	year=date_day.year
+
+	if not date.day==day:
+		return False
+	if not date.month==month:
+		return False
+	if not date.year==year:
+		return False
+	return True
+
 def util_date_calc_expiration(
 		pit:Optional[datetime],
 		thold:int,in_min:bool=False,
@@ -468,3 +482,11 @@ async def write_yaml_file_async(
 		return False
 
 	return True
+
+# # sorting
+
+# class Node:
+# 	def __init__(self,data:Mapping):
+# 		self.data=data
+# 		self.side_left:Optional[Mapping]=None
+# 		self.side_right:Optional[Mapping]=None

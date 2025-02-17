@@ -236,14 +236,21 @@ def write_form_export_assets_as_excel(lang:str):
 	)
 
 	tl={
+		_LANG_EN:"Date",
+		_LANG_ES:"Fecha"
+	}[lang]
+	html_text=(
+		"<div>\n"
+			f"{write_html_input_date(_KEY_DATE,tl)}"
+	)
+
+	tl={
 		_LANG_EN:"Initial date",
 		_LANG_ES:"Fecha inicial"
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		# f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
-		"<div>\n"
-			f"{write_html_input_date(_KEY_DATE_MIN,tl)}"
+		f"{write_html_input_date(_KEY_DATE_MIN,tl)}"
 	)
 
 	tl={

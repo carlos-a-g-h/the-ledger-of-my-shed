@@ -21,7 +21,7 @@ _ID_NAV_ONE_OPTS="nav-1-opts"
 _ID_NAV_TWO="nav-2"
 _ID_NAV_TWO_OPTS="nav-2-opts"
 _ID_MSGZONE="msgzone"
-
+_ID_LOGGING="logging"
 
 # _CSS_CLASS_HX_SWAPPABLE="swappable"
 
@@ -600,6 +600,33 @@ def write_popupmsg(
 					"</div>\n"
 				"</div>\n"
 			"</div>\n"
+		"</div>"
+	)
+
+	return html_text
+
+def write_html_logging_area(lang:str)->str:
+
+	html_text=(
+		"<code>\n"
+			"<!-- CHEAP LOGGING -->\n"
+		"</code>"
+	)
+
+	html_text=(
+		f"""<div id="{_ID_LOGGING}" class="{_CSS_CLASS_COMMON}">""" "\n"
+			"<!-- CHEAP LOGGING -->\n"
+		"</div>"
+	)
+
+	tl={
+		_LANG_EN:"Recent actions",
+		_LANG_ES:"Acciones recientes"
+	}[lang]
+	html_text=(
+		f"<h3>{tl}</h3>\n"
+		"<div>\n"
+			f"{html_text}\n"
 		"</div>"
 	)
 

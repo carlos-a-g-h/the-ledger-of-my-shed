@@ -181,26 +181,35 @@ def write_form_new_order(lang:str,full:bool=True)->str:
 def write_button_order_details(
 		lang:str,order_id:str,
 		refresh:bool=False,
-		in_msg:bool=False
+		qv:bool=False
 	)->str:
 
-	tl={
-		True:{
-			_LANG_EN:"Refresh",
-			_LANG_ES:"Actualizar"
-		},
-		False:{
-			_LANG_EN:"View or edit",
-			_LANG_ES:"Ver o editar"
-		}
-	}[refresh][lang]
+	tl=""
+	if qv:
+		tl={
+			_LANG_EN:"Quick view",
+			_LANG_ES:"Vista rápida"
+		}[lang]
+
+	if not qv:
+		tl={
+			True:{
+				_LANG_EN:"Refresh",
+				_LANG_ES:"Actualizar"
+			},
+			False:{
+				_LANG_EN:"View or edit",
+				_LANG_ES:"Ver o editar"
+			}
+		}[refresh][lang]
 
 	url_path=f"/fgmt/orders/pool/{order_id}/details"
-	if in_msg:
-		url_path=f"{url_path}-quick"
+	if qv:
+		url_path=f"{url_path}-peek"
 
-	if refresh:
-		url_path=f"{url_path}?{_SECTION}={_ID_MAIN_TWO}"
+	if not qv:
+		if refresh:
+			url_path=f"{url_path}?{_SECTION}={_ID_MAIN_TWO}"
 
 	return (
 		f"""<button class="{_CSS_CLASS_COMMON}" """
@@ -789,7 +798,9 @@ def write_html_order_info(
 		html_text=(
 			f"{html_text}\n"
 			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
-				f"{order_comment}\n"
+				"<code>\n"
+					f"{order_comment}\n"
+				"</code>\n"
 			"</div>"
 		)
 
@@ -824,6 +835,7 @@ def write_html_order_as_item(
 		f"{write_html_order_info(lang,data,authorized)}\n"
 
 		f"""<div class={_CSS_CLASS_CONTROLS}>""" "\n"
+			f"{write_button_order_details(lang,order_id,qv=True)}\n"
 			f"{write_button_order_details(lang,order_id)}\n"
 			f"{write_button_delete_order(lang,order_id,True)}\n"
 		"</div>"

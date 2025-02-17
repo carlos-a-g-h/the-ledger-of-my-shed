@@ -450,6 +450,10 @@ def build_app(
 				"/fgmt/orders/pool/{order_id}/details",
 				route_Order_fgmt_Details
 			),
+				web_GET(
+					"/fgmt/orders/pool/{order_id}/details-peek",
+					route_Order_fgmt_Details
+				),
 			web_POST(
 				"/api/orders/pool/{order_id}/add-asset",
 				route_Orders_api_UpdateAsset

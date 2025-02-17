@@ -56,6 +56,9 @@ def rdbc_init_users(
 	rdbc.close()
 
 def ldbi_debug_show_users(basedir:Path):
+
+	print("Showing users")
+
 	try:
 		con:SQLiteConnection=sqlite_connect(
 			basedir.joinpath(_DIR_TEMP,_SQL_FILE_USERS)
@@ -73,11 +76,12 @@ def ldbi_debug_show_users(basedir:Path):
 	except Exception as exc:
 		print(f"{exc}")
 
-	return None
-
 def ldbi_init_users(basedir:Path)->Optional[str]:
 
-	sql_file_path=basedir.joinpath(_DIR_TEMP,_SQL_FILE_USERS)
+	sql_file_path=basedir.joinpath(
+		_DIR_TEMP,
+		_SQL_FILE_USERS
+	)
 	sql_file_path.parent.mkdir(exist_ok=True,parents=True)
 	if sql_file_path.is_file():
 		try:
@@ -90,12 +94,15 @@ def ldbi_init_users(basedir:Path)->Optional[str]:
 
 	try:
 		con:SQLiteConnection=sqlite_connect(
-			basedir.joinpath(_DIR_TEMP,_SQL_FILE_USERS)
+			basedir.joinpath(
+				_DIR_TEMP,
+				_SQL_FILE_USERS
+			)
 		)
 		cur:SQLiteCursor=con.cursor()
 		cur.executescript(
 
-			f"CREATE TABLE {_SQL_TABLE_USERS} ("
+			f"CREATE TABLE '{_SQL_TABLE_USERS}' ("
 				f"{_SQL_COL_USERID} varchar(255) UNIQUE,"
 				f"{_SQL_COL_USERNAME} varchar(255) UNIQUE"
 			");\n"
@@ -167,8 +174,8 @@ def ldbi_save_user(
 		)
 		cur:SQLiteCursor=con.cursor()
 		cur.execute(
-			f"INSERT INTO {_SQL_TABLE_USERS} "
-				f"""VALUES ("{userid}","{username}");"""
+			f"INSERT INTO {_SQL_TABLE_USERS}"
+				f""" VALUES ("{userid}","{username}");"""
 		)
 		con.commit()
 		cur.close()
@@ -265,10 +272,13 @@ async def dbi_CreateUser(
 		basedir:Path,
 		rdbc:AsyncIOMotorClient,
 		name_db:str,
+
 		username:str,
-		con_telegram:Optional[str]=None,
-		con_email:Optional[str]=None,
+			con_telegram:Optional[str]=None,
+			con_email:Optional[str]=None,
+
 		get_result:bool=False
+
 	)->Mapping:
 
 	result=await to_thread(
@@ -317,8 +327,8 @@ async def dbi_CreateUser(
 		userid,
 		username
 	)
-	if result[0]==_ERR:
-		return {_ERR:result[1]}
+	if result is not None:
+		print("failed to write to LDB:",result)
 
 	if get_result:
 		return util_rdb_user_deserialize(user_data)
@@ -404,16 +414,25 @@ if __name__=="__main__":
 
 	from asyncio import run as async_run
 
-	rdbn="my-inventory"
-
-	rdbc_init_users(rdbn)
+	rdbn="test"
 
 	path_basedir=Path("tests")
 
-	ldbi_init_users(path_basedir)
+	print(
+		f"Preparing '{_SQL_FILE_USERS}'...",
+		ldbi_init_users(path_basedir)
+	)
+
+	print(
+		"Ensuring constraints...",
+		rdbc_init_users(rdbn)
+	)
 
 	async_run(
-		main(path_basedir,rdbn)
+		main(
+			path_basedir,
+			rdbn
+		)
 	)
 
 	ldbi_debug_show_users(path_basedir)

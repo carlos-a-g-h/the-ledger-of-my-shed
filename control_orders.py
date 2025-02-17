@@ -48,7 +48,7 @@ from frontend_Any import (
 	# _ID_NAVIGATION,
 	_ID_MAIN,_ID_MAIN_ONE,_ID_MAIN_TWO,
 	_ID_NAV_ONE,_ID_NAV_TWO,_ID_NAV_TWO_OPTS,
-	_ID_MSGZONE,
+	_ID_MSGZONE,_ID_LOGGING,
 
 	# _SCRIPT_HTMX,
 	# _STYLE_CUSTOM,
@@ -67,6 +67,7 @@ from frontend_Any import (
 	write_popupmsg,
 	write_ul,
 	write_html_nav_pages,
+	write_html_logging_area
 )
 
 from frontend_accounts import render_html_user_section
@@ -85,6 +86,7 @@ from frontend_orders import (
 	# write_html_asset_in_order,
 	write_html_order_as_item,
 	write_html_order_details,
+	write_html_order_info
 
 	# write_html_order_assets
 )
@@ -466,7 +468,7 @@ async def route_fgmt_order_details(
 	)->Union[Response,json_response]:
 
 	# GET: /fgmt/orders/pool/{order_id}/details
-	# GET: /fgmt/orders/pool/{order_id}/details-quick
+	# GET: /fgmt/orders/pool/{order_id}/details-peek
 	# hx-target: #messages
 
 	ct=request[_REQ_CLIENT_TYPE]
@@ -476,15 +478,15 @@ async def route_fgmt_order_details(
 
 	order_id=request.match_info[_KEY_ORDER]
 
-	in_a_msgbox=(
-		Path(request.path).name=="details-quick"
+	take_a_peek=(
+		Path(request.path).name=="details-peek"
 	)
 
-	rendder_main_1=False
-	rendder_main_2=False
-	render_all=in_a_msgbox
+	render_main_1=False
+	render_main_2=False
+	render_all=take_a_peek
 
-	if not in_a_msgbox:
+	if not take_a_peek:
 
 		render_main_1=(request.query.get(_SECTION)==_ID_MAIN_ONE)
 		render_main_2=(request.query.get(_SECTION)==_ID_MAIN_TWO)
@@ -514,7 +516,7 @@ async def route_fgmt_order_details(
 			request.app[_APP_RDBC],
 			request.app[_APP_RDBN],
 			order_id=order_id,
-			include_assets=(not in_a_msgbox),
+			include_assets=True,
 			include_comment=True,
 		)
 		msg_err:Optional[str]=dbi_result.get(_ERR)
@@ -536,17 +538,35 @@ async def route_fgmt_order_details(
 			True
 		)
 
+		if take_a_peek:
 
-		if in_a_msgbox:
 			# TODO: RENDER MESSAGE BOX WITH ORDER DETAILS + VALUE
 
-			return response_popupmsg(
-				write_html_order_as_item(
-					lang,dbi_result,False,
-					full=False
-				)
+			tl={
+				_LANG_EN:"Order details",
+				_LANG_ES:"Detalles de la orden"
+			}[lang]
+			html_text=f"<h3>{tl}</h3>"
+
+			html_text=f"{html_text}\n"+write_html_order_info(
+				lang,dbi_result,False,
+				full=False
 			)
 
+			ov=util_valid_int(
+				dbi_result.get(_KEY_ORDER_VALUE)
+			)
+			if isinstance(ov,int):
+				tl={
+					_LANG_EN:"Order value",
+					_LANG_ES:"Valor de la orden"
+				}[lang]
+				html_text=(
+					f"{html_text}\n"
+					f"<div>{tl}: <code>{ov}</code></div>"
+				)
+
+			return response_popupmsg(html_text)
 
 		html_text_order=f"{write_html_order_details(lang,dbi_result,True)}\n"
 
@@ -565,6 +585,7 @@ async def route_fgmt_order_details(
 			f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
 
 				f"""<div id="{_ID_MAIN_ONE}">""" "\n"
+					f"{write_html_logging_area(lang)}\n"
 					f"{write_form_search_assets(lang,order_id=order_id)}\n"
 				"</div>\n"
 
@@ -584,6 +605,7 @@ async def route_fgmt_order_details(
 
 				f"""<div hx-swap-oob="innerHTML:#{_ID_MAIN_ONE}">""" "\n"
 					"<!-- start { -->\n"
+						f"{write_html_logging_area(lang)}\n"
 						f"{write_form_search_assets(lang,order_id=order_id)}\n"
 					"<!-- } end -->\n"
 				"</div>"
@@ -759,8 +781,15 @@ async def route_api_update_asset_in_order(
 	if ct==_TYPE_CUSTOM:
 		return json_response(data=result_patch)
 
+	# Pull asset name
+	asset_name=request.app[_APP_CACHE_ASSETS][asset_id]
+
 	html_text=(
 		f"<!-- UPDATED {asset_id} IN {order_id} -->\n"
+
+		f"""<div hx-swap-oob="beforeend:#{_ID_LOGGING}">""" "\n"
+			f"<p>PATCH {asset_mod} [ {asset_name} ]</p>\n"
+		"</div>\n"
 
 		f"""<div hx-swap-oob="innerHTML:#{_ID_MAIN_TWO}">""" "\n"
 			f"{write_html_order_details(lang,result_patch,True,focus=asset_id)}\n"
@@ -872,9 +901,16 @@ async def route_api_remove_asset_from_order(
 	if ct==_TYPE_CUSTOM:
 		return json_response(data={})
 
+	asset_name=request.app[_APP_CACHE_ASSETS][asset_id]
+
 	return Response(
 		body=(
 			f"<!-- REMOVED FROM ORDER: {order_id} -->\n"
+
+			f"""<div hx-swap-oob="beforeend:#{_ID_LOGGING}">""" "\n"
+				f"<p>REMOVED [ {asset_name} ]</p>\n"
+			"</div>\n"
+
 			f"""<div hx-swap-oob="innerHTML:#{_ID_MAIN_TWO}">"""
 				f"{write_html_order_details(lang,result_drop,True)}\n"
 			"</div>"
