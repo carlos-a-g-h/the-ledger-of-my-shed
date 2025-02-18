@@ -127,7 +127,6 @@ def util_get_limits(
 	# If the time frame is beyond history, then the limits are also beyond history
 	if index_min==-1:
 		index_min=history_size
-	if index_max==-1:
 		index_max=history_size
 
 	print(
@@ -231,6 +230,7 @@ def conversion_process(
 	)
 
 	has_tc=(
+		isinstance(date,datetime) or
 		isinstance(date_min,datetime) or
 		isinstance(date_max,datetime)
 	)
@@ -358,7 +358,7 @@ def conversion_process(
 				f"{asset_id} has history of lengh zero"
 			)
 
-		index_min=1
+		index_min=0
 		index_max=history_size-1
 
 		if has_tc:
@@ -367,6 +367,9 @@ def conversion_process(
 				history_size,
 				date,date_min,date_max
 			)
+
+		if index_max<index_min:
+			index_max=index_min
 
 		print("\n\tLimits based on the requested time frame")
 		print("\t\tmin limit",index_min)
@@ -430,6 +433,7 @@ def conversion_process(
 			if not index_max==index_min:
 				tl=f"{tl} + SUM({get_column_letter(col_h_start+index_min)}{row}:{get_column_letter(col_h_start+index_max)}{row})"
 			if index_max==index_min:
+				print("lel")
 				tl=f"{tl} + {get_column_letter(col_h_start+index_max)}{row}"
 
 			ws[sheet_cell]=tl
@@ -633,8 +637,7 @@ if __name__=="__main__":
 	)
 
 	rdbc=AsyncIOMotorClient()
-	# rdbn="my-inventory"
-	rdbn="stock-feria"
+	rdbn="my-inventory"
 
 	all_assets=async_run(
 		dbi_assets_AssetQuery(
