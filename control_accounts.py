@@ -105,7 +105,7 @@ from symbols_accounts import (
 
 	_KEY_USERNAME,
 	_KEY_CON_EMAIL,_KEY_CON_TELEGRAM,
-	_KEY_OTP,_KEY_VM,
+	_KEY_OTP,_KEY_LMETHOD,
 
 )
 
@@ -199,8 +199,8 @@ async def route_api_login(request:Request)->Union[json_response,Response]:
 			}[lang],_TYPE_BROWSER
 		)
 
-	vmethod=util_valid_str(
-		request_data.get(_KEY_VM),
+	lmethod=util_valid_str(
+		request_data.get(_KEY_LMETHOD),
 		True
 	)
 
@@ -291,12 +291,12 @@ async def route_api_login(request:Request)->Union[json_response,Response]:
 
 	if not is_root:
 
-		if vmethod not in (_KEY_CON_EMAIL,_KEY_CON_TELEGRAM):
+		if lmethod not in (_KEY_CON_EMAIL,_KEY_CON_TELEGRAM):
 			return response_errormsg(
 				_ERR_TITLE_LOGIN[lang],
 				{
-					_LANG_EN:"The selected verification method is reserved for the administrator only",
-					_LANG_ES:"El método de verificación seleccionado está reservado para el administrador"
+					_LANG_EN:"The selected method is reserved for the administrator only",
+					_LANG_ES:"El método seleccionado está reservado para el administrador"
 				}[lang],_TYPE_BROWSER
 			)
 
@@ -357,7 +357,7 @@ async def route_api_login(request:Request)->Union[json_response,Response]:
 	return Response(
 		body=(
 			f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
-				f"{write_form_otp(lang,username,vmethod)}\n"
+				f"{write_form_otp(lang,username,lmethod)}\n"
 			"</section>"
 			),
 		content_type=_MIMETYPE_HTML
@@ -518,6 +518,15 @@ async def route_api_login_otp(request:Request)->Union[json_response,Response]:
 	# Creating access key
 	access_key=token_hex(32)
 
+	# print(
+	# 	await async_run(
+	# 		ldbi_drop_session,
+	# 		request.app[_APP_PROGRAMDIR],
+	# 		userid,ip_address,user_agent,False
+	# 	)
+	# )
+
+	# Converts the candidate session into an active session
 	error_msg=await async_run(
 		ldbi_convert_to_active_session,
 		request.app[_APP_PROGRAMDIR],

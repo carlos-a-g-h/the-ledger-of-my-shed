@@ -287,9 +287,12 @@ def ldbi_convert_to_active_session(
 		)
 		cur:SQLiteCursor=con.cursor()
 
+		# https://stackoverflow.com/questions/8043908/how-do-i-force-an-insert-into-a-table-with-a-unique-key-if-its-already-in-the-t
+
 		cur.executescript(
 
-			f"INSERT INTO {_SQL_TABLE_ACTIVE_SESSIONS} "
+			# f"INSERT INTO {_SQL_TABLE_ACTIVE_SESSIONS} "
+			f"REPLACE INTO {_SQL_TABLE_ACTIVE_SESSIONS} "
 				"VALUES ("
 					f""" "{session_id}","""
 					f""" "{userid}","""

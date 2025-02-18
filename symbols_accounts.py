@@ -13,7 +13,7 @@ _KEY_DATE="date"
 # _MS_UA="user_agent"
 # _MS_IP="ip_address"
 _KEY_AKEY="access_key"
-_KEY_VM="vmethod"
+_KEY_LMETHOD="lmethod"
 
 _MONGO_COL_USERS="users"
 

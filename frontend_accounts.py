@@ -7,7 +7,7 @@ from aiohttp.web import Request
 from symbols_accounts import (
 	_ROUTE_CHECKIN,
 	_KEY_CON_EMAIL,_KEY_CON_TELEGRAM,
-	_KEY_VM,_KEY_OTP,_KEY_USERNAME
+	_KEY_LMETHOD,_KEY_OTP,_KEY_USERNAME
 )
 
 from control_Any import (
@@ -105,15 +105,15 @@ def write_form_login(lang:str,full:bool=True)->str:
 
 		"<div>\n"
 			"<div>\n"
-				f"""<input id=vm-email name="{_KEY_VM}" type=radio value="{_KEY_CON_EMAIL}" checked>""" "\n"
+				f"""<input id=vm-email name="{_KEY_LMETHOD}" type=radio value="{_KEY_CON_EMAIL}" checked>""" "\n"
 				"""<label for="vm-email">E-Mail</label>""" "\n"
 			"</div>"
 			"<div>\n"
-				f"""<input id=vm-telegram name="{_KEY_VM}" type=radio value="{_KEY_CON_TELEGRAM}">""" "\n"
+				f"""<input id=vm-telegram name="{_KEY_LMETHOD}" type=radio value="{_KEY_CON_TELEGRAM}">""" "\n"
 				"""<label for="vm-telegram">Telegram</label>""" "\n"
 			"</div>\n"
 			"<div>\n"
-				f"""<input id=vm-none name="{_KEY_VM}" type=radio value="">""" "\n"
+				f"""<input id=vm-none name="{_KEY_LMETHOD}" type=radio value="">""" "\n"
 				"""<label for="vm-none">Backend/Local</label>""" "\n"
 			"</div>"
 		"</div>"

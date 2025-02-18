@@ -67,18 +67,19 @@ _HEADER_USER_AGENT="User-Agent"
 
 # Excel related
 
-_excel_columns=[
-	"Z",
-	"A","B","C",
-	"D","E","F",
-	"G","H","I",
-	"J","K","L",
-	"M","N","O",
-	"P","Q","R",
-	"S","T","U",
-	"V","W","X",
-	"Y",
-]
+# _excel_columns=[
+# 	"",
+# 	"A","B","C",
+# 	"D","E","F",
+# 	"G","H","I",
+# 	"J","K","L",
+# 	"M","N","O",
+# 	"P","Q","R",
+# 	"S","T","U",
+# 	"V","W","X",
+# 	"Y",
+# 	"Z",
+# ]
 
 # The f***ing Cookies!
 

@@ -18,7 +18,7 @@ from yaml import (
 )
 
 from symbols_Any import (
-	_excel_columns,
+	# _excel_columns,
 	_COOKIE_AKEY,_COOKIE_USER,
 	_HEADER_USER_AGENT,
 
@@ -28,23 +28,6 @@ from symbols_Any import (
 	_FMT_DATE_YMDHM,
 	_FMT_DATE_YMDHMS
 )
-
-# excel related
-
-def util_excel_dectocol(decimal_start:int):
-
-	table_size=len(_excel_columns)
-
-	result:str=""
-	decimal:int=decimal_start
-
-	while decimal>0:
-
-		remainder=decimal%table_size
-		result=f"{_excel_columns[remainder]}{result}"
-		decimal=decimal//table_size
-	
-	return result
 
 # hi-level string to hash functions
 
@@ -111,10 +94,10 @@ def util_valid_date(
 		date_max:Optional[datetime]=None
 	)->Optional[Union[str,datetime]]:
 
-	if len(dt_string)==0:
+	if not isinstance(dt_string,str):
 		return None
 
-	if not isinstance(dt_string,str):
+	if len(dt_string)==0:
 		return None
 
 	the_format=""
@@ -180,17 +163,16 @@ def util_rnow(level=4)->str:
 
 	return t
 
-def util_date_in_date(date:datetime,date_day:datetime)->bool:
+def util_date_in_date(
+		date:datetime,
+		date_day:datetime
+	)->bool:
 
-	day=date_day.day
-	month=date_day.month
-	year=date_day.year
-
-	if not date.day==day:
+	if not date.day==date_day.day:
 		return False
-	if not date.month==month:
+	if not date.month==date_day.month:
 		return False
-	if not date.year==year:
+	if not date.year==date_day.year:
 		return False
 	return True
 
@@ -483,10 +465,15 @@ async def write_yaml_file_async(
 
 	return True
 
-# # sorting
+# sorting
 
 # class Node:
 # 	def __init__(self,data:Mapping):
 # 		self.data=data
 # 		self.side_left:Optional[Mapping]=None
 # 		self.side_right:Optional[Mapping]=None
+
+# if __name__=="__main__":
+
+# 	for i in range(0,33):
+# 		print(i,util_excel_dectocol(i))

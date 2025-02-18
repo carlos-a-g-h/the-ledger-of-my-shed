@@ -65,7 +65,7 @@ def ldbi_debug_show_users(basedir:Path):
 		)
 		cur:SQLiteCursor=con.cursor()
 		cur.execute(
-			f"SELECT {_SQL_COL_USERID} FROM {_SQL_TABLE_USERS};"
+			f"SELECT * FROM {_SQL_TABLE_USERS};"
 		)
 		for row in cur.fetchall():
 			print(row)
@@ -93,12 +93,7 @@ def ldbi_init_users(basedir:Path)->Optional[str]:
 		return f"The path to '{_SQL_FILE_USERS}' is occupied by a directory"
 
 	try:
-		con:SQLiteConnection=sqlite_connect(
-			basedir.joinpath(
-				_DIR_TEMP,
-				_SQL_FILE_USERS
-			)
-		)
+		con:SQLiteConnection=sqlite_connect(sql_file_path)
 		cur:SQLiteCursor=con.cursor()
 		cur.executescript(
 
@@ -170,7 +165,10 @@ def ldbi_save_user(
 
 	try:
 		con:SQLiteConnection=sqlite_connect(
-			basedir.joinpath(_SQL_FILE_USERS)
+			basedir.joinpath(
+				_DIR_TEMP,
+				_SQL_FILE_USERS
+			)
 		)
 		cur:SQLiteCursor=con.cursor()
 		cur.execute(

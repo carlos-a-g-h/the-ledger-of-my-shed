@@ -229,10 +229,9 @@ def write_form_export_assets_as_excel(lang:str):
 	}[lang]
 	html_text=(
 			f"{html_text}\n"
-			# f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
 			"<div>\n"
 				f"{write_html_input_checkbox(_KEY_INC_HISTORY,tl)}\n"
-			"</div>\n"
+			"</div>"
 	)
 
 	tl={
@@ -240,6 +239,7 @@ def write_form_export_assets_as_excel(lang:str):
 		_LANG_ES:"Fecha"
 	}[lang]
 	html_text=(
+		f"{html_text}\n"
 		"<div>\n"
 			f"{write_html_input_date(_KEY_DATE,tl)}"
 	)

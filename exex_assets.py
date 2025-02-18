@@ -8,6 +8,7 @@ from typing import Optional,Mapping
 
 from motor.motor_asyncio import AsyncIOMotorClient
 from openpyxl import Workbook
+from openpyxl.utils.cell import get_column_letter
 from openpyxl.cell.cell import Cell
 from openpyxl.comments import Comment
 from openpyxl.worksheet.worksheet import Worksheet
@@ -31,7 +32,7 @@ from internals import (
 	util_valid_int,
 	util_valid_str,
 	util_valid_date,
-	util_excel_dectocol
+	# util_excel_dectocol
 )
 
 _KEY_ATYPE="atype"
@@ -76,15 +77,20 @@ def util_get_limits(
 		isinstance(date_max,datetime)
 	)
 
-	if (not get_min) and (not get_max):
-		return (
-			0,history_size-1
-		)
-
-
 	index=-1
 	index_min=-1
+	if not get_min:
+		index_min=0
 	index_max=-1
+	if not get_max:
+		index_max=history_size-1
+
+	if (not get_min) and (not get_max):
+
+		return (
+			index_min,
+			index_max
+		)
 
 	for record_uid in history:
 
@@ -102,34 +108,27 @@ def util_get_limits(
 				if util_date_in_date(record_date,date):
 					index_min=index
 
-			if index_min==-1:
-				continue
-
-			if index_max==-1:
+			if index_min>-1 and index_max==-1:
 				if not util_date_in_date(record_date,date):
 					index_max=index
+					break
 
 			continue
 
-		if get_min and index_min==-1:
+		if index_min==-1:
 			if not record_date<date_min:
 				index_min=index
 
-		if index_min==-1:
-			continue
-
-		if get_max and index_max==-1:
+		if index_min>-1 and index_max==-1:
 			if record_date>date_max:
 				index_max=index
 				break
 
-	if index_max==-1:
-		index_max=history_size-1
-
+	# If the time frame is beyond history, then the limits are also beyond history
 	if index_min==-1:
-		index_min=0
-		if get_min:
-			index_min=index_max
+		index_min=history_size
+	if index_max==-1:
+		index_max=history_size
 
 	print(
 		"\tLimits",
@@ -139,14 +138,13 @@ def util_get_limits(
 
 	return (index_min,index_max)
 
-def util_get_bumps(
-		history:Mapping,
-		skip_dates:list
-	)->list:
+# def util_get_bumps(
+# 		history:Mapping,
+# 		skip_dates:list
+# 	)->list:
 
 
-	pass
-
+# 	pass
 
 def util_get_initial_supply(
 		history:Mapping,
@@ -196,10 +194,6 @@ def util_get_current_supply(
 
 		index=index+1
 
-		if not index_max==-1:
-			if index>index_max:
-				continue
-
 		record_mod=util_valid_int(
 			history[record_uid].get(_KEY_RECORD_MOD),
 		)
@@ -207,6 +201,9 @@ def util_get_current_supply(
 			continue
 
 		supply=supply+record_mod
+
+		if index==index_max:
+			break
 
 	return supply
 
@@ -216,9 +213,11 @@ def conversion_process(
 		lang:str=_LANG_EN,
 		atype:int=0,
 		inc_history:bool=False,
+
 		date:Optional[datetime]=None,
 		date_min:Optional[datetime]=None,
 		date_max:Optional[datetime]=None
+
 	)->Optional[Path]:
 
 	path_output=path_base.joinpath(
@@ -292,19 +291,19 @@ def conversion_process(
 			_LANG_ES:"Desempeño"
 		}[lang]
 
-		# Uphill (CS - IS)
-		if atype==1:
-			tl=tl+" ("+{
-				_LANG_EN:"Uphill",
-				_LANG_ES:"Al alza"
-			}[lang]+")"
+		# # Uphill (CS - IS)
+		# if atype==1:
+		# 	tl=tl+" ("+{
+		# 		_LANG_EN:"Uphill",
+		# 		_LANG_ES:"Al alza"
+		# 	}[lang]+")"
 
-		# Downhill (IS - CS)
-		if atype==-1:
-			tl=tl+" ("+{
-				_LANG_EN:"Downhill",
-				_LANG_ES:"A la baja"
-			}[lang]+")"
+		# # Downhill (IS - CS)
+		# if atype==-1:
+		# 	tl=tl+" ("+{
+		# 		_LANG_EN:"Downhill",
+		# 		_LANG_ES:"A la baja"
+		# 	}[lang]+")"
 
 		col_headers.append(tl)
 
@@ -379,8 +378,10 @@ def conversion_process(
 		# NEXT COLUMN (E) - THE INITIAL SUPPLY
 
 		col_pos=col_pos+1
-		col_pos_ok=util_excel_dectocol(col_pos)
-		sheet_cell=f"{util_excel_dectocol(col_pos)}{row}"
+		# col_pos_ok=util_excel_dectocol(col_pos)
+		col_pos_ok=get_column_letter(col_pos)
+		# sheet_cell=f"{util_excel_dectocol(col_pos)}{row}"
+		sheet_cell=f"{get_column_letter(col_pos)}{row}"
 
 		sheet_cell_isup=sheet_cell
 
@@ -409,17 +410,17 @@ def conversion_process(
 
 				ws[sheet_cell]=(
 					"=SUM("
-						f"{util_excel_dectocol(col_h_start)}{row}"
+						f"{get_column_letter(col_h_start)}{row}"
 							":"
-						f"{util_excel_dectocol(col_h_start+index_min-1)}{row}"
+						f"{get_column_letter(col_h_start+index_min-1)}{row}"
 					")"
 				)
 
 		# NEXT COLUMN (F) - THE SUPPLY
 
 		col_pos=col_pos+1
-		col_pos_ok=util_excel_dectocol(col_pos)
-		sheet_cell=f"{util_excel_dectocol(col_pos)}{row}"
+		col_pos_ok=get_column_letter(col_pos)
+		sheet_cell=f"{get_column_letter(col_pos)}{row}"
 		sheet_cell_csup=sheet_cell
 
 		if inc_history:
@@ -427,9 +428,9 @@ def conversion_process(
 			tl=f"={sheet_cell_isup}"
 
 			if not index_max==index_min:
-				tl=f"{tl} + SUM({util_excel_dectocol(col_h_start+index_min)}{row}:{util_excel_dectocol(col_h_start+index_max)}{row})"
+				tl=f"{tl} + SUM({get_column_letter(col_h_start+index_min)}{row}:{get_column_letter(col_h_start+index_max)}{row})"
 			if index_max==index_min:
-				tl=f"{tl} + {util_excel_dectocol(col_h_start+index_min)}{row}"
+				tl=f"{tl} + {get_column_letter(col_h_start+index_max)}{row}"
 
 			ws[sheet_cell]=tl
 
@@ -445,8 +446,8 @@ def conversion_process(
 		if atype==1 or atype==-1:
 
 			col_pos=col_pos+1
-			col_pos_ok=util_excel_dectocol(col_pos)
-			sheet_cell=f"{util_excel_dectocol(col_pos)}{row}"
+			col_pos_ok=get_column_letter(col_pos)
+			sheet_cell=f"{get_column_letter(col_pos)}{row}"
 
 			if atype==1:
 
@@ -565,7 +566,7 @@ def conversion_process(
 				record_mod
 			)
 
-			tgt_cell:Cell=ws[f"{util_excel_dectocol(col_pos+col_idx)}{row}"]
+			tgt_cell:Cell=ws[f"{get_column_letter(col_pos+col_idx)}{row}"]
 
 			tgt_cell.value=record_mod
 
@@ -589,6 +590,7 @@ async def main(
 		rdbc:AsyncIOMotorClient,
 		rdbn:str,lang="en",atype=0,
 		inc_history:bool=False,
+		date:Optional[datetime]=None,
 		date_min:Optional[datetime]=None,
 		date_max:Optional[datetime]=None
 	)->Optional[Path]:
@@ -615,7 +617,7 @@ async def main(
 			conversion_process,
 			path_base,result_aq,
 			lang,atype,inc_history,
-			date_min,date_max,
+			date,date_min,date_max,
 		)
 	)
 
@@ -652,7 +654,7 @@ if __name__=="__main__":
 		lang="es",
 		atype=-1,
 		inc_history=True,
-		date_min=datetime(2025,2,14)
+		date_min=datetime(2025,2,17)
 	)
 	if path_file is None:
 		print("Unable to create the excel file")
