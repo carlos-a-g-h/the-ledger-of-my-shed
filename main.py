@@ -1,7 +1,7 @@
 #!/usr/bin/python3.9
 
 from pathlib import Path
-from typing import Optional
+from typing import Mapping,Optional
 # from secrets import token_hex
 
 from aiohttp.web import (
@@ -73,8 +73,8 @@ from control_orders import (
 )
 
 from dbi_accounts import (
-	ldbi_init_users,
-	rdbc_init_users
+	dbi_init_create_users_file,
+	dbi_init_import_users
 )
 
 from dbi_accounts_sessions import (
@@ -108,6 +108,10 @@ from symbols_Any import (
 	_APP_RDBC,_APP_RDBN,
 
 	_CFG_PORT,_CFG_LANG,_CFG_DB_NAME,_CFG_DB_URL,_CFG_FLAGS,
+
+	_CFG_ACC,
+	_CFG_ACC_TIMEOUT_OTP,
+	_CFG_ACC_TIMEOUT_SESSION,
 
 	_CFG_FLAG_D_STARTUP_CSS_BAKING,
 	# _CFG_FLAG_ROOT_LOCAL_AUTOLOGIN,
@@ -196,6 +200,28 @@ def read_config(path_config:Path)->dict:
 			f"'{_CFG_DB_URL}' key not found in config: A local database will be used instead"
 		)
 
+	cfg_acc_timeout_otp=60
+	cfg_acc_timeout_session=60
+
+	if isinstance(
+		rawconfig.get(_CFG_ACC),
+		Mapping
+	):
+		cfg_acc_timeout_otp=util_valid_int(
+			rawconfig[_CFG_ACC].get(_CFG_ACC_TIMEOUT_OTP),
+			fallback=60
+		)
+		cfg_acc_timeout_session=util_valid_int(
+			rawconfig[_CFG_ACC].get(_CFG_ACC_TIMEOUT_SESSION),
+			fallback=60
+		)
+
+	if cfg_acc_timeout_otp<60:
+		cfg_acc_timeout_otp=60
+
+	if cfg_acc_timeout_session<60:
+		cfg_acc_timeout_session=60
+
 	# all ok
 
 	return {
@@ -203,7 +229,9 @@ def read_config(path_config:Path)->dict:
 		_CFG_DB_URL:cfg_db_url,
 		_CFG_PORT:cfg_port,
 		_CFG_LANG:cfg_lang,
-		_CFG_FLAGS:util_valid_list(rawconfig.get(_CFG_FLAGS),True)
+		_CFG_FLAGS:util_valid_list(rawconfig.get(_CFG_FLAGS),True),
+		_CFG_ACC_TIMEOUT_OTP:cfg_acc_timeout_otp,
+		_CFG_ACC_TIMEOUT_SESSION:cfg_acc_timeout_session
 	}
 
 def build_app(
@@ -211,7 +239,8 @@ def build_app(
 		lang:str,
 		rdb_name:str,
 		rdb_url:Optional[str],
-		flags:list
+		acc_settings:tuple,
+		flags:list,
 	)->Application:
 
 	path_programdir.joinpath(_DIR_TEMP).mkdir(
@@ -219,15 +248,11 @@ def build_app(
 		parents=True
 	)
 
-	rdbc_init_users(rdb_name,rdb_url)
+	ldbi_init_sessions(path_programdir)
 
-	msg_err:Optional[str]=ldbi_init_sessions(path_programdir)
-	if msg_err is not None:
-		raise Exception(f"LDBI err.1: {msg_err}")
+	dbi_init_create_users_file(path_programdir)
 
-	msg_err:Optional[str]=ldbi_init_users(path_programdir)
-	if msg_err is not None:
-		raise Exception(f"LDBI err.2: {msg_err}")
+	dbi_init_import_users(path_programdir,rdb_name,rdb_url)
 
 	devmode_css=(_CFG_FLAG_D_STARTUP_CSS_BAKING in flags)
 	if not devmode_css:
@@ -238,14 +263,13 @@ def build_app(
 		middlewares=[the_middleware_factory]
 	)
 
+	app[_CFG_ACC_TIMEOUT_OTP]=acc_settings[0]
+	app[_CFG_ACC_TIMEOUT_SESSION]=acc_settings[1]
 	app[_CFG_FLAGS]=tuple(flags)
 
 	app[_APP_PROGRAMDIR]=path_programdir
-
 	app[_APP_CACHE_ASSETS]={}
-	
 	app[_APP_LANG]=lang
-
 	app[_APP_RDBN]=rdb_name
 
 	has_connection_url=isinstance(rdb_name,str)
@@ -518,7 +542,7 @@ if __name__=="__main__":
 	cfg_port=the_config.get(_CFG_PORT)
 	if not isinstance(cfg_port,int):
 		sys_exit(1)
-		
+
 	cfg_lang=the_config.get(_CFG_LANG)
 	if not isinstance(cfg_lang,str):
 		sys_exit(1)
@@ -535,7 +559,11 @@ if __name__=="__main__":
 			cfg_lang,
 			cfg_db_name,
 			cfg_db_url,
-			the_config[_CFG_FLAGS]
+			(
+				the_config.get(_CFG_ACC_TIMEOUT_OTP),
+				the_config.get(_CFG_ACC_TIMEOUT_SESSION)
+			),
+			the_config[_CFG_FLAGS],
 		),
 		port=cfg_port,
 	)

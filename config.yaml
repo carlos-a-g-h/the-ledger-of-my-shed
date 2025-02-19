@@ -10,6 +10,16 @@ lang: en
 
 port: 6969
 
+# Default user account options (they apply to all users by default, including the root user)
+
+# accounts:
+#
+#   # OTP timeout in seconds
+#   timeout-otp: 60
+#
+#   # Session timeout in seconds (50% of the value will be used for the keepalive)
+#   timeout-session: 60
+
 # Special flags
 
 flags:

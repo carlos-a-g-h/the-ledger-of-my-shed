@@ -86,6 +86,9 @@ from symbols_Any import (
 	_CFG_FLAG_E_ROOT_LOCAL_AUTOLOGIN,
 	_CFG_FLAG_D_STARTUP_CSS_BAKING,
 
+	# _CFG_ACC_TIMEOUT_OTP,
+	_CFG_ACC_TIMEOUT_SESSION,
+
 	_KEY_SIGN,_KEY_SIGN_UNAME
 )
 
@@ -254,7 +257,9 @@ def assert_referer(
 
 	if not Path(referer_path)==Path(url_path):
 		if explode:
-			raise HTTPNotAcceptable(body=f"{referer_path} != {url_path}")
+			raise HTTPNotAcceptable(
+				body=f"{referer_path} != {url_path}"
+			)
 
 		return False
 
@@ -528,7 +533,7 @@ async def process_session_checkin(request:Request,test_only:bool=False)->Optiona
 		return "The stored access key does not match"
 
 	if util_date_calc_expiration(
-		stored_date,5,in_min=True,
+		stored_date,request.app[_CFG_ACC_TIMEOUT_SESSION],
 		get_age=False,get_exp_date=False
 	).get("expired"):
 		if test_only:
@@ -550,11 +555,6 @@ async def process_session_checkin(request:Request,test_only:bool=False)->Optiona
 		userid,ip_address,user_agent
 	)
 	if msg_error is not None:
-		# await async_run(
-		# 	drop_session,
-		# 	request.app[_APP_PATH_PROGRAM_DIR],
-		# 	username,ip_address,user_agent,True
-		# )
 		return f"Failed to renovate the active session: {msg_error}"
 
 	return None

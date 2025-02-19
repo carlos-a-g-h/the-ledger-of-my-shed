@@ -35,15 +35,15 @@ from frontend_Any import (
 
 from frontend_assets import (
 	write_html_asset_info,
-	write_html_asset_as_item
+	write_html_asset_as_item,
 )
 
 from frontend_assets_search import (
-
+	write_button_cleanup,
 	write_form_search_assets,
 )
 
-from frontend_orders import write_button_add_asset_to_order
+from frontend_orders import write_form_add_asset_to_order
 
 from internals import (
 	util_valid_bool,
@@ -66,6 +66,7 @@ from symbols_Any import (
 
 	_REQ_CLIENT_TYPE,_REQ_LANGUAGE,_REQ_HAS_SESSION,
 
+	_KEY_NAME_QUERY,
 	_KEY_TAG,
 	_KEY_SIGN,
 	# _KEY_GO_STRAIGHT
@@ -98,6 +99,11 @@ from symbols_orders import (
 _ERR_TITLE_SEARCH_ASSETS={
 	_LANG_EN:"Asset(s) search error",
 	_LANG_ES:"Error de búsqueda de activo(s)"
+}
+
+_ERR_DETAIL_MATCH_MTO={
+	_LANG_EN:"Only one match is needed",
+	_LANG_ES:"Se necesita una única coincidencia"
 }
 
 def util_asset_fuzzy_finder(
@@ -187,7 +193,7 @@ async def util_search_assets(
 		grab_value:bool=False,
 		grab_supply:bool=False,
 
-	)->list:
+	)->Union[list,Mapping]:
 
 	list_match_names=[]
 
@@ -218,7 +224,7 @@ async def util_search_assets(
 			continue
 		asset_id_list.append(asset_id)
 
-	list_match_other=await dbi_assets_AssetQuery(
+	result=await dbi_assets_AssetQuery(
 
 		app[_APP_RDBC],
 		app[_APP_RDBN],
@@ -230,9 +236,12 @@ async def util_search_assets(
 
 		get_value=grab_value,
 		get_supply=grab_supply,
-	)
 
-	return list_match_other
+	)
+	if isinstance(result,list):
+		return result
+
+	return [result]
 
 async def route_api_search_assets(
 		request:Request
@@ -274,7 +283,7 @@ async def route_api_search_assets(
 	# 	)
 
 	search_name=util_valid_str(
-		request_data.get(_KEY_NAME)
+		request_data.get(_KEY_NAME_QUERY)
 	)
 	search_sign=util_valid_str(
 		request_data.get(_KEY_SIGN)
@@ -308,6 +317,10 @@ async def route_api_search_assets(
 		)
 	)
 	empty=(len(search_results)==0)
+	print(
+		"search_results",
+		search_results
+	)
 	if not empty:
 		msg_err:Optional[str]=util_valid_str(
 			search_results[0].get(_ERR)
@@ -423,10 +436,17 @@ async def route_api_search_assets(
 				f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
 					"<!-- FOUND! { -->\n"
 					f"{write_html_asset_info(lang,search_results[found],False)}\n"
-					f"{write_button_add_asset_to_order(lang,order_id,asset_id)}\n"
+					f"{write_form_add_asset_to_order(lang,order_id,asset_id)}\n"
 					"<!-- } FOUND! -->\n"
 				"</div>"
 			)
+
+		html_text=(
+				f"{html_text}\n"
+				f"{write_button_cleanup(lang)}\n"
+			"</div>"
+		)
+
 
 	html_text=(
 			f"{html_text}\n"

@@ -17,6 +17,8 @@ _KEY_COPY_VALUE="copy-value"
 _ID_FORM_NEW_ORDER="form-new-order"
 _ID_RESULT_NEW_ORDER="result-new-order"
 
+
+_ID_FORM_ADD_ASSET_LUCKY="form-asset-to-order-lucky"
 _ID_FORM_RUN_OR_REVERT_ORDER="form-run-or-revert-order"
 _ID_ORDER_ASSETS="order-assets"
 

@@ -17,7 +17,8 @@ from control_Any import (
 
 from symbols_Any import (
 	_LANG_EN,_LANG_ES,
-	_REQ_USERID
+	_REQ_USERID,
+	_CFG_ACC_TIMEOUT_SESSION
 )
 
 from frontend_Any import (
@@ -252,7 +253,7 @@ def write_button_login_magical(lang:str)->str:
 		"</form>"
 	)
 
-def write_html_keepalive(interval:int=30)->str:
+def write_html_keepalive(interval:int)->str:
 	return (
 		f"""<div hx-post={_ROUTE_CHECKIN} hx-trigger="every {interval}s">""" "\n"
 			"<!-- KEEPING THE SESSION ALIVE -->"
@@ -307,11 +308,16 @@ async def render_html_user_section(
 		anonymous=(username is None)
 
 	if not anonymous:
+
+		keep_alive_time=int(
+			0.5*request.app[_CFG_ACC_TIMEOUT_SESSION]
+		)
+
 		html_text=(
 			f"{html_text}\n"
 			f"<div>{username}</div>\n"
 			f"{write_button_logout(lang)}\n"
-			f"{write_html_keepalive()}"
+			f"{write_html_keepalive(keep_alive_time)}"
 		)
 
 	if anonymous:

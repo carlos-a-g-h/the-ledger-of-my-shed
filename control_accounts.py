@@ -97,6 +97,8 @@ from symbols_Any import (
 	_MIMETYPE_HTML,
 
 	_ROOT_USER,_ROOT_USER_ID,
+
+	_CFG_ACC_TIMEOUT_OTP
 )
 
 from symbols_accounts import (
@@ -251,7 +253,8 @@ async def route_api_login(request:Request)->Union[json_response,Response]:
 			session_candidate[1],get_dt=True
 		)
 		if not util_date_calc_expiration(
-			stored_date,60,
+			stored_date,
+			request.app[_CFG_ACC_TIMEOUT_OTP],
 			get_age=False,
 			get_exp_date=False
 		).get("expired",True):
@@ -482,7 +485,8 @@ async def route_api_login_otp(request:Request)->Union[json_response,Response]:
 		util_valid_date(
 			session_candidate[1],
 			get_dt=True
-		),60,
+		),
+		request.app[_CFG_ACC_TIMEOUT_OTP],
 		get_age=False,
 		get_exp_date=False
 	).get("expired",True):

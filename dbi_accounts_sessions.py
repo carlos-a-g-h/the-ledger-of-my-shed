@@ -39,6 +39,20 @@ from internals import (
 	util_hash_sha256,util_rnow
 )
 
+def util_get_db_file(basedir:Path)->Path:
+
+	fp=basedir.joinpath(
+		_DIR_TEMP,
+		_SQL_FILE_SESSIONS
+	)
+
+	fp.parent.mkdir(
+		parents=True,
+		exist_ok=True
+	)
+
+	return fp
+
 # Active Sessions and Candidate Sessions
 
 def util_get_session_id(
@@ -57,54 +71,33 @@ def ldbi_init_sessions(basedir:Path)->Optional[str]:
 
 	# NOTE: Session candidates do not have user ID, active sessions do
 
-	sql_file_path=basedir.joinpath(_DIR_TEMP,_SQL_FILE_SESSIONS)
+	sql_file_path=util_get_db_file(basedir)
 	if sql_file_path.is_file():
-		try:
-			sql_file_path.unlink()
-		except Exception as exc:
-			return f"{exc}"
+		sql_file_path.unlink()
 
-	if sql_file_path.is_dir():
-		return f"The path to '{_SQL_FILE_SESSIONS}' is occupied by a directory"
+	con:SQLiteConnection=sqlite_connect(
+		basedir.joinpath(_DIR_TEMP,_SQL_FILE_SESSIONS)
+	)
+	cur:SQLiteCursor=con.cursor()
+	cur.executescript(
 
-	try:
-		con:SQLiteConnection=sqlite_connect(
-			basedir.joinpath(_DIR_TEMP,_SQL_FILE_SESSIONS)
-		)
-		cur:SQLiteCursor=con.cursor()
-		cur.executescript(
+		f"CREATE TABLE {_SQL_TABLE_SESSION_CANDIDATES} ("
+			f"{_SQL_COL_SID} varchar(255) UNIQUE,"
+			f"{_SQL_COL_DATE} varchar(255),"
+			f"{_SQL_COL_OTP} varchar(255)"
+		");"
 
-			f"CREATE TABLE {_SQL_TABLE_SESSION_CANDIDATES} ("
-				f"{_SQL_COL_SID} varchar(255) UNIQUE,"
-				f"{_SQL_COL_DATE} varchar(255),"
-				f"{_SQL_COL_OTP} varchar(255)"
-				# f"PRIMARY KEY ({_SQL_COL_SID})"
-			");"
+		f"CREATE TABLE {_SQL_TABLE_ACTIVE_SESSIONS} ("
+			f"{_SQL_COL_SID} varchar(255) UNIQUE,"
+			f"{_SQL_COL_USERID} varchar(255),"
+			f"{_SQL_COL_DATE} varchar(255),"
+			f"{_SQL_COL_AKEY} varchar(255)"
+		");"
+	)
 
-			f"CREATE TABLE {_SQL_TABLE_ACTIVE_SESSIONS} ("
-				f"{_SQL_COL_SID} varchar(255) UNIQUE,"
-				f"{_SQL_COL_USERID} varchar(255),"
-				f"{_SQL_COL_DATE} varchar(255),"
-				f"{_SQL_COL_AKEY} varchar(255)"
-				# f"PRIMARY KEY ({_SQL_COL_SID})"
-			");"
-		)
-
-		con.commit()
-		cur.close()
-		con.close()
-
-	except Exception as exc:
-		return f"{exc}"
-
-	# print(_SQL_TABLE_SESSION_CANDIDATES,"{")
-	# ldbi_print_table(basedir,_SQL_TABLE_SESSION_CANDIDATES)
-	# print("}")
-	# print(_SQL_TABLE_ACTIVE_SESSIONS,"{")
-	# ldbi_print_table(basedir,_SQL_TABLE_ACTIVE_SESSIONS)
-	# print("}")
-
-	return None
+	con.commit()
+	cur.close()
+	con.close()
 
 def ldbi_create_session_candidate(
 		basedir:Path,
@@ -172,7 +165,7 @@ def ldbi_create_active_session(
 
 	try:
 		con:SQLiteConnection=sqlite_connect(
-			basedir.joinpath(_DIR_TEMP,_SQL_FILE_SESSIONS)
+			util_get_db_file(basedir)
 		)
 		cur:SQLiteCursor=con.cursor()
 		# cur.execute(query)
@@ -212,13 +205,12 @@ def ldbi_read_session(
 
 	try:
 		con:SQLiteConnection=sqlite_connect(
-			basedir.joinpath(_DIR_TEMP,_SQL_FILE_SESSIONS)
+			util_get_db_file(basedir)
 		)
 		cur:SQLiteCursor=con.cursor()
 		cur.execute(
-			f"SELECT *"
-				f" FROM {the_table}"
-				f""" WHERE {_SQL_COL_SID}="{session_id}";"""
+			f"SELECT * FROM {the_table} "
+				f"""WHERE {_SQL_COL_SID}="{session_id}";"""
 		)
 		data=cur.fetchone()
 		cur.close()
@@ -253,7 +245,7 @@ def ldbi_drop_session(
 
 	try:
 		con:SQLiteConnection=sqlite_connect(
-			basedir.joinpath(_DIR_TEMP,_SQL_FILE_SESSIONS)
+			util_get_db_file(basedir)
 		)
 		cur:SQLiteCursor=con.cursor()
 		cur.execute(
@@ -283,7 +275,7 @@ def ldbi_convert_to_active_session(
 
 	try:
 		con:SQLiteConnection=sqlite_connect(
-			basedir.joinpath(_DIR_TEMP,_SQL_FILE_SESSIONS)
+			util_get_db_file(basedir)
 		)
 		cur:SQLiteCursor=con.cursor()
 
@@ -327,7 +319,7 @@ def ldbi_renovate_active_session(
 
 	try:
 		con:SQLiteConnection=sqlite_connect(
-			basedir.joinpath(_DIR_TEMP,_SQL_FILE_SESSIONS)
+			util_get_db_file(basedir)
 		)
 		cur:SQLiteCursor=con.cursor()
 

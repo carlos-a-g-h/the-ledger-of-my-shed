@@ -106,6 +106,10 @@ _CFG_LANG="lang"
 _CFG_DB_NAME="db-name"
 _CFG_DB_URL="db-url"
 
+_CFG_ACC="accounts"
+_CFG_ACC_TIMEOUT_OTP="timeout-otp"
+_CFG_ACC_TIMEOUT_SESSION="timeout-session"
+
 _CFG_FLAGS="flags"
 _CFG_FLAG_E_STARTUP_PRINT_ASSETS="e-startup-print-assets"
 _CFG_FLAG_D_STARTUP_CSS_BAKING="d-startup-css-baking"
@@ -119,6 +123,7 @@ _CFG_PORT_MIN=1024
 _CFG_PORT_MAX=65535
 
 # Keys/Fields agnostic for ANYTHING
+
 
 _KEY_SIGN="sign"
 _KEY_SIGN_UNAME="sign_uname"
@@ -135,5 +140,6 @@ _KEY_DELETE_AS_ITEM="delete_as_item"
 _KEY_VERBOSE="verbose"
 _KEY_VLEVEL="vlevel"
 
+_KEY_NAME_QUERY="name_query"
 _KEY_INC_TAG="include_tag"
 _KEY_INC_COMMENT="include_comment"

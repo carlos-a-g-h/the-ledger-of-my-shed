@@ -9,10 +9,10 @@ from sqlite3 import (
 	Cursor as SQLiteCursor,
 	connect as sqlite_connect
 )
-from typing import Mapping,Optional,Union
+from typing import Mapping,Optional
 
 from motor.motor_asyncio import (
-	# AsyncIOMotorCursor,
+
 	AsyncIOMotorClient,
 	AsyncIOMotorCollection
 )
@@ -39,29 +39,99 @@ from symbols_accounts import (
 
 )
 
-# UserID + Username caching
+def util_get_db_file(basedir:Path)->Path:
 
-def rdbc_init_users(
+	fp=basedir.joinpath(
+		_DIR_TEMP,
+		_SQL_FILE_USERS
+	)
+
+	fp.parent.mkdir(
+		parents=True,
+		exist_ok=True
+	)
+
+	return fp
+
+# 1 - Init the users ldb file and add the root user
+def dbi_init_create_users_file(basedir:Path):
+
+	sql_file_path=util_get_db_file(basedir)
+
+	if sql_file_path.is_file():
+		sql_file_path.unlink()
+
+	noneval=f"None.{_ROOT_USER_ID}"
+
+	# try:
+	con:SQLiteConnection=sqlite_connect(sql_file_path)
+	cur:SQLiteCursor=con.cursor()
+	cur.executescript(
+		f"""CREATE TABLE {_SQL_TABLE_USERS} ("""
+			f"{_SQL_COL_USERID} varchar(128) UNIQUE,"
+			f"{_SQL_COL_USERNAME} varchar(64) UNIQUE,"
+			f"{_KEY_CON_EMAIL} varchar(128) UNIQUE,"
+			f"{_KEY_CON_TELEGRAM} varchar(128) UNIQUE"
+		");\n"
+		f"INSERT INTO {_SQL_TABLE_USERS} "
+			f"""VALUES ("{_ROOT_USER_ID}","{_ROOT_USER}","{noneval}","{noneval}");"""
+	)
+	con.commit()
+	cur.close()
+	con.close()
+
+# 2 - Download the normal users from the remote database to the local database
+def dbi_init_import_users(
+		basedir:Path,
 		rdbn:str,
 		con_str:Optional[str]=None
 	):
 
-	print("Ensuring constraints...")
-
 	rdbc:MongoClient=MongoClient(con_str)
 	col=rdbc[rdbn][_MONGO_COL_USERS]
-	col.create_index(_KEY_USERNAME,unique=True)
-	col.create_index(_KEY_CON_EMAIL,unique=True)
-	col.create_index(_KEY_CON_TELEGRAM,unique=True)
+
+	# Ensure unique constraints
+	# col.create_index(_KEY_USERNAME,unique=True)
+	# col.create_index(_KEY_CON_EMAIL,unique=True)
+	# col.create_index(_KEY_CON_TELEGRAM,unique=True)
+
+	list_of_users=[]
+	print("\nregular users found:")
+	for user in col.find({}):
+		print("\t->",user)
+		list_of_users.append(
+			tuple(
+				user.values()
+			)
+		)
+
 	rdbc.close()
 
-def ldbi_debug_show_users(basedir:Path):
+	if len(list_of_users)==0:
+		return
+
+	con:SQLiteConnection=sqlite_connect(
+		util_get_db_file(basedir)
+	)
+	cur:SQLiteCursor=con.cursor()
+	cur.executemany(
+		(
+			f"INSERT OR REPLACE INTO {_SQL_TABLE_USERS} "
+				"VALUES (?,?,?,?)"
+		),
+		list_of_users
+	)
+	con.commit()
+	cur.close()
+	con.close()
+
+def ldb_debug_show_users(basedir:Path):
 
 	print("Showing users")
 
 	try:
 		con:SQLiteConnection=sqlite_connect(
-			basedir.joinpath(_DIR_TEMP,_SQL_FILE_USERS)
+			util_get_db_file(basedir)
 		)
 		cur:SQLiteCursor=con.cursor()
 		cur.execute(
@@ -75,45 +145,6 @@ def ldbi_debug_show_users(basedir:Path):
 
 	except Exception as exc:
 		print(f"{exc}")
-
-def ldbi_init_users(basedir:Path)->Optional[str]:
-
-	sql_file_path=basedir.joinpath(
-		_DIR_TEMP,
-		_SQL_FILE_USERS
-	)
-	sql_file_path.parent.mkdir(exist_ok=True,parents=True)
-	if sql_file_path.is_file():
-		try:
-			sql_file_path.unlink()
-		except Exception as exc:
-			return f"{exc}"
-
-	if sql_file_path.is_dir():
-		return f"The path to '{_SQL_FILE_USERS}' is occupied by a directory"
-
-	try:
-		con:SQLiteConnection=sqlite_connect(sql_file_path)
-		cur:SQLiteCursor=con.cursor()
-		cur.executescript(
-
-			f"CREATE TABLE '{_SQL_TABLE_USERS}' ("
-				f"{_SQL_COL_USERID} varchar(255) UNIQUE,"
-				f"{_SQL_COL_USERNAME} varchar(255) UNIQUE"
-			");\n"
-
-			f"INSERT INTO {_SQL_TABLE_USERS} "
-				f"""VALUES ("{_ROOT_USER_ID}","{_ROOT_USER}");"""
-		)
-
-		con.commit()
-		cur.close()
-		con.close()
-
-	except Exception as exc:
-		return f"{exc}"
-
-	return None
 
 def util_rdb_user_serialize(the_user:Mapping)->Mapping:
 	# Prepares the user data to be written to the remote database
@@ -157,31 +188,47 @@ def util_rdb_user_deserialize(the_user:Mapping)->Mapping:
 
 	return ready
 
-def ldbi_save_user(
-		basedir:Path,
-		userid:str,
-		username:str
-	)->Optional[str]:
+# def ldbi_save_user(
+# 		basedir:Path,
 
-	try:
-		con:SQLiteConnection=sqlite_connect(
-			basedir.joinpath(
-				_DIR_TEMP,
-				_SQL_FILE_USERS
-			)
-		)
-		cur:SQLiteCursor=con.cursor()
-		cur.execute(
-			f"INSERT INTO {_SQL_TABLE_USERS}"
-				f""" VALUES ("{userid}","{username}");"""
-		)
-		con.commit()
-		cur.close()
-		con.close()
-	except Exception as exc:
-		return f"{exc}"
+# 		userid:str,
+# 		username:str,
 
-	return None
+# 		email:Optional[str]=None,
+# 		telegram:Optional[str]=None,
+
+# 	)->Optional[str]:
+
+# 	sql_query=(
+# 			f"INSERT INTO {_SQL_TABLE_USERS}"
+# 				f"VALUES ("
+# 				f""" "{userid}","{username}");"""
+# 	)
+
+
+
+
+
+
+# 	try:
+# 		con:SQLiteConnection=sqlite_connect(
+# 			basedir.joinpath(
+# 				_DIR_TEMP,
+# 				_SQL_FILE_USERS
+# 			)
+# 		)
+# 		cur:SQLiteCursor=con.cursor()
+# 		cur.execute(
+# 			f"INSERT INTO {_SQL_TABLE_USERS}"
+# 				f""" VALUES ("{userid}","{username}");"""
+# 		)
+# 		con.commit()
+# 		cur.close()
+# 		con.close()
+# 	except Exception as exc:
+# 		return f"{exc}"
+
+# 	return None
 
 def ldbi_get_userid(
 		basedir:Path,
@@ -266,6 +313,33 @@ def ldbi_get_username(
 
 	return (_KEY_USERNAME,result)
 
+# OK
+def ldbi_create_user(
+		basedir:Path,
+		user:tuple,
+	)->Optional[str]:
+
+	try:
+		con:SQLiteConnection=sqlite_connect(
+			util_get_db_file(basedir)
+		)
+		cur:SQLiteCursor=con.cursor()
+		cur.executemany(
+			(
+				f"INSERT INTO {_SQL_TABLE_USERS} "
+					"VALUES (?,?,?,?)"
+			),
+			[user]
+		)
+		con.commit()
+		cur.close()
+		con.close()
+	except Exception as exc:
+		return f"{exc}"
+
+	return None
+
+# OK
 async def dbi_CreateUser(
 		basedir:Path,
 		rdbc:AsyncIOMotorClient,
@@ -279,34 +353,37 @@ async def dbi_CreateUser(
 
 	)->Mapping:
 
-	result=await to_thread(
-		ldbi_get_userid,
-		basedir,
-		username
-	)
-	if not result[0]==_ERR:
-		print(result)
-		return {_ERR:"The username already exists"}
-
 	userid=token_hex(24)
 
-	user_data=util_rdb_user_serialize({
-		_KEY_USERID:userid,
+	stored_email:Optional[str]=con_email
+	if stored_email is None:
+		stored_email=f"None.{userid}"
+
+	stored_telegram:Optional[str]=con_telegram
+	if stored_telegram is None:
+		stored_telegram=f"None.{userid}"
+
+	user=(
+		userid,
+		username,
+		stored_email,
+		stored_telegram
+	)
+
+	# Create the user locally first
+	result=await to_thread(
+		ldbi_create_user,
+		basedir,user
+	)
+	if result is not None:
+		return {_ERR:result}
+
+	user_data={
+		"_id":userid,
 		_KEY_USERNAME:username,
-		_KEY_CON_EMAIL:con_email,
-		_KEY_CON_TELEGRAM:con_telegram
-	})
-
-	# poppables=[]
-	# if not len(extra)==0:
-	# 	for key in extra:
-	# 		value=extra[key]
-	# 		if value is None:
-	# 			user_data.update({key:f"None.{userid}"})
-	# 			poppables.append(key)
-	# 			continue
-
-	# 		user_data.update({key:value})
+		_KEY_CON_EMAIL:stored_email,
+		_KEY_CON_TELEGRAM:stored_telegram
+	}
 
 	print(
 		"User data serialized for mongodb:",
@@ -319,40 +396,10 @@ async def dbi_CreateUser(
 	except Exception as exc:
 		return {_ERR:f"{exc}"}
 
-	result=await to_thread(
-		ldbi_save_user,
-		basedir,
-		userid,
-		username
-	)
-	if result is not None:
-		print("failed to write to LDB:",result)
-
 	if get_result:
 		return util_rdb_user_deserialize(user_data)
 
 	return {}
-
-async def dbi_GetUsers(
-		rdbc:AsyncIOMotorClient,
-		name_db:str,
-	)->Union[list,Mapping]:
-
-	list_of_users=[]
-
-	try:
-		tgtcol:AsyncIOMotorCollection=rdbc[name_db][_MONGO_COL_USERS]
-		cursor=await tgtcol.find({})
-		for user_raw in cursor:
-			print(user_raw)
-			list_of_users.append(
-				util_rdb_user_deserialize(user_raw)
-			)
-
-	except Exception as exc:
-		return {_ERR:f"{exc}"}
-
-	return list_of_users
 
 async def dbi_DeleteUser(
 		rdbc:AsyncIOMotorClient,
@@ -387,50 +434,47 @@ async def dbi_QueryUser(
 
 ###############################################################################
 
-async def main(basedir,rdbn):
+# async def main(basedir,rdbn):
 
-	rdbc=AsyncIOMotorClient()
+# 	rdbc=AsyncIOMotorClient()
 
-	username="test_user"
+# 	username="test_user1"
 
-	userdata=await dbi_CreateUser(
-		path_basedir,
-		rdbc,rdbn,
-		username,
-		get_result=True
-	)
-	print("userdata:",userdata)
+# 	userdata=await dbi_CreateUser(
+# 		path_basedir,
+# 		rdbc,rdbn,
+# 		username,
+# 		get_result=True
+# 	)
+# 	print("userdata:",userdata)
 
-	# loaded=ldbi_load_user(
-	# 	Path("./"),
-	# 	username=username
-	# )
-	# print("cached user:",loaded)
+# 	# loaded=ldbi_load_user(
+# 	# 	Path("./"),
+# 	# 	username=username
+# 	# )
+# 	# print("cached user:",loaded)
 
 
-if __name__=="__main__":
+# if __name__=="__main__":
 
-	from asyncio import run as async_run
+# 	from asyncio import run as async_run
 
-	rdbn="test"
+# 	rdbn="tests"
 
-	path_basedir=Path("tests")
+# 	path_basedir=Path("tests")
 
-	print(
-		f"Preparing '{_SQL_FILE_USERS}'...",
-		ldbi_init_users(path_basedir)
-	)
+# 	result=dbi_init_create_users_file(path_basedir)
+# 	if result is not None:
+# 		print(result)
 
-	print(
-		"Ensuring constraints...",
-		rdbc_init_users(rdbn)
-	)
+# 	ldb_debug_show_users(path_basedir)
 
-	async_run(
-		main(
-			path_basedir,
-			rdbn
-		)
-	)
+# 	dbi_init_import_users(path_basedir,rdbn)
 
-	ldbi_debug_show_users(path_basedir)
+# 	async_run(
+# 		main(
+# 			path_basedir,
+# 			rdbn
+# 		)
+# 	)
+

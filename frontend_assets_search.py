@@ -18,16 +18,19 @@ from frontend_Any import (
 	write_button_submit
 )
 
+from frontend_orders import write_form_add_asset_to_order_lucky
+
 from symbols_Any import (
 	_LANG_EN,_LANG_ES,
 	_KEY_TAG,
 	_KEY_SIGN,
+	_KEY_NAME_QUERY,
 	# _KEY_DATE,
 	# _KEY_GO_STRAIGHT
 )
 
 from symbols_assets import(
-	_KEY_NAME,
+	# _KEY_NAME,
 	_ID_FORM_ASSET_EMATCH,
 	_ID_FORM_SEARCH_ASSETS,
 	_ID_RESULT_SEARCH_ASSETS,
@@ -43,7 +46,7 @@ def write_form_asset_ematch(lang:str,full:bool=True)->str:
 		_LANG_EN:"Name",
 		_LANG_ES:"Nombre"
 	}[lang]
-	html_text=f"{write_html_input_string(_KEY_NAME,tl,value=blank)}"
+	html_text=f"{write_html_input_string(_KEY_NAME_QUERY,tl,value=blank)}"
 
 	tl={
 		_LANG_EN:"Go",
@@ -88,6 +91,24 @@ def write_form_asset_ematch(lang:str,full:bool=True)->str:
 
 	return html_text
 
+def write_button_cleanup(lang:str)->str:
+
+	onclick=(
+		f""" document.getElementById('{_ID_RESULT_SEARCH_ASSETS}').innerHTML='<!-- ALL CLEAN -->' """
+	)
+
+	tl={
+		_LANG_EN:"Clean",
+		_LANG_ES:"Limpiar"
+	}[lang]
+	return (
+		f"""<button class="{_CSS_CLASS_COMMON}" """
+			f"""onclick="{onclick.strip()}" """
+			">"
+			f"{tl}"
+		"</button>"
+	)
+
 def write_form_search_assets(
 		lang:str,
 		order_id:Optional[str]=None,
@@ -120,7 +141,7 @@ def write_form_search_assets(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"{write_html_input_string(_KEY_NAME,label=tl)}"
+		f"{write_html_input_string(_KEY_NAME_QUERY,label=tl)}"
 	)
 
 	tl={
@@ -190,13 +211,12 @@ def write_form_search_assets(
 	}[lang]
 	html_text=(
 			f"{html_text}\n"
-
 			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
 				"""<button type="submit" """
 					f"""class="{_CSS_CLASS_COMMON}" """
 					">"
 					f"{tl}"
-				"</button>\n"
+				"</button>"
 			"</div>\n"
 		"</form>"
 	)
@@ -218,11 +238,21 @@ def write_form_search_assets(
 				f"""<div id={_ID_FORM_SEARCH_ASSETS}>""" "\n"
 					f"{html_text}\n"
 				"</div>\n"
-			"</div>\n"
+			"</div>"
+		)
+
+		html_text=(
+			f"{html_text}\n"
 			f"""<div id={_ID_RESULT_SEARCH_ASSETS}>""" "\n"
 				"<!-- SEARCH RESULTS GO HERE -->\n"
 			"</div>"
 		)
+
+		if order_specific:
+			html_text=(
+				f"{html_text}\n"
+				f"{write_form_add_asset_to_order_lucky(lang,order_id)}"
+			)
 
 	if order_specific:
 		html_text=(

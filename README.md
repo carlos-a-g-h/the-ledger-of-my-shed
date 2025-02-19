@@ -69,4 +69,4 @@ NOTE: Relative paths are relative not to your working directory, but to the prog
 
 Add/modify CSS files to the sources directory. At the startup phase, the files will be concatenated into a single 'custom.css' file and this is the CSS file that will be loaded on each page request
 
-There is a flag called 'no-css-baking', this flag disables the default CSS "baking phase" and allows you to modify the CSS in a way more comfortable way while the server is running
+There is a flag called 'd-startup-css-baking', this flag disables the default CSS "baking phase" and allows you to modify the CSS in a way more comfortable way while the server is running

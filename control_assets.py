@@ -35,6 +35,7 @@ from control_Any import (
 
 from control_assets_search import (
 	_ERR_TITLE_SEARCH_ASSETS,
+	_ERR_DETAIL_MATCH_MTO,
 	util_asset_fuzzy_finder,
 )
 
@@ -142,6 +143,7 @@ from symbols_Any import (
 
 	_CFG_FLAGS,_CFG_FLAG_E_STARTUP_PRINT_ASSETS,
 
+	_KEY_NAME_QUERY,
 	_KEY_TAG,
 	_KEY_SIGN,_KEY_SIGN_UNAME,
 	_KEY_COMMENT,
@@ -535,7 +537,7 @@ async def route_fgmt_asset_details(
 		req_data=await get_request_body_dict(ct,request)
 		if req_data is not None:
 			query_name=util_valid_str(
-				req_data.get(_KEY_NAME)
+				req_data.get(_KEY_NAME_QUERY)
 			)
 
 		if query_name is not None:
@@ -546,18 +548,14 @@ async def route_fgmt_asset_details(
 			if len(results_qn)==1:
 				asset_id=results_qn[0].get(_KEY_ASSET)
 
+			if asset_id is None:
+				return response_errormsg(
+					_ERR_TITLE_SEARCH_ASSETS[lang],
+					_ERR_DETAIL_MATCH_MTO[lang],
+					ct,status_code=406
+				)
+
 	if not isinstance(asset_id,str):
-		# if exact_query_by_name:
-		# 	return Response(
-		# 		body=(
-		# 			f"""<div hx-swap-oob="#{_ID_FORM_ASSET_EMATCH} div.{_CSS_CLASS_HX_SWAPPABLE}">""" "\n"
-		# 				"<div>UNKNOWN NAME, TRY AGAIN...</div>\n"
-		# 				f"{write_form_asset_ematch(lang,False)}\n"
-		# 			"</div>\n"
-		# 			"<!-- FUCK -->"
-		# 		),
-		# 		content_type=_MIMETYPE_HTML
-		# 	)
 
 		return response_errormsg(
 			_ERR_TITLE_SEARCH_ASSETS[lang],

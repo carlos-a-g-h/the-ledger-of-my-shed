@@ -11,6 +11,7 @@ from symbols_Any import (
 	_LANG_EN,_LANG_ES,
 	_SECTION,
 
+	_KEY_NAME_QUERY,
 	_KEY_SIGN,_KEY_SIGN_UNAME,
 	_KEY_TAG,_KEY_COMMENT,
 	_KEY_DATE,
@@ -42,6 +43,7 @@ from symbols_orders import (
 
 	# _ID_FORM_RUN_ORDER,
 	_ID_FORM_RUN_OR_REVERT_ORDER,
+	_ID_FORM_ADD_ASSET_LUCKY,
 
 	_CSS_CLASS_ITEM_ORDER,
 	_CSS_CLASS_ORDER_INFO,
@@ -221,7 +223,7 @@ def write_button_order_details(
 		"</button>"
 	)
 
-def write_button_add_asset_to_order(
+def write_form_add_asset_to_order(
 		lang:str,
 		order_id:str,
 		asset_id:str
@@ -257,6 +259,62 @@ def write_button_add_asset_to_order(
 			"</form>\n"
 		"</div>"
 	)
+
+	return html_text
+
+def write_form_add_asset_to_order_lucky(
+		lang:str,
+		order_id:str,
+		full:bool=True,
+	)->str:
+
+	tl1={
+		_LANG_EN:"Copy value",
+		_LANG_ES:"Copiar valor"
+	}[lang]
+	tl2={
+		_LANG_EN:"Add now",
+		_LANG_ES:"Agregar ahora"
+	}[lang]
+	html_text=(
+		f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
+			f"{write_html_input_number(_KEY_RECORD_MOD,value=0,required=True)}\n"
+			f"{write_html_input_string(_KEY_NAME_QUERY,required=True)}\n"
+		"</div>\n"
+		f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
+			f"{write_html_input_checkbox(_KEY_COPY_VALUE,tl1,checked=True)}"
+			f"{write_button_submit(tl2)}\n"
+		"</div>"
+	)
+
+	html_text=(
+		f"""<form hx-post="/api/orders/pool/{order_id}/add-asset" """
+			f"""hx-target="#{_ID_MSGZONE}" """
+			"""hx-swap="innerHTML" """
+			">\n"
+			f"{html_text}\n"
+		"</form>"
+	)
+
+	tl={
+		_LANG_EN:"Quick draw",
+		_LANG_ES:"Tiro rápido"
+	}[lang]
+	html_text=(
+		"<details>"
+			f"<summary>{tl}</summary>\n"
+			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
+				f"{html_text}\n"
+			"</div>\n"
+		"</details>"
+	)
+
+	if full:
+		html_text=(
+			f"""<div id={_ID_FORM_ADD_ASSET_LUCKY}>""" "\n"
+				f"{html_text}\n"
+			"</div>"
+		)
 
 	return html_text
 

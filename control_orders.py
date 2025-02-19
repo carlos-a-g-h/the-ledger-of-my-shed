@@ -29,6 +29,12 @@ from control_Any import (
 	response_fullpage_ext,
 )
 
+from control_assets_search import (
+	_ERR_TITLE_SEARCH_ASSETS,
+	_ERR_DETAIL_MATCH_MTO,
+	util_asset_fuzzy_finder
+)
+
 from dbi_assets import dbi_assets_AssetQuery
 
 from dbi_orders import (
@@ -114,6 +120,7 @@ from symbols_Any import (
 	_TYPE_BROWSER,
 	_MIMETYPE_HTML,
 
+	_KEY_NAME_QUERY,
 	_KEY_DELETE_AS_ITEM,
 	_KEY_VLEVEL,
 	_KEY_SIGN,_KEY_SIGN_UNAME,
@@ -663,6 +670,7 @@ async def route_api_update_asset_in_order(
 		order_id=util_valid_str(
 			reqdata.get(_KEY_ORDER)
 		)
+
 	if order_id is None:
 		return response_errormsg(
 			_ERR_TITLE_ADD_ORDER_UPDATE[lang],
@@ -698,6 +706,30 @@ async def route_api_update_asset_in_order(
 	asset_id:Optional[str]=util_valid_str(
 		reqdata.get(_KEY_ASSET)
 	)
+
+	if asset_id is None:
+		name_query=util_valid_str(
+			reqdata.get(_KEY_NAME_QUERY)
+		)
+		if name_query is not None:
+			found=util_asset_fuzzy_finder(
+				request.app,
+				name_query,
+			)
+			print("FOUND:",found)
+			found_one=len(found)==1
+			if found_one:
+				asset_id=found[0].get(_KEY_ASSET)
+
+			if not found_one:
+				return response_errormsg(
+					_ERR_TITLE_SEARCH_ASSETS[lang],
+					_ERR_DETAIL_MATCH_MTO[lang],
+					ct,status_code=406
+				)
+
+
+
 	if asset_id is None:
 		return response_errormsg(
 			_ERR_TITLE_ADD_ORDER_UPDATE[lang],
@@ -784,11 +816,16 @@ async def route_api_update_asset_in_order(
 	# Pull asset name
 	asset_name=request.app[_APP_CACHE_ASSETS][asset_id]
 
+	log_action={
+		True:"ADD",
+		False:"SET"
+	}[algsum]
+
 	html_text=(
 		f"<!-- UPDATED {asset_id} IN {order_id} -->\n"
 
-		f"""<div hx-swap-oob="beforeend:#{_ID_LOGGING}">""" "\n"
-			f"<p>PATCH {asset_mod} [ {asset_name} ]</p>\n"
+		f"""<div hx-swap-oob="afterbegin:#{_ID_LOGGING}">""" "\n"
+			f"<p>{log_action} {asset_mod}: {asset_name}</p>\n"
 		"</div>\n"
 
 		f"""<div hx-swap-oob="innerHTML:#{_ID_MAIN_TWO}">""" "\n"
@@ -907,8 +944,8 @@ async def route_api_remove_asset_from_order(
 		body=(
 			f"<!-- REMOVED FROM ORDER: {order_id} -->\n"
 
-			f"""<div hx-swap-oob="beforeend:#{_ID_LOGGING}">""" "\n"
-				f"<p>REMOVED [ {asset_name} ]</p>\n"
+			f"""<div hx-swap-oob="afterbegin:#{_ID_LOGGING}">""" "\n"
+				f"<p>REM: {asset_name}</p>\n"
 			"</div>\n"
 
 			f"""<div hx-swap-oob="innerHTML:#{_ID_MAIN_TWO}">"""

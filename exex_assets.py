@@ -637,7 +637,7 @@ if __name__=="__main__":
 	)
 
 	rdbc=AsyncIOMotorClient()
-	rdbn="my-inventory"
+	rdbn="tests"
 
 	all_assets=async_run(
 		dbi_assets_AssetQuery(
