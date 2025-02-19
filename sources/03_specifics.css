@@ -1,6 +1,8 @@
 div.form-inside-a-div > form,
+#form-asset-to-order-lucky >details>div>form,
 #form-new-order >form,
 #form-new-asset > form,
+#form-search-assets,
 #form-search-assets > form,
 #form-assets-to-excel > form {
   display:flex;
@@ -45,9 +47,17 @@ div.input-guarded {
 #main-menu > div >button.common {
   flex-grow: 1;
   width:128px;
-  padding:16px
+  padding:16px;
 }
 
 #layout-assets-search button.common {
   align-self: end;
+}
+
+#logging {
+	display:flex;
+	flex-direction:column-reverse;
+	font-family:monospace;
+	max-height:128px;
+	overflow-y:auto;
 }
