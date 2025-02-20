@@ -118,7 +118,9 @@ async def route_fgmt_section_users(
 					f"{write_form_search_users(lang)}\n"
 				"</div>\n"
 
-			"</section>"
+			"</section>\n"
+
+			"<!-- USER ACCOUNTS MANAGEMENT -->"
 		),
 		content_type=_MIMETYPE_HTML
 	)

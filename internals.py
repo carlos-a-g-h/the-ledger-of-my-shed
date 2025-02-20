@@ -91,8 +91,9 @@ def util_valid_date(
 		dt_string:str,
 		get_dt:bool=False,
 		date_min:Optional[datetime]=None,
-		date_max:Optional[datetime]=None
-	)->Optional[Union[str,datetime]]:
+		date_max:Optional[datetime]=None,
+		fullres:bool=False,
+	)->Optional[Union[str,datetime,tuple]]:
 
 	if not isinstance(dt_string,str):
 		return None
@@ -127,11 +128,18 @@ def util_valid_date(
 
 	if isinstance(date_min,datetime):
 		if dtobj<date_min:
+			if fullres:
+				return dt_string,False
 			return None
 
 	if isinstance(date_max,datetime):
 		if dtobj>date_max:
+			if fullres:
+				return dt_string,False
 			return None
+
+	if fullres:
+		return dt_string,True
 
 	if get_dt:
 		return dtobj

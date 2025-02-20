@@ -1,7 +1,7 @@
 #!/usr/bin/python3.9
 
 from asyncio import to_thread as async_run_block
-from datetime import datetime
+from datetime import (datetime,timedelta)
 from pathlib import Path
 from secrets import token_hex
 from typing import Optional,Mapping
@@ -28,11 +28,10 @@ from symbols_assets import (
 
 from dbi_assets import dbi_assets_AssetQuery
 from internals import (
-	util_date_in_date,
 	util_valid_int,
 	util_valid_str,
 	util_valid_date,
-	# util_excel_dectocol
+	util_dt_to_str,
 )
 
 _KEY_ATYPE="atype"
@@ -55,87 +54,95 @@ _TL_TF_END={
 	_LANG_ES:"Fin del rango de tiempo"
 }
 
+# NOTE:
+# The limits are confusing and they will cause problems if the dates are unsorted, which, in practice, is a constant risk
+# The only way to solve this is to constantly sort again and again per request (using a BST for example),
+#   and that can be way more resource demanding than comparing dates in a for loop
+# The strategy now is to assume that the history within each asset is 100% unsorted and fucked up,
+#   So any parts that do not meet certain criteria will be skipped instead of breaking loops entirely,
+#   This includes zeroing some cells while taking an entire history if the history is requested in the spreadsheet,
+#   instead of trying to do magic with the formulas
 
-def util_get_limits(
-		history:Mapping,
-		history_size:int,
-		date:Optional[datetime]=None,
-		date_min:Optional[datetime]=None,
-		date_max:Optional[datetime]=None,
-	)->tuple:
+# def util_get_limits(
+# 		history:Mapping,
+# 		history_size:int,
+# 		date:Optional[datetime]=None,
+# 		date_min:Optional[datetime]=None,
+# 		date_max:Optional[datetime]=None,
+# 	)->tuple:
 
-	# ( min , max )
+# 	# ( min , max )
 
-	date_specific=isinstance(date,datetime)
+# 	date_specific=isinstance(date,datetime)
 
-	get_min=(
-		date_specific or
-		isinstance(date_min,datetime)
-	)
-	get_max=(
-		date_specific or
-		isinstance(date_max,datetime)
-	)
+# 	get_min=(
+# 		date_specific or
+# 		isinstance(date_min,datetime)
+# 	)
+# 	get_max=(
+# 		date_specific or
+# 		isinstance(date_max,datetime)
+# 	)
 
-	index=-1
-	index_min=-1
-	if not get_min:
-		index_min=0
-	index_max=-1
-	if not get_max:
-		index_max=history_size-1
+# 	index=-1
+# 	index_min=-1
+# 	if not get_min:
+# 		index_min=0
+# 	index_max=-1
+# 	if not get_max:
+# 		index_max=history_size-1
 
-	if (not get_min) and (not get_max):
+# 	if (not get_min) and (not get_max):
 
-		return (
-			index_min,
-			index_max
-		)
+# 		return (
+# 			index_min,
+# 			index_max
+# 		)
 
-	for record_uid in history:
+# 	for record_uid in history:
 
-		index=index+1
+# 		index=index+1
 
-		record_date=util_valid_date(
-			history[record_uid].get(_KEY_DATE),
-			get_dt=True
-		)
-		if record_date is None:
-			continue
+# 		record_date=util_valid_date(
+# 			history[record_uid].get(_KEY_DATE),
+# 			get_dt=True
+# 		)
+# 		if record_date is None:
+# 			continue
 
-		if date_specific:
-			if index_min==-1:
-				if util_date_in_date(record_date,date):
-					index_min=index
+# 		if date_specific:
+# 			if index_min==-1:
+# 				if util_date_in_date(record_date,date):
+# 					index_min=index
 
-			if index_min>-1 and index_max==-1:
-				if not util_date_in_date(record_date,date):
-					index_max=index
-					break
+# 			if index_min>-1 and index_max==-1:
+# 				if not util_date_in_date(record_date,date):
+# 					index_max=index
+# 					break
 
-			continue
+# 			continue
 
-		if index_min==-1:
-			if not record_date<date_min:
-				index_min=index
+# 		if index_min==-1:
+# 			if not record_date<date_min:
+# 				index_min=index
 
-		if index_min>-1 and index_max==-1:
-			if record_date>date_max:
-				index_max=index
-				break
+# 		if index_min>-1 and index_max==-1:
+# 			if record_date>date_max:
+# 				index_max=index
+# 				break
 
-	# If the time frame is beyond history, then the limits are also beyond history
-	if index_min==-1:
-		index_min=history_size
-		index_max=history_size
+# 	# If the time frame is beyond history, then the limits are also beyond history
+# 	if index_min==-1:
+# 		index_min=history_size
+# 		index_max=history_size
 
-	print(
-		"\tLimits",
-		index_min,
-		index_max
-	)
+# 	print(
+# 		"\tLimits",
+# 		index_min,
+# 		index_max
+# 	)
 
-	return (index_min,index_max)
+# 	return (index_min,index_max)
 
 # def util_get_bumps(
 # 		history:Mapping,
@@ -147,20 +154,29 @@ def util_get_limits(
 
 def util_get_initial_supply(
 		history:Mapping,
-		index_min:int=0,
+		date_min:Optional[datetime]=None,
+		# index_min:int,
 	)->int:
 
 	# NOTE: The initial supply is the total supply BEFORE the given index, so at index zero, the supply is zero
 
-	if index_min==0:
-		return 0
+	# if index_min==0:
+	# 	return 0
 
-	index=-1
+	# index=-1
 	supply=0
 
 	for record_uid in history:
 
-		index=index+1
+		# index=index+1
+
+		record_date=util_valid_date(
+			history[record_uid].get(_KEY_DATE),
+			date_min=date_min
+		)
+		if record_date is not None:
+			# skip, because it reaches or is beyond the min date
+			continue
 
 		record_mod=util_valid_int(
 			history[record_uid].get(_KEY_RECORD_MOD),
@@ -168,30 +184,40 @@ def util_get_initial_supply(
 		if record_mod is None:
 			continue
 
-		if index==index_min:
-			break
+		# if index==index_min:
+		# 	break
 
 		supply=supply+record_mod
 
-	print(
-		"\tFound initial supply:",
-		index,supply
-	)
+	# print(
+	# 	"\tFound initial supply:",
+	# 	index,supply
+	# )
 
 	return supply
 
 def util_get_current_supply(
 		history:Mapping,
-		index_max:int=-1,
+		date_min:Optional[datetime]=None,
+		date_max:Optional[datetime]=None,
+		# index_max:int=-1,
 	)->int:
 
 	supply=0
 
-	index=-1
+	# index=-1
 
 	for record_uid in history:
 
-		index=index+1
+		# index=index+1
+
+		record_date=util_valid_date(
+			history[record_uid].get(_KEY_DATE),
+			date_min=date_min,
+			date_max=date_max,
+		)
+		if record_date is None:
+			continue
 
 		record_mod=util_valid_int(
 			history[record_uid].get(_KEY_RECORD_MOD),
@@ -201,8 +227,8 @@ def util_get_current_supply(
 
 		supply=supply+record_mod
 
-		if index==index_max:
-			break
+		# if index==index_max:
+		# 	break
 
 	return supply
 
@@ -213,9 +239,11 @@ def conversion_process(
 		atype:int=0,
 		inc_history:bool=False,
 
+		# blist_tags:list=[],
+
 		date:Optional[datetime]=None,
-		date_min:Optional[datetime]=None,
-		date_max:Optional[datetime]=None
+		date_min_og:Optional[datetime]=None,
+		date_max_og:Optional[datetime]=None
 
 	)->Optional[Path]:
 
@@ -229,11 +257,23 @@ def conversion_process(
 		exist_ok=True
 	)
 
+	date_min=date_min_og
+	date_max=date_max_og
+	if isinstance(date,datetime):
+		date_min=date
+		date_max=date+timedelta(days=1)
+
+	date_min_str=util_dt_to_str(date_min)
+	date_max_str=util_dt_to_str(date_max)
+
 	has_tc=(
-		isinstance(date,datetime) or
+		# isinstance(date,datetime) or
 		isinstance(date_min,datetime) or
 		isinstance(date_max,datetime)
 	)
+
+	has_min=isinstance(date_min,datetime)
+	has_max=isinstance(date_max,datetime)
 
 	print("Is there a time frame?",has_tc)
 	print("\tdate_min",date_min)
@@ -358,22 +398,22 @@ def conversion_process(
 				f"{asset_id} has history of lengh zero"
 			)
 
-		index_min=0
-		index_max=history_size-1
+		# index_min=0
+		# index_max=history_size-1
 
-		if has_tc:
-			index_min,index_max=util_get_limits(
-				asset[_KEY_HISTORY],
-				history_size,
-				date,date_min,date_max
-			)
+		# if has_tc:
+		# 	index_min,index_max=util_get_limits(
+		# 		asset[_KEY_HISTORY],
+		# 		history_size,
+		# 		date,date_min,date_max
+		# 	)
 
-		if index_max<index_min:
-			index_max=index_min
+		# if index_max<index_min:
+		# 	index_max=index_min
 
-		print("\n\tLimits based on the requested time frame")
-		print("\t\tmin limit",index_min)
-		print("\t\tmax limit",index_max)
+		# print("\n\tLimits based on the requested time frame")
+		# print("\t\tmin limit",index_min)
+		# print("\t\tmax limit",index_max)
 
 		col_pos=4
 		col_pos_ok=""
@@ -388,36 +428,44 @@ def conversion_process(
 
 		sheet_cell_isup=sheet_cell
 
-		if not inc_history:
-			ws[sheet_cell]=util_get_initial_supply(
-				asset[_KEY_HISTORY],
-				index_min,
-			)
+		supply_init=util_get_initial_supply(
+			asset[_KEY_HISTORY],
+			date_min
+		)
 
-		if inc_history:
+		ws[sheet_cell]=supply_init
 
-			if index_min==0:
+		# if not inc_history:
+		# 	ws[sheet_cell]=util_get_initial_supply(
+		# 		asset[_KEY_HISTORY],
+		# 		date_min
+		# 		# index_min,
+		# 	)
 
-				# NOTE: before index zero there is no supply count
+		# if inc_history:
 
-				# if not index_max==0:
-				ws[sheet_cell]=0
-				# if asset_history_size==1:
-				# 	ws[sheet_cell]=
+		# 	if index_min==0:
 
-				# ws[sheet_cell]=(
-				# 	f"={util_excel_dectocol(col_h_start)}{row}"
-				# )
+		# 		# NOTE: before index zero there is no supply count
 
-			if index_min>0:
+		# 		# if not index_max==0:
+		# 		ws[sheet_cell]=0
+		# 		# if asset_history_size==1:
+		# 		# 	ws[sheet_cell]=
 
-				ws[sheet_cell]=(
-					"=SUM("
-						f"{get_column_letter(col_h_start)}{row}"
-							":"
-						f"{get_column_letter(col_h_start+index_min-1)}{row}"
-					")"
-				)
+		# 		# ws[sheet_cell]=(
+		# 		# 	f"={util_excel_dectocol(col_h_start)}{row}"
+		# 		# )
+
+		# 	if index_min>0:
+
+		# 		ws[sheet_cell]=(
+		# 			"=SUM("
+		# 				f"{get_column_letter(col_h_start)}{row}"
+		# 					":"
+		# 				f"{get_column_letter(col_h_start+index_min-1)}{row}"
+		# 			")"
+		# 		)
 
 		# NEXT COLUMN (F) - THE SUPPLY
 
@@ -428,21 +476,50 @@ def conversion_process(
 
 		if inc_history:
 
-			tl=f"={sheet_cell_isup}"
+			if history_size==0:
+				ws[sheet_cell]=0
 
-			if not index_max==index_min:
-				tl=f"{tl} + SUM({get_column_letter(col_h_start+index_min)}{row}:{get_column_letter(col_h_start+index_max)}{row})"
-			if index_max==index_min:
-				print("lel")
-				tl=f"{tl} + {get_column_letter(col_h_start+index_max)}{row}"
+			if history_size>0:
+				tl=f"={sheet_cell_isup}"
 
-			ws[sheet_cell]=tl
+				if history_size>1:
+					tl=(
+						f"{tl} + SUM("
+							f"{get_column_letter(col_h_start)}{row}:{get_column_letter(col_h_start+history_size-1)}{row}"
+						")"
+					)
+
+				ws[sheet_cell]=tl
+
+			# if history_size==1:
+			# 	ws[sheet_cell]=f"={get_column_letter(col_h_start)}{row}"
+
+			# if history_size>1:
+			# 	ws[sheet_cell]=(
+			# 		"=SUM("
+			# 			f"{get_column_letter(col_h_start)}{row}"
+			# 				":"
+			# 			f"{get_column_letter(col_h_start+history_size)}{row}"
+			# 		")"
+			# 	)
+
+			# tl=f"={sheet_cell_isup}"
+
+			# if not index_max==index_min:
+			# 	tl=f"{tl} + SUM({get_column_letter(col_h_start+index_min)}{row}:{get_column_letter(col_h_start+index_max)}{row})"
+			# if index_max==index_min:
+			# 	print("lel")
+			# 	tl=f"{tl} + {get_column_letter(col_h_start+index_max)}{row}"
+
+			# ws[sheet_cell]=tl
 
 		if not inc_history:
 
-			ws[sheet_cell]=util_get_current_supply(
+			ws[sheet_cell]=supply_init+util_get_current_supply(
 				asset[_KEY_HISTORY],
-				index_max=index_max
+				date_min=date_min,
+				date_max=date_max
+				# index_max=index_max
 			)
 
 		# NEXT COLUMN (G) - THE PERFORMANCE (OPTIONAL)
@@ -485,13 +562,20 @@ def conversion_process(
 
 			col_idx=col_idx+1
 
-			record_date=util_valid_date(
-				asset[_KEY_HISTORY][uid].get(_KEY_DATE)
+			record_date,valid=util_valid_date(
+				asset[_KEY_HISTORY][uid].get(_KEY_DATE),
+				date_min=date_min,
+				date_max=date_max,
+				fullres=True
 			)
+			if record_date is None:
+				continue
 
 			record_mod=util_valid_int(
 				asset[_KEY_HISTORY][uid].get(_KEY_RECORD_MOD)
 			)
+			if record_mod is None:
+				continue
 
 			record_comment=util_valid_str(
 				asset[_KEY_HISTORY][uid].get(_KEY_COMMENT)
@@ -503,50 +587,80 @@ def conversion_process(
 
 			cell_comment=f"ID: {uid}"
 
-			if not has_tc:
+			# if not has_tc:
 
-				if col_idx==0:
-					tl={
-						_LANG_EN:"Initial supply record",
-						_LANG_ES:"Registro del suministro inicial"
-					}[lang]
-					cell_comment=(
-						f"{cell_comment}\n\n"
-						f"* {tl}\n"
-					)
+			# 	if col_idx==0:
+			# 		tl={
+			# 			_LANG_EN:"Initial supply record",
+			# 			_LANG_ES:"Registro del suministro inicial"
+			# 		}[lang]
+			# 		cell_comment=(
+			# 			f"{cell_comment}\n\n"
+			# 			f"* {tl}\n"
+			# 		)
 
-			if has_tc:
+			# if has_tc:
 
-				if (
-					(not col_idx<index_min) and
-					(not col_idx>index_max)
-				):
-					cell_comment=(
-						f"{cell_comment}\n\n"
-						f"* {_TL_TF_SPEC[lang]} ({index_min},{index_max})\n"
-					)
+			# 	if (
+			# 		(not col_idx<index_min) and
+			# 		(not col_idx>index_max)
+			# 	):
+			# 		cell_comment=(
+			# 			f"{cell_comment}\n\n"
+			# 			f"* {_TL_TF_SPEC[lang]} ({index_min},{index_max})\n"
+			# 		)
 
-				if col_idx==index_min:
-					cell_comment=(
-						f"{cell_comment}\n"
-						f"* {_TL_TF_START[lang]}\n"
-					)
+			# 	if col_idx==index_min:
+			# 		cell_comment=(
+			# 			f"{cell_comment}\n"
+			# 			f"* {_TL_TF_START[lang]}\n"
+			# 		)
 
-				if col_idx==index_max:
-					cell_comment=(
-						f"{cell_comment}\n"
-						f"* {_TL_TF_END[lang]}\n"
-					)
+			# 	if col_idx==index_max:
+			# 		cell_comment=(
+			# 			f"{cell_comment}\n"
+			# 			f"* {_TL_TF_END[lang]}\n"
+			# 		)
 
-			if record_date is not None:
+			tl={
+				_LANG_EN:"Date",
+				_LANG_ES:"Fecha"
+			}[lang]
+			cell_comment=(
+				f"{cell_comment}\n"
+				f"{tl}: {record_date}"
+			)
+
+			zeroed=(not valid)
+			# zeroed=False
+			# if has_min:
+			# 	zeroed=(not record_date<date_min_str)
+			# if has_max:
+			# 	zeroed=(not record_date>date_max_str)
+
+			if zeroed:
 				tl={
-					_LANG_EN:"Date",
-					_LANG_ES:"Fecha"
+					_LANG_EN:"Ignored",
+					_LANG_ES:"Ignorado"
 				}[lang]
 				cell_comment=(
 					f"{cell_comment}\n"
-					f"{tl}: {record_date}"
+					f"* {tl}\n"
+					f"* MOD = {record_mod}\n"
 				)
+
+			if has_min or has_max:
+				if not zeroed:
+					tl={
+						_LANG_EN:"Within the timeframe",
+						_LANG_ES:"Dentro del marco de tiempo"
+					}[lang]
+					cell_comment=(
+						f"{cell_comment}\n"
+						f"* {tl}\n"
+						f"-> MIN: {date_min_str}\n"
+						f"-> MAX: {date_max_str}\n"
+					)
 
 			if record_tag is not None:
 				tl={
@@ -571,6 +685,9 @@ def conversion_process(
 			)
 
 			tgt_cell:Cell=ws[f"{get_column_letter(col_pos+col_idx)}{row}"]
+
+			if zeroed:
+				record_mod=0
 
 			tgt_cell.value=record_mod
 
@@ -637,7 +754,7 @@ if __name__=="__main__":
 	)
 
 	rdbc=AsyncIOMotorClient()
-	rdbn="tests"
+	rdbn="stock-feria"
 
 	all_assets=async_run(
 		dbi_assets_AssetQuery(
@@ -657,7 +774,8 @@ if __name__=="__main__":
 		lang="es",
 		atype=-1,
 		inc_history=True,
-		date_min=datetime(2025,2,17)
+		date_min_og=datetime(2025,2,19),
+		date_max_og=datetime(2025,2,20)
 	)
 	if path_file is None:
 		print("Unable to create the excel file")
@@ -680,3 +798,5 @@ if __name__=="__main__":
 				f"{str(path_file)}"
 			]
 		)
+
+# NOTE: there is a bug with the current supply. Either the hardcoded curr. supply calculation function is wrong, or the cell zeroing is wrong
