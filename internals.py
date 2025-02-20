@@ -72,6 +72,13 @@ def util_extract_from_cookies(
 
 # date and time
 
+def util_date_get_day(dt_obj:datetime)->datetime:
+	return datetime(
+		dt_obj.year,
+		dt_obj.month,
+		dt_obj.day
+	)
+
 def util_date_calc_age(
 		pit:datetime,
 		in_min:bool=False,

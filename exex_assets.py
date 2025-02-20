@@ -32,6 +32,7 @@ from internals import (
 	util_valid_str,
 	util_valid_date,
 	util_dt_to_str,
+	util_date_get_day,
 )
 
 _KEY_ATYPE="atype"
@@ -260,8 +261,8 @@ def conversion_process(
 	date_min=date_min_og
 	date_max=date_max_og
 	if isinstance(date,datetime):
-		date_min=date
-		date_max=date+timedelta(days=1)
+		date_min=util_date_get_day(date)
+		date_max=date_min+timedelta(days=1)
 
 	date_min_str=util_dt_to_str(date_min)
 	date_max_str=util_dt_to_str(date_max)
