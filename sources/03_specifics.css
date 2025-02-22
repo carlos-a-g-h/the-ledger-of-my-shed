@@ -4,13 +4,13 @@ div.form-inside-a-div > form,
 #form-new-asset > form,
 #form-search-assets,
 #form-search-assets > form,
-#form-assets-to-excel > form {
+#form-assets-to-spreadsheet > form {
   display:flex;
   flex-direction: column;
   gap:16px;
 }
 
-#form-assets-to-excel > form > div {
+#form-assets-to-spreadsheet > form > div {
   display:flex;
   flex-direction: row;
   gap:8px;
