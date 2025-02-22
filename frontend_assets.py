@@ -53,7 +53,7 @@ from symbols_assets import (
 	_KEY_RECORD_UID,
 	_KEY_RECORD_MOD,
 
-	_ID_FORM_ASSETS_TO_EXCEL,
+	_ID_FORM_ASSETS_TO_SPREADSHEET,
 	_ID_FORM_NEW_ASSET,
 	_ID_RESULT_NEW_ASSET,
 	_ID_FORM_ASSET_EDITOR,
@@ -81,7 +81,10 @@ from symbols_Any import (
 	_KEY_DATE_MIN
 )
 
-from exex_assets import _KEY_ATYPE
+from exex_assets import (
+	_KEY_ATYPE,
+	_KEY_FTREND,
+)
 
 def write_button_nav_new_asset(lang:str)->str:
 
@@ -218,7 +221,7 @@ def write_form_export_assets_as_excel(lang:str):
 
 	html_text=(
 		"""<form method="POST" """
-			"""action="/api/assets/export-as-excel" """
+			"""action="/api/assets/export-as-spreadsheet" """
 			">"
 	)
 
@@ -228,7 +231,7 @@ def write_form_export_assets_as_excel(lang:str):
 		_LANG_ES:"Incluir historial completo"
 	}[lang]
 	html_text=(
-			f"{html_text}\n"
+		f"{html_text}\n"
 			"<div>\n"
 				f"{write_html_input_checkbox(_KEY_INC_HISTORY,tl)}\n"
 			"</div>"
@@ -284,6 +287,17 @@ def write_form_export_assets_as_excel(lang:str):
 	)
 
 	tl={
+		_LANG_EN:"Ignore all opposing trends (requires performance analysis)",
+		_LANG_ES:"No seguir tendencias opuestas (requiere análisis de rendimiento)"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		"<div>\n"
+			f"{write_html_input_checkbox(_KEY_FTREND,tl)}\n"
+		"</div>"
+	)
+
+	tl={
 		_LANG_EN:"Export",
 		_LANG_ES:"Exportar"
 	}[lang]
@@ -305,7 +319,7 @@ def write_form_export_assets_as_excel(lang:str):
 		# "<div>\n"
 		f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
 			f"<h3>{tl}</h3>\n"
-			f"""<div id="{_ID_FORM_ASSETS_TO_EXCEL}">""" "\n"
+			f"""<div id="{_ID_FORM_ASSETS_TO_SPREADSHEET}">""" "\n"
 				f"{html_text}\n"
 			"</div>\n"
 		"</div>"

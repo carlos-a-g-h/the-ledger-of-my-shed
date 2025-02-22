@@ -743,9 +743,8 @@ def write_button_delete_order(
 	html_text=(
 		f"""<form hx-delete="{the_route}" """
 			f"""hx-target="#{_ID_MSGZONE}" """
-			"""hx-swap="innerHTML" """
 			f"""hx-confirm="{tl}" """
-			">\n"
+			"""hx-swap="innerHTML">"""
 	)
 
 	if delete_as_item:
@@ -766,6 +765,21 @@ def write_button_delete_order(
 	)
 
 	return html_text
+
+def write_button_export_order_as_spreadsheet(lang:str,order_id:str)->str:
+
+	tl={
+		_LANG_EN:"Export",
+		_LANG_ES:"Exportar"
+	}[lang]
+
+	return (
+		"""<form method=POST """
+			f"""action="/api/orders/pool/{order_id}/spreadsheet" """
+			">\n"
+			f"{write_button_submit(tl)}\n"
+		"</form>"
+	)
 
 def write_html_order_info(
 		lang:str,
@@ -944,6 +958,7 @@ def write_html_order_details(
 	if authorized:
 		html_text=(
 			f"{html_text}\n"
+			f"{write_button_export_order_as_spreadsheet(lang,order_id)}\n"
 			f"{write_button_delete_order(lang,order_id)}\n"
 		)
 

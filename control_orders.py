@@ -14,7 +14,7 @@ from aiohttp.web import (
 	Application,
 
 	Request,
-	Response,json_response
+	Response,FileResponse,json_response
 )
 
 from control_Any import (
@@ -46,7 +46,7 @@ from dbi_orders import (
 	dbi_orders_DropAsset,
 	dbi_orders_PatchAsset,
 	dbi_Orders_ApplyOrder,
-	dbi_Orders_RevertOrder,
+	dbi_orders_RevertOrder,
 )
 
 from frontend_Any import (
@@ -109,6 +109,7 @@ from symbols_Any import (
 	_SECTION,
 
 	_APP_CACHE_ASSETS,
+	_APP_PROGRAMDIR,
 	_APP_RDBC,_APP_RDBN,
 
 	_REQ_LANGUAGE,_REQ_USERID,
@@ -119,6 +120,7 @@ from symbols_Any import (
 	_TYPE_CUSTOM,
 	_TYPE_BROWSER,
 	_MIMETYPE_HTML,
+	_MIMETYPE_EXCEL,
 
 	_KEY_NAME_QUERY,
 	_KEY_DELETE_AS_ITEM,
@@ -127,6 +129,9 @@ from symbols_Any import (
 	_KEY_TAG,_KEY_COMMENT,
 	# _KEY_VERBOSE,
 
+
+	_HEADER_CONTENT_TYPE,
+	_HEADER_CONTENT_DISPOSITION
 )
 
 from symbols_assets import (
@@ -161,6 +166,9 @@ from symbols_orders import (
 	# html_id_order_asset
 
 )
+
+from exex_orders import main as export_order_as_spreadsheet
+
 
 _ERR_TITLE_NEW_ORDER={
 	_LANG_EN:"New order not created",
@@ -501,7 +509,7 @@ async def route_fgmt_order_details(
 		render_all=(
 			(render_main_1 and render_main_2) or
 			(
-				(not render_main_1) or
+				(not render_main_1) and
 				(not render_main_2)
 			)
 		)
@@ -573,6 +581,15 @@ async def route_fgmt_order_details(
 					f"<div>{tl}: <code>{ov}</code></div>"
 				)
 
+				# tl={
+				# 	_LANG_EN:"Export this order",
+				# 	_LANG_ES:"Exporte esta orden"
+				# }[lang]
+				# html_text=(
+				# 	f"{html_text}\n"
+				# 	f"""<div>{tl}<a href="/api/orders/pool/{order_id}/spreadsheet"></a> """
+				# )
+
 			return response_popupmsg(html_text)
 
 		html_text_order=f"{write_html_order_details(lang,dbi_result,True)}\n"
@@ -605,7 +622,7 @@ async def route_fgmt_order_details(
 
 	if not render_all:
 
-		if render_main_1:
+		if render_main_1 and (not render_main_2):
 
 			html_text=(
 				f"{html_text}\n"
@@ -618,7 +635,7 @@ async def route_fgmt_order_details(
 				"</div>"
 			)
 
-		if render_main_2:
+		if render_main_2 and (not render_main_1):
 	
 			html_text=(
 				f"{html_text}\n"
@@ -1054,9 +1071,6 @@ async def route_api_delete_order(
 			ct,status_code=406
 		)
 
-
-
-
 	result:Mapping=await dbi_orders_DropOrder(
 		request.app[_APP_RDBC],
 		request.app[_APP_RDBN],
@@ -1247,7 +1261,7 @@ async def route_api_revert_order(
 		request_data.get(_KEY_ORDER_DROP),False
 	)
 
-	result_rev=await dbi_Orders_RevertOrder(
+	result_rev=await dbi_orders_RevertOrder(
 		request.app[_APP_RDBC],
 		request.app[_APP_RDBN],
 		order_id,order_drop
@@ -1287,6 +1301,61 @@ async def route_api_revert_order(
 	return Response(
 		body=html_text,
 		content_type=_MIMETYPE_HTML
+	)
+
+async def route_api_export_order_as_spreadsheet(
+		request:Request
+	)->Union[Response,json_response]:
+
+	# /api/orders/pool/{order_id}/spreadsheet
+
+	lang=request[_REQ_LANGUAGE]
+
+	ct=request[_REQ_CLIENT_TYPE]
+	assert_referer(
+		request,ct,
+		_ROUTE_PAGE
+	)
+
+	order_id=request.match_info[_KEY_ORDER]
+	include_tags=False
+	remove_facade=False
+
+	# if request.method=="POST":
+	# 	req_data=await get_request_body_dict(ct,request)
+	# 	if isinstance(req_data,Mapping):
+	# 		order_id=util_valid_str(
+	# 			req_data.get(_KEY_ORDER)
+	# 		)
+
+	the_file=await export_order_as_spreadsheet(
+		lang,
+		request.app[_APP_PROGRAMDIR],
+		request.app[_APP_RDBC],
+		request.app[_APP_RDBN],
+		order_id,
+
+		include_tags=include_tags,
+		remove_facade=remove_facade
+	)
+
+	the_name={
+		_LANG_EN:"Order",
+		_LANG_ES:"Orden"
+	}[lang]
+
+	the_name=f"{the_name}_{order_id}"
+
+	content_dispositon=(
+		f"""  filename="{the_name}"  """
+	)
+
+	return FileResponse(
+		the_file,
+		headers={
+			_HEADER_CONTENT_TYPE:_MIMETYPE_EXCEL,
+			_HEADER_CONTENT_DISPOSITION:content_dispositon.strip()
+		}
 	)
 
 async def route_main(

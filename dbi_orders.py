@@ -581,7 +581,7 @@ async def dbi_Orders_ApplyOrder(
 
 	return {}
 
-async def dbi_Orders_RevertOrder(
+async def dbi_orders_RevertOrder(
 		rdbc:AsyncIOMotorClient,
 		name_db:str,order_id:str,
 		drop_after_revert:bool=False,

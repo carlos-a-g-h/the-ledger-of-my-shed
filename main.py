@@ -69,7 +69,8 @@ from control_orders import (
 	route_api_update_asset_in_order as route_Orders_api_UpdateAsset,
 	route_api_remove_asset_from_order as route_Orders_api_RemoveAsset,
 	route_api_run_order as route_Orders_api_RunOrder,
-	route_api_revert_order as route_Orders_api_RevertOrder
+	route_api_revert_order as route_Orders_api_RevertOrder,
+	route_api_export_order_as_spreadsheet as route_Orders_api_ExportAsExcel
 )
 
 from dbi_accounts import (
@@ -368,11 +369,11 @@ def build_app(
 			),
 
 				web_GET(
-					"/api/assets/export-as-excel",
+					"/api/assets/export-as-spreadsheet",
 					route_Assets_api_ExportAsExcel,
 				),
 				web_POST(
-					"/api/assets/export-as-excel",
+					"/api/assets/export-as-spreadsheet",
 					route_Assets_api_ExportAsExcel,
 				),
 
@@ -447,6 +448,15 @@ def build_app(
 			_ROUTE_PAGE_ORDERS,
 			route_Orders
 		),
+			web_GET(
+				"/api/orders/pool/{order_id}/spreadsheet",
+				route_Orders_api_ExportAsExcel
+			),
+				web_POST(
+					"/api/orders/pool/{order_id}/spreadsheet",
+					route_Orders_api_ExportAsExcel
+				),
+
 			web_GET(
 				"/fgmt/orders/new",
 				route_Orders_fgmt_NewOrder

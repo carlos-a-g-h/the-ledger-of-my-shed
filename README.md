@@ -16,7 +16,7 @@ More will be added but this is what you can do right now:
 - Accumulative history for each asset
 - Large scale record modifications using orders
 - User accounts system with dynamic passwords
-- Export assets + their history to excel format
+- Export assets and orders as excel files
 
 ### Pending
 

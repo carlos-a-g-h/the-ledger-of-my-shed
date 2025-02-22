@@ -51,6 +51,7 @@ from dbi_assets import (
 
 from exex_assets import (
 	_KEY_ATYPE,
+	_KEY_FTREND,
 	main as export_assets_as_excel_file
 )
 
@@ -1302,6 +1303,7 @@ async def route_api_export_as_excel(
 
 	atype=0
 	inc_history=False
+	follow_trend=False
 
 	# date_utc:bool=False
 	date:Optional[datetime]=None
@@ -1315,6 +1317,12 @@ async def route_api_export_as_excel(
 			atype=util_valid_int(
 				req_data.get(_KEY_ATYPE)
 			)
+			if not atype==0:
+				follow_trend=util_valid_bool(
+					req_data.get(_KEY_FTREND),
+					dval=False
+				)
+
 			inc_history=util_valid_bool(
 				req_data.get(_KEY_INC_HISTORY),False
 			)
@@ -1357,14 +1365,18 @@ async def route_api_export_as_excel(
 	lang=request[_REQ_LANGUAGE]
 
 	the_file=await export_assets_as_excel_file(
-		request.app[_APP_PROGRAMDIR],
-		request.app[_APP_RDBC],
-		request.app[_APP_RDBN],
-		lang=lang,atype=atype,
+
+		lang,request.app[_APP_PROGRAMDIR],
+		request.app[_APP_RDBC],request.app[_APP_RDBN],
+
+		atype=atype,
 		inc_history=inc_history,
+
 		date=date,
 		date_min=date_min,
-		date_max=date_max
+		date_max=date_max,
+
+		follow_trend=follow_trend,
 	)
 
 	the_name={
@@ -1405,12 +1417,15 @@ async def route_api_export_as_excel(
 			_LANG_ES:"Analisis_bajista"
 		}[lang]
 
+
+	the_name=f"{the_name}.xslx"
+
 	print("\nDelivering the excel file")
 	print("includes history?",inc_history)
 	print("analysis type",atype)
 
 	content_dispositon=(
-		f"""  filename="{the_name}.xlsx"  """
+		f"""  filename="{the_name}"  """
 	)
 
 	return FileResponse(

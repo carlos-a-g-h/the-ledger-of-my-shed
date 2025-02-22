@@ -153,7 +153,10 @@ def util_valid_date(
 
 	return dt_string
 
-def util_dt_to_str(dtobj:datetime)->str:
+def util_dt_to_str(dtobj:Optional[datetime])->str:
+
+	if dtobj is None:
+		return None
 
 	return (
 		f"{dtobj.year}-"

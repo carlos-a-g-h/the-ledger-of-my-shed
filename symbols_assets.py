@@ -19,7 +19,7 @@ _KEY_INC_VALUE="include_value"
 
 _ID_LAYOUT_ASSETS_SEARCH="layout-assets-search"
 
-_ID_FORM_ASSETS_TO_EXCEL="form-assets-to-excel"
+_ID_FORM_ASSETS_TO_SPREADSHEET="form-assets-to-spreadsheet"
 _ID_FORM_ASSET_EDITOR="form-asset-editor"
 _ID_FORM_NEW_ASSET="form-new-asset"
 _ID_RESULT_NEW_ASSET="result-new-asset"
