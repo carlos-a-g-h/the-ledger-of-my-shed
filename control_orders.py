@@ -159,6 +159,8 @@ from symbols_orders import (
 	_KEY_COPY_VALUE,
 	_KEY_LOCKED_BY,
 
+	_ID_FORM_ADD_ASSET_LUCKY,
+
 	_ID_FORM_NEW_ORDER,
 	_ID_RESULT_NEW_ORDER,
 	# _ID_ORDER_ASSETS,
@@ -233,7 +235,7 @@ def write_layout_search_modes(lang:str,order_id:str)->str:
 		_LANG_ES:"Modo estándar"
 	}[lang]
 	html_text=(
-		"""<button :class="{ 'active': tab === 'standard' }" @click.prevent="tab = 'standard'; window.location.hash = 'standard'">"""
+		"""<button x-on:click="tab = 'standard'">"""
 			f"{tl}"
 		"</button>"
 	)
@@ -244,7 +246,7 @@ def write_layout_search_modes(lang:str,order_id:str)->str:
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		"""<button :class="{ 'active': tab === 'fast' }" @click.prevent="tab = 'fast'; window.location.hash = 'fast'">"""
+		"""<button x-on:click="tab = 'fast'">"""
 			f"{tl}"
 		"</button>"
 	)
@@ -254,7 +256,7 @@ def write_layout_search_modes(lang:str,order_id:str)->str:
 			f"{html_text}\n"
 		"</div>"
 		f"""<div x-show="tab === 'standard'">""" "\n"
-			f"{write_form_search_assets(lang,order_id,True)}\n"
+			f"{write_form_search_assets(lang,order_id,True,show_title=False)}\n"
 		"</div>\n"
 		f"""<div x-show="tab === 'fast'">""" "\n"
 			f"{write_form_add_asset_to_order_lucky(lang,order_id)}\n"
@@ -802,6 +804,8 @@ async def route_api_update_asset_in_order(
 		reqdata.get(_KEY_ASSET)
 	)
 
+	used_name_query=False
+
 	if asset_id is None:
 		name_query=util_valid_str(
 			reqdata.get(_KEY_NAME_QUERY)
@@ -823,7 +827,7 @@ async def route_api_update_asset_in_order(
 					ct,status_code=406
 				)
 
-
+			used_name_query=True
 
 	if asset_id is None:
 		return response_errormsg(
@@ -927,6 +931,14 @@ async def route_api_update_asset_in_order(
 			f"{write_html_order_details(lang,result_patch,True,focus=asset_id)}\n"
 		"</div>"
 	)
+
+	if used_name_query:
+		html_text=(
+			f"{html_text}\n"
+			f"""<div hx-swap-oob="innerHTML:#{_ID_FORM_ADD_ASSET_LUCKY}">""" "\n"
+				f"{write_form_add_asset_to_order_lucky(lang,order_id,full=False)}\n"
+			"</div>"
+		)
 
 	return Response(
 		body=html_text,

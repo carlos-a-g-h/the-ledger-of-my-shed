@@ -274,22 +274,34 @@ def write_form_add_asset_to_order_lucky(
 	# 	_LANG_ES:""
 	# }[lang]
 
-	tl1={
+	tl={
+		_LANG_EN:"Name",
+		_LANG_ES:"Nombre"
+	}[lang]
+	html_text=(
+		f"""<div class="{_CSS_CLASS_IG_FIELDS}">""" "\n"
+			f"{write_html_input_string(_KEY_NAME_QUERY,tl,required=True)}\n"
+			f"{write_html_input_number(_KEY_RECORD_MOD,value=0,required=True)}\n"
+		"</div>"
+	)
+
+	tl={
 		_LANG_EN:"Copy value",
 		_LANG_ES:"Copiar valor"
 	}[lang]
-	tl2={
+	html_text=(
+		f"{html_text}\n"
+		f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
+			f"{write_html_input_checkbox(_KEY_COPY_VALUE,tl,checked=True)}"
+	)
+
+	tl={
 		_LANG_EN:"Add now",
 		_LANG_ES:"Agregar ahora"
 	}[lang]
 	html_text=(
-		f"""<div class="{_CSS_CLASS_IG_FIELDS}">""" "\n"
-			f"{write_html_input_number(_KEY_RECORD_MOD,value=0,required=True)}\n"
-			f"{write_html_input_string(_KEY_NAME_QUERY,required=True)}\n"
-		"</div>\n"
-		f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
-			f"{write_html_input_checkbox(_KEY_COPY_VALUE,tl1,checked=True)}"
-			f"{write_button_submit(tl2)}\n"
+			f"{html_text}\n"
+			f"{write_button_submit(tl)}\n"
 		"</div>"
 	)
 

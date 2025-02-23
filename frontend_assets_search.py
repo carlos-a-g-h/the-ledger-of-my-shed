@@ -115,6 +115,7 @@ def write_form_search_assets(
 		authorized:bool=True,
 		full:bool=True,
 		decorate:bool=False,
+		show_title:bool=True,
 	)->str:
 
 	order_specific=isinstance(order_id,str)
@@ -223,18 +224,25 @@ def write_form_search_assets(
 
 	if full:
 
-		tl={
-			_LANG_EN:"Asset searcher",
-			_LANG_ES:"Buscador de activos"
-		}[lang]
 
 		attr_class=""
 		if decorate:
 			attr_class=f""" class="{_CSS_CLASS_COMMON}" """
 
+		title_part="<!-- THE ASSETS SEARCH FORM -->"
+		if show_title:
+			tl={
+				_LANG_EN:"Asset searcher",
+				_LANG_ES:"Buscador de activos"
+			}[lang]
+			title_part=(
+				f"{title_part}\n"
+				f"<h3>{tl}</h3>"
+			)
+
 		html_text=(
 			f"<div {attr_class}>\n"
-				f"<h3>{tl}</h3>\n"
+				f"{title_part}\n"
 				f"""<div id={_ID_FORM_SEARCH_ASSETS}>""" "\n"
 					f"{html_text}\n"
 				"</div>\n"
