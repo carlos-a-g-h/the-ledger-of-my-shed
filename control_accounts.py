@@ -779,6 +779,7 @@ async def route_main(request:Request)->Union[json_response,Response]:
 		await response_fullpage_ext(
 			request,
 			f"SHLED / {tl_title}",
-			html_text
+			html_text,
+			uses_htmx=True
 		)
 	)

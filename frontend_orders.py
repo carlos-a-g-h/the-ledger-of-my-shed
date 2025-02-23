@@ -63,6 +63,7 @@ from frontend_Any import (
 	_CSS_CLASS_FOCUSED,
 	_CSS_CLASS_DANGER,
 	_CSS_CLASS_CONTROLS,
+	_CSS_CLASS_IG_FIELDS,
 
 	_CSS_CLASS_ASSET_IN_ORDER,
 
@@ -268,6 +269,11 @@ def write_form_add_asset_to_order_lucky(
 		full:bool=True,
 	)->str:
 
+	# tl={
+	# 	_LANG_EN:"",
+	# 	_LANG_ES:""
+	# }[lang]
+
 	tl1={
 		_LANG_EN:"Copy value",
 		_LANG_ES:"Copiar valor"
@@ -277,7 +283,7 @@ def write_form_add_asset_to_order_lucky(
 		_LANG_ES:"Agregar ahora"
 	}[lang]
 	html_text=(
-		f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
+		f"""<div class="{_CSS_CLASS_IG_FIELDS}">""" "\n"
 			f"{write_html_input_number(_KEY_RECORD_MOD,value=0,required=True)}\n"
 			f"{write_html_input_string(_KEY_NAME_QUERY,required=True)}\n"
 		"</div>\n"
@@ -296,18 +302,18 @@ def write_form_add_asset_to_order_lucky(
 		"</form>"
 	)
 
-	tl={
-		_LANG_EN:"Quick draw",
-		_LANG_ES:"Tiro rápido"
-	}[lang]
-	html_text=(
-		"<details>"
-			f"<summary>{tl}</summary>\n"
-			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
-				f"{html_text}\n"
-			"</div>\n"
-		"</details>"
-	)
+	# tl={
+	# 	_LANG_EN:"Quick draw",
+	# 	_LANG_ES:"Tiro rápido"
+	# }[lang]
+	# html_text=(
+	# 	"<details>"
+	# 		f"<summary>{tl}</summary>\n"
+	# 		f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
+	# 			f"{html_text}\n"
+	# 		"</div>\n"
+	# 	"</details>"
+	# )
 
 	if full:
 		html_text=(

@@ -430,6 +430,7 @@ async def route_main(
 		await response_fullpage_ext(
 			request,
 			f"SHLED / {tl_title}",
-			html_text
+			html_text,
+			uses_htmx=True
 		)
 	)

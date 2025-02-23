@@ -612,7 +612,7 @@ if __name__=="__main__":
 	)
 
 	rdbc=AsyncIOMotorClient()
-	rdbn="stock-feria"
+	rdbn="test"
 
 	all_assets=async_run(
 		dbi_assets_AssetQuery(

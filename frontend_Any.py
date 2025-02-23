@@ -36,6 +36,7 @@ _CSS_CLASS_MSGZONE_BUTTON="msgzone-button"
 # _CSS_CLASS_TITLE_UNIQUE="title-uniq"
 # _CSS_CLASS_TITLE="title"
 
+_CSS_CLASS_SWITCH="switch"
 _CSS_CLASS_NAV="nav"
 
 _CSS_CLASS_IG_CHECKBOXES="ig-checkboxes"
@@ -65,6 +66,7 @@ _CSS_CLASS_BTN_MENU="main-menu-button"
 _CSS_CLASS_DANGER="danger"
 _CSS_CLASS_FOCUSED="focused"
 
+_SCRIPT_ALPINE="""<script defer src="/src/local/alpine.js"></script>"""
 _SCRIPT_HTMX="""<script src="/src/local/htmx.min.js"></script>"""
 _SCRIPT_HYPERSCRIPT="""<script src="/src/local/hyperscript.js"></script>"""
 

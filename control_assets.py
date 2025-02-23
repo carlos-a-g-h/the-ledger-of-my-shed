@@ -1418,7 +1418,7 @@ async def route_api_export_as_excel(
 		}[lang]
 
 
-	the_name=f"{the_name}.xslx"
+	the_name=f"{the_name}.xlsx"
 
 	print("\nDelivering the excel file")
 	print("includes history?",inc_history)
@@ -1488,6 +1488,7 @@ async def route_main(
 		await response_fullpage_ext(
 			request,
 			f"SHLED / {tl_title}",
-			html_text
+			html_text,
+			uses_htmx=True
 		)
 	)

@@ -18,7 +18,7 @@ from frontend_Any import (
 	write_button_submit
 )
 
-from frontend_orders import write_form_add_asset_to_order_lucky
+# from frontend_orders import write_form_add_asset_to_order_lucky
 
 from symbols_Any import (
 	_LANG_EN,_LANG_ES,
@@ -248,11 +248,11 @@ def write_form_search_assets(
 			"</div>"
 		)
 
-		if order_specific:
-			html_text=(
-				f"{html_text}\n"
-				f"{write_form_add_asset_to_order_lucky(lang,order_id)}"
-			)
+		# if order_specific:
+		# 	html_text=(
+		# 		f"{html_text}\n"
+		# 		f"{write_form_add_asset_to_order_lucky(lang,order_id)}"
+		# 	)
 
 	if order_specific:
 		html_text=(

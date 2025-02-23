@@ -25,6 +25,8 @@ from yarl import URL as yarl_URL
 from frontend_Any import (
 
 	_SCRIPT_HTMX,
+	_SCRIPT_ALPINE,
+	_SCRIPT_HYPERSCRIPT,
 	_STYLE_CUSTOM,
 	# _STYLE_POPUP_CONTENTS,
 	# _CSS_CLASS_TITLE_UNIQUE,
@@ -118,6 +120,7 @@ _src_files={
 	"local":{
 		"hyperscript.js":{"mimetype":_MIMETYPE_JS},
 		"htmx.min.js":{"mimetype":_MIMETYPE_JS},
+		"alpine.js":{"mimetype":_MIMETYPE_JS}
 	},
 	"styles":{}
 }
@@ -409,6 +412,11 @@ async def response_fullpage_ext(
 		html_title:str,
 		html_inner:str,
 		status_code:int=200,
+
+		uses_htmx:bool=False,
+		uses_hyperscript:bool=False,
+		uses_alpine:bool=False,
+
 	)->Response:
 
 	# NOTE: THIS IS HOW FULL PAGES MUST BE DONE
@@ -416,12 +424,19 @@ async def response_fullpage_ext(
 	lang=request[_REQ_LANGUAGE]
 	path_programdir=request.app[_APP_PROGRAMDIR]
 
-	styles=[_SCRIPT_HTMX]
+	head_tag=[]
+	if uses_htmx:
+		head_tag.append(_SCRIPT_HTMX)
+	if uses_hyperscript:
+		head_tag.append(_SCRIPT_HYPERSCRIPT)
+	if uses_alpine:
+		head_tag.append(_SCRIPT_ALPINE)
+
 	devmode_css=(
 		_CFG_FLAG_D_STARTUP_CSS_BAKING in request.app[_CFG_FLAGS]
 	)
 	if devmode_css:
-		styles.extend(
+		head_tag.extend(
 			util_css_gather(
 				path_programdir
 			)
@@ -433,7 +448,7 @@ async def response_fullpage_ext(
 			path_programdir
 		)
 		if path_css is not None:
-			styles.append(
+			head_tag.append(
 				_STYLE_CUSTOM
 			)
 
@@ -441,7 +456,7 @@ async def response_fullpage_ext(
 		body=write_fullpage(
 			lang,html_title,
 			html_inner,
-			styles
+			head_tag
 		),content_type=_MIMETYPE_HTML
 	)
 

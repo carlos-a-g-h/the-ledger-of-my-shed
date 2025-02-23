@@ -63,6 +63,7 @@ from frontend_Any import (
 	# _CSS_CLASS_CONTAINER,
 	# _CSS_CLASS_CONTENT,
 	_CSS_CLASS_NAV,
+	_CSS_CLASS_SWITCH,
 
 	# _CSS_CLASS_COMMON,
 	# _CSS_CLASS_HORIZONTAL,
@@ -92,8 +93,8 @@ from frontend_orders import (
 	# write_html_asset_in_order,
 	write_html_order_as_item,
 	write_html_order_details,
-	write_html_order_info
-
+	write_html_order_info,
+	write_form_add_asset_to_order_lucky,
 	# write_html_order_assets
 )
 
@@ -161,6 +162,7 @@ from symbols_orders import (
 	_ID_FORM_NEW_ORDER,
 	_ID_RESULT_NEW_ORDER,
 	# _ID_ORDER_ASSETS,
+	_ID_LAYOUT_ASSETS_SEARCH,
 
 	html_id_order,
 	# html_id_order_asset
@@ -199,6 +201,77 @@ _ERR_TITLE_REVERT_ORDER={
 	_LANG_EN:"Failed to revert the order",
 	_LANG_ES:"Fallo al revertir la orden"
 }
+
+# LAYOUTS
+
+def write_layout_search_modes(lang:str,order_id:str)->str:
+
+	# Tabs using alpine.js
+	# <div x-data="{ tab: window.location.hash ? window.location.hash.substring(1) : 'standard' }">
+	#   <!-- The tabs navigation -->
+	#   <switch>
+	# 		<!--
+	# 		<button :class="{ 'active': tab === 'description' }" @click.prevent="tab = 'description'; window.location.hash = 'description'" href="#">Description</button>
+	# 		<button :class="{ 'active': tab === 'reviews' }" @click.prevent="tab = 'reviews'; window.location.hash = 'reviews'" href="#">Reviews</button>
+	# 		-->
+	# 	<button :class="{ 'active': tab === 'standard' }" @click.prevent="tab = 'standard'; window.location.hash = 'standard'">Standard mode</button>
+	# 	<button :class="{ 'active': tab === 'advanced' }" @click.prevent="tab = 'advanced'; window.location.hash = 'advanced'">Advanced mode</button>
+	#   </switch>
+
+	#   <!-- The tabs content -->
+	#   <div x-show="tab === 'standard'">
+	# 	standard mode here
+	#   </div>
+	#   <div x-show="tab === 'advanced'">
+	# 	advanced mode here
+	#    </div>
+
+	# </div>
+
+	tl={
+		_LANG_EN:"Standard mode",
+		_LANG_ES:"Modo estándar"
+	}[lang]
+	html_text=(
+		"""<button :class="{ 'active': tab === 'standard' }" @click.prevent="tab = 'standard'; window.location.hash = 'standard'">"""
+			f"{tl}"
+		"</button>"
+	)
+
+	tl={
+		_LANG_EN:"Fast mode",
+		_LANG_ES:"Modo rápido"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		"""<button :class="{ 'active': tab === 'fast' }" @click.prevent="tab = 'fast'; window.location.hash = 'fast'">"""
+			f"{tl}"
+		"</button>"
+	)
+
+	html_text=(
+		f"""<div class="{_CSS_CLASS_SWITCH}">""" "\n"
+			f"{html_text}\n"
+		"</div>"
+		f"""<div x-show="tab === 'standard'">""" "\n"
+			f"{write_form_search_assets(lang,order_id,True)}\n"
+		"</div>\n"
+		f"""<div x-show="tab === 'fast'">""" "\n"
+			f"{write_form_add_asset_to_order_lucky(lang,order_id)}\n"
+		"</div>"
+	)
+
+	alpine_x_data=(
+		"{ tab: window.location.hash ? window.location.hash.substring(1) : 'standard' }"
+	)
+
+	return (
+		f"""<div id="{_ID_LAYOUT_ASSETS_SEARCH}" x-data="{alpine_x_data}">""" "\n"
+			f"{html_text}\n"
+		"</div>"
+	)
+
+# UTILITIES
 
 async def util_patch_order_with_asset_names(
 		app:Application,
@@ -610,7 +683,8 @@ async def route_fgmt_order_details(
 
 				f"""<div id="{_ID_MAIN_ONE}">""" "\n"
 					f"{write_html_logging_area(lang)}\n"
-					f"{write_form_search_assets(lang,order_id=order_id)}\n"
+					f"{write_layout_search_modes(lang,order_id)}\n"
+					# f"{write_form_search_assets(lang,order_id=order_id)}\n"
 				"</div>\n"
 
 				f"""<div id="{_ID_MAIN_TWO}">""" "\n"
@@ -627,10 +701,12 @@ async def route_fgmt_order_details(
 			html_text=(
 				f"{html_text}\n"
 
+				"<!-- RENDERING MAIN-1 ONLY>\n"
+
 				f"""<div hx-swap-oob="innerHTML:#{_ID_MAIN_ONE}">""" "\n"
 					"<!-- start { -->\n"
 						f"{write_html_logging_area(lang)}\n"
-						f"{write_form_search_assets(lang,order_id=order_id)}\n"
+						# f"{write_form_search_assets(lang,order_id=order_id)}\n"
 					"<!-- } end -->\n"
 				"</div>"
 			)
@@ -639,6 +715,8 @@ async def route_fgmt_order_details(
 	
 			html_text=(
 				f"{html_text}\n"
+
+				"<!-- RENDERING MAIN-2 ONLY>\n"
 
 				f"""<div hx-swap-oob="innerHTML:#{_ID_MAIN_TWO}">""" "\n"
 					"<!-- start { -->\n"
@@ -1409,6 +1487,8 @@ async def route_main(
 		await response_fullpage_ext(
 			request,
 			f"SHLED / {tl_title}",
-			html_text
+			html_text,
+			uses_htmx=True,
+			uses_alpine=True
 		)
 	)

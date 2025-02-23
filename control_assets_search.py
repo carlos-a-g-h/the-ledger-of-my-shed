@@ -416,6 +416,11 @@ async def route_api_search_assets(
 
 	if found_stuff:
 
+		html_text=(
+			f"{html_text}\n"
+			f"{write_button_cleanup(lang)}\n"
+		)
+
 		while True:
 			found=found-1
 			if found<0:
@@ -441,11 +446,11 @@ async def route_api_search_assets(
 				"</div>"
 			)
 
-		html_text=(
-				f"{html_text}\n"
-				f"{write_button_cleanup(lang)}\n"
-			"</div>"
-		)
+		# html_text=(
+		# 		f"{html_text}\n"
+		# 		f"{write_button_cleanup(lang)}\n"
+		# 	"</div>"
+		# )
 
 
 	html_text=(
