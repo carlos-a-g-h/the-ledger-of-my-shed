@@ -17,10 +17,17 @@ a.common {
 }
 
 a.common,
+div.switch>button,
 div.anchor-as-button > a:link,
 div.anchor-as-button > a:visited {
 	text-decoration: none;
 	color: black;
+}
+
+div.switch>button {
+	border:2px solid white;
+	background-color:white;
+	color:black;
 }
 
 a.common,
@@ -39,6 +46,7 @@ button.popup-button {
 
 div.anchor-as-button > a:hover,
 a.common:hover,
+div.switch>button:hover,
 button.nav:hover:enabled,
 button.common:hover:enabled,
 button.popup-button:hover:enabled {
@@ -50,6 +58,7 @@ button.popup-button:hover:enabled {
 
 div.anchor-as-button > a:active,
 a.common:active,
+div.switch>button:active:enabled,
 button.common:active:enabled,
 button.nav:active:enabled,
 button.popup-button:active:enabled {
@@ -60,6 +69,7 @@ button.popup-button:active:enabled {
 
 div.anchor-as-button > a:enabled,
 a.common:hover:enabled,
+div.switch>button:hover:enabled,
 button.common:hover:enabled,
 button.nav:hover:enabled,
 button.popup-button:hover:enabled {
@@ -75,8 +85,8 @@ div.anchor-as-button {
 	text-align: center;
 }
 
-
 a.common:active:enabled,
+div.switch>button:active:enabled,
 button.nav:active:enabled,
 button.common:active:enabled,
 button.popup-button:active:enabled {

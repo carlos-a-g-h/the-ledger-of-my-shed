@@ -60,6 +60,7 @@ input.common {
 	/*! margin-top:0.5em; */
 }
 
+div.switch>button,
 textarea.common,
 input.common {
 	/*
@@ -187,6 +188,23 @@ div.assets-in-order > details > form > div.controls {
 	height: 48px;
 }
 
+#layout-assets-search {
+	display:flex;
+	flex-direction: column;
+	gap:16px;
+}
+
+div.switch {
+	display:flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+	border:2px solid black;
+	width:fit-content;
+	height:fit-content;
+	background-color: black;
+	gap: 1px;
+}
+
 @media screen and (orientation: landscape) {
 
 	#main-menu >div {
@@ -271,6 +289,7 @@ div.assets-in-order > details > form > div.controls {
 	#main > div {width:100%;}
 
 	/* assets > search asset(s) */
+	/*
 	#layout-assets-search {
 		display:grid;
 		grid-template-columns: 1fr 1fr;
@@ -278,7 +297,7 @@ div.assets-in-order > details > form > div.controls {
 	}
 	#layout-assets-search>div:nth-child(1){
 		grid-column:1/3;
-	}
+	}*/
 
 }
 
