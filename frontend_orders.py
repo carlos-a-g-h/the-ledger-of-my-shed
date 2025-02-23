@@ -281,9 +281,18 @@ def write_form_add_asset_to_order_lucky(
 	html_text=(
 		f"""<div class="{_CSS_CLASS_IG_FIELDS}">""" "\n"
 			f"{write_html_input_string(_KEY_NAME_QUERY,tl,required=True)}\n"
-			f"{write_html_input_number(_KEY_RECORD_MOD,value=0,required=True)}\n"
+	)
+
+	tl={
+		_LANG_EN:"Quantity",
+		_LANG_ES:"Cantidad"
+	}[lang]
+	html_text=(
+			f"{html_text}\n"
+			f"{write_html_input_number(_KEY_RECORD_MOD,tl,value=0,required=True)}\n"
 		"</div>"
 	)
+
 
 	tl={
 		_LANG_EN:"Copy value",
