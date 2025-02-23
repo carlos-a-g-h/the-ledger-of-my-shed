@@ -703,7 +703,7 @@ async def route_fgmt_order_details(
 			html_text=(
 				f"{html_text}\n"
 
-				"<!-- RENDERING MAIN-1 ONLY>\n"
+				"<!-- RENDERING MAIN-1 ONLY -->\n"
 
 				f"""<div hx-swap-oob="innerHTML:#{_ID_MAIN_ONE}">""" "\n"
 					"<!-- start { -->\n"
@@ -718,7 +718,7 @@ async def route_fgmt_order_details(
 			html_text=(
 				f"{html_text}\n"
 
-				"<!-- RENDERING MAIN-2 ONLY>\n"
+				"<!-- RENDERING MAIN-2 ONLY -->\n"
 
 				f"""<div hx-swap-oob="innerHTML:#{_ID_MAIN_TWO}">""" "\n"
 					"<!-- start { -->\n"
