@@ -5,11 +5,12 @@ button.nav {
 }
 button.nav:disabled {font-weight:bold;}
 
+/*
 div.anchor-as-button {
 	display:flex;
 	align-items:center;
 	justify-content:center;
-}
+}*/
 
 a.common {
 	display:inline-block;
@@ -36,7 +37,15 @@ button.common {
 	border:2px solid black;
 	background-color:white;
 	color:black;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	text-align: center;
+	/*! width: ; */
 }
+
+li>a.common {width:100%;}
+
 button.popup-button {
 	padding-left:1.5em;
 	padding-right:1.5em;
