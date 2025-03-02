@@ -65,6 +65,7 @@ from frontend_Any import (
 	_ID_MSGZONE,
 
 	_ID_NAV_TWO_OPTS,
+	_ID_REQ_RES,
 
 	# _SCRIPT_HTMX,
 	# _STYLE_CUSTOM,
@@ -95,11 +96,15 @@ from frontend_assets import (
 	write_form_export_assets_as_excel,
 
 	write_form_new_asset,
+
 	write_html_asset_info,
 	write_html_asset_as_item,
+
 	write_html_asset_details,
-	write_html_asset_history,
 	write_form_edit_asset_definition,
+
+	write_html_asset_history,
+	write_html_asset_history_records,
 
 	write_form_add_record,
 	write_html_record,
@@ -160,9 +165,15 @@ from symbols_Any import (
 
 from symbols_assets import (
 
+	_ID_FORM_ASSET_EDITOR,
 	_ID_FORM_NEW_ASSET,
-	_ID_RESULT_NEW_ASSET,
+	# _ID_RESULT_NEW_ASSET,
 	_ID_LAYOUT_ASSETS_SEARCH,
+	_ID_ASSET_INFO,
+
+	_ID_FORM_ASSET_HISTORY,
+	_ID_ASSET_HISTORY,
+	_ID_ASSET_SUPPLY,
 
 	_KEY_ASSET,
 	_KEY_NAME,
@@ -170,6 +181,7 @@ from symbols_assets import (
 	# _KEY_TOTAL,
 	_KEY_RECORD_UID,
 	_KEY_RECORD_MOD,
+	_KEY_HISTORY,
 
 	_KEY_INC_HISTORY,
 	_KEY_INC_SUPPLY,
@@ -207,6 +219,30 @@ _ERR_TITLE_GET_ASSET_HR={
 	_LANG_ES:"Error al recuperar registro del historial"
 }
 
+
+# Layouts
+
+def write_layout_asset_panel(
+		lang:str,the_asset:Mapping,
+		authorized:bool
+	)->str:
+
+	asset_id=the_asset.get(_KEY_ASSET)
+
+	html_text=(
+
+		f"""<div id="{_ID_MAIN_ONE}">""" "\n"
+			f"{write_html_asset_details(lang,the_asset,authorized)}\n"
+		"</div>\n"
+
+		f"""<div id="{_ID_MAIN_TWO}">""" "\n"
+			f"{write_html_asset_history(lang,asset_id,the_asset.get(_KEY_HISTORY),authorized)}\n"
+		"</div>\n"
+	)
+
+	return html_text
+
+# Utils
 
 def util_convert_asset_to_kv(
 		data:Optional[Any]
@@ -452,7 +488,7 @@ async def route_api_new_asset(
 				f"{write_form_new_asset(lang,False)}\n"
 			"</div>\n"
 
-			f"""<div hx-swap-oob="afterbegin:#{_ID_RESULT_NEW_ASSET}">""" "\n"
+			f"""<div hx-swap-oob="afterbegin:#{_ID_REQ_RES}">""" "\n"
 				f"{write_html_asset_as_item(lang,result,focused=True)}\n"
 			"</div>"
 		),
@@ -501,13 +537,12 @@ async def route_fgmt_search_assets(
 		content_type=_MIMETYPE_HTML
 	)
 
-async def route_fgmt_asset_details(
+async def route_fgmt_asset_dashboard(
 		request:Request
 	)->Union[json_response,Response]:
 
 	# GET /fgmt/assets/pool/{asset_id}
 	# POST /api/assets/exact-match
-	# hx-target: #messages
 
 	assert_referer(
 		request,
@@ -567,30 +602,52 @@ async def route_fgmt_asset_details(
 			ct,status_code=406
 		)
 
+	render_all=True
+	render_info=False
+	render_history=False
+	if request.path.startswith("/fgmt/assets/pool"):
+		specific=util_valid_str(
+			request.query.get("spec"),
+			lowerit=True
+		)
+		if specific is not None:
+			render_info=(specific==_ID_ASSET_INFO)
+			render_history=(specific==_ID_ASSET_HISTORY)
+
+		if render_info or render_history:
+			render_all=False
+
+	inc_sign=True
+	inc_tag=True
+	inc_comment=True
+	inc_value=True
+	inc_supply=True
+	inc_history=True
+
+	if render_info:
+		inc_history=False
+
+	if render_history:
+		inc_sign=False
+		inc_tag=False
+		inc_comment=False
+		inc_value=False
+		inc_supply=False
+
 	result_aq=await dbi_assets_AssetQuery(
 		request.app[_APP_RDBC],
 		request.app[_APP_RDBN],
 		asset_id_list=[asset_id],
-		get_sign=True,
-		get_tag=True,
-		get_comment=True,
-		get_supply=True,
-		get_history=True,
-		get_value=True
+		get_sign=inc_sign,
+		get_tag=inc_tag,
+		get_comment=inc_comment,
+		get_value=inc_value,
+		get_supply=inc_supply,
+		get_history=inc_history,
 	)
 
 	error_msg:Optional[str]=result_aq.get(_ERR)
 	if error_msg is not None:
-		# if exact_query_by_name:
-		# 	return Response(
-		# 		body=(
-		# 			f"""<div hx-swap-oob="#{_ID_FORM_ASSET_EMATCH}>div">""" "\n"
-		# 				"<!-- UNKNOWN NAME, TRY AGAIN -->\n"
-		# 				f"{write_form_asset_ematch(lang,False)}\n"
-		# 			"</div>"
-		# 		),
-		# 		content_type=_MIMETYPE_HTML
-		# 	)
 
 		return response_errormsg(
 			_ERR_TITLE_SEARCH_ASSETS[lang],
@@ -603,7 +660,7 @@ async def route_fgmt_asset_details(
 	if ct==_TYPE_CUSTOM:
 		return json_response(result_aq)
 
-	tl=write_ul(
+	html_text=write_ul(
 		[
 			write_button_nav_new_asset(lang),
 			write_button_nav_search_assets(lang),
@@ -611,28 +668,38 @@ async def route_fgmt_asset_details(
 		],
 		full=False
 	)
+
 	html_text=(
 		f"<!-- Selected the asset: {asset_id} -->\n"
 
 		f"""<section hx-swap-oob="innerHTML:#{_ID_NAV_TWO_OPTS}">""" "\n"
-			f"{tl}\n"
+			f"{html_text}\n"
 		"</section>\n"
 	)
 
-	html_text=(
-		f"{html_text}\n"
+	if render_all:
+		html_text=(
+			f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
+				f"{write_layout_asset_panel(lang,result_aq,authorized)}\n"
+			"</section>"
+		)
+	if render_history:
+		html_text=(
+			f"{html_text}\n"
+			f"""<div hx-swap-oob="innerHTML:#{_ID_ASSET_HISTORY}">""" "\n"
+				"<!-- REFRESHING HISTORY -->\n"
+				f"{write_html_asset_history_records(lang,asset_id,result_aq.get(_KEY_HISTORY),authorized)}\n"
+			"</div>"
+		)
 
-		f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
-
-			f"""<div id="{_ID_MAIN_ONE}">""" "\n"
-				f"{write_html_asset_details(lang,result_aq,authorized)}\n"
-			"</div>\n"
-			f"""<div id="{_ID_MAIN_TWO}">""" "\n"
-				f"{write_html_asset_history(lang,result_aq,authorized)}\n"
-			"</div>\n"
-		"</section>"
-
-	)
+	if render_info:
+		html_text=(
+			f"{html_text}\n"
+			f"""<div hx-swap-oob="innerHTML:#{_ID_ASSET_INFO}">""" "\n"
+				"<!-- REFRESHING INFO -->\n"
+				f"{write_html_asset_info(lang,result_aq,full=False)}\n"
+			"</div>"
+		)
 
 	return Response(
 		body=html_text,
@@ -843,12 +910,12 @@ async def route_api_asset_edit_definition(
 	return Response(
 		body=(
 
-			f"""<div hx-swap-oob="innerHTML:#{html_id_asset(asset_id,info=True)}">""" "\n"
+			f"""<div hx-swap-oob="innerHTML:#{_ID_ASSET_INFO}">""" "\n"
 				f"{write_html_asset_info(lang,result_nv,False)}\n"
 			"</div>\n"
 
-			f"""<details hx-swap-oob="innerHTML:#{html_id_asset(asset_id,editor=True)}">""" "\n"
-				f"{write_form_edit_asset_definition(lang,asset_id,data=result_nv,full=False)}\n"
+			f"""<details hx-swap-oob="innerHTML:#{_ID_FORM_ASSET_EDITOR}">""" "\n"
+				f"{write_form_edit_asset_definition(lang,asset_id,full=False)}\n"
 			"</details>\n"
 
 			f"<!-- CHANGED METADATA FOR {asset_id}-->"
@@ -1155,15 +1222,15 @@ async def route_api_add_record(
 	html_text=(
 		f"{html_text}\n"
 
-		f"""<code hx-swap-oob="innerHTML:#{html_id_asset(asset_id,supply=True)}">"""
+		f"""<code hx-swap-oob="innerHTML:#{_ID_ASSET_SUPPLY}-{asset_id}">""" "\n"
 			"???"
 		"</code>\n"
 
-		f"""<div hx-swap-oob="innerHTML:#{html_id_asset(asset_id,history=True,controls=True)}">""" "\n"
-			f"{write_form_add_record(lang,asset_id)}\n"
+		f"""<div hx-swap-oob="innerHTML:#{_ID_FORM_ASSET_HISTORY}">""" "\n"
+			f"{write_form_add_record(lang,asset_id,full=False)}\n"
 		"</div>\n"
 
-		f"""<div hx-swap-oob="afterbegin:#{html_id_asset(asset_id,history=True)}">""" "\n"
+		f"""<div hx-swap-oob="afterbegin:#{_ID_ASSET_HISTORY}">""" "\n"
 			f"{html_record}\n"
 		"</div>"
 	)
@@ -1182,7 +1249,7 @@ async def route_api_get_record(
 
 	ct=request[_REQ_CLIENT_TYPE]
 	if ct==_TYPE_BROWSER:
-		if not request.path.startswith("/api/assets/pool/"):
+		if not request.path.startswith("/fgmt/assets/pool/"):
 			return Response(status=403)
 
 	assert_referer(request,ct,_ROUTE_PAGE)
@@ -1205,18 +1272,19 @@ async def route_api_get_record(
 				ct,status_code=406
 			)
 
-	asset_id=util_valid_str(
-		request_data.get(_KEY_ASSET)
-	)
+		asset_id=util_valid_str(
+			request_data.get(_KEY_ASSET)
+		)
+		record_uid=util_valid_str(
+			request_data.get(_KEY_RECORD_UID)
+		)
+
 	if not asset_id:
 		return response_errormsg(
 			_ERR_TITLE_GET_ASSET_HR[lang],
 			f"{_KEY_ASSET}?",
 			ct,status_code=400
 		)
-	record_uid=util_valid_str(
-		request_data.get(_KEY_RECORD_UID)
-	)
 	if not record_uid:
 		return response_errormsg(
 			_ERR_TITLE_GET_ASSET_HR[lang],
@@ -1441,14 +1509,14 @@ async def route_main(
 	)->Union[json_response,Response]:
 
 	lang=request[_REQ_LANGUAGE]
-	userid=request[_REQ_USERID]
+	# userid=request[_REQ_USERID]
 
 	tl_title={
 		_LANG_EN:"Basic asset manager",
 		_LANG_ES:"Gestor básico de activos"
 	}[lang]
 
-	tl=await render_html_user_section(request,lang,userid)
+	tl=await render_html_user_section(request,lang)
 
 	html_text=(
 		f"""<section id="{_ID_MSGZONE}">""" "\n"

@@ -23,6 +23,8 @@ _ID_FORM_ADD_ASSET_LUCKY="form-asset-to-order-lucky"
 _ID_FORM_RUN_OR_REVERT_ORDER="form-run-or-revert-order"
 _ID_ORDER_ASSETS="order-assets"
 
+_ID_FORM_RUN_OR_REV_ORDERS="form-run-or-rev-orders"
+
 _CSS_CLASS_ITEM_ORDER="item-order"
 _CSS_CLASS_ORDER_INFO="order-info"
 

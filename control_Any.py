@@ -85,7 +85,7 @@ from symbols_Any import (
 	_REQ_HAS_SESSION,_REQ_LANGUAGE,
 
 	_CFG_FLAGS,
-	_CFG_FLAG_E_ROOT_LOCAL_AUTOLOGIN,
+	_CFG_FLAG_E_LOGIN_ROOT_LOCAL_AUTOLOGIN,
 	_CFG_FLAG_D_STARTUP_CSS_BAKING,
 
 	# _CFG_ACC_TIMEOUT_OTP,
@@ -119,7 +119,7 @@ _src_files={
 	},
 	"local":{
 		"hyperscript.js":{"mimetype":_MIMETYPE_JS},
-		"htmx.min.js":{"mimetype":_MIMETYPE_JS},
+		"htmx.js":{"mimetype":_MIMETYPE_JS},
 		"alpine.js":{"mimetype":_MIMETYPE_JS}
 	},
 	"styles":{}
@@ -300,7 +300,7 @@ def is_root_local_autologin_allowed(request:Request)->bool:
 	if request.remote not in ("::1","127.0.0.1"):
 		return False
 
-	if _CFG_FLAG_E_ROOT_LOCAL_AUTOLOGIN not in request.app[_CFG_FLAGS]:
+	if _CFG_FLAG_E_LOGIN_ROOT_LOCAL_AUTOLOGIN not in request.app[_CFG_FLAGS]:
 		return False
 
 	return True
@@ -707,8 +707,6 @@ async def the_middleware_factory(app,handler):
 				request.path.startswith("/page/accounts")
 				# NOTE: The admin page has zero public access
 			)
-
-			# TODO: Custom flags that can dumb down the public access to read only stuff would go here
 
 			if not allowed:
 				the_referer:Optional[str]=None

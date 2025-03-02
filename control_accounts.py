@@ -98,7 +98,10 @@ from symbols_Any import (
 
 	_ROOT_USER,_ROOT_USER_ID,
 
-	_CFG_ACC_TIMEOUT_OTP
+	_CFG_ACC_TIMEOUT_OTP,
+
+	_CFG_FLAGS,
+	_CFG_FLAG_E_LOGIN_BACKEND_OTP_ALL
 )
 
 from symbols_accounts import (
@@ -107,8 +110,10 @@ from symbols_accounts import (
 
 	_KEY_USERNAME,
 	_KEY_CON_EMAIL,_KEY_CON_TELEGRAM,
-	_KEY_OTP,_KEY_LMETHOD,
+	_KEY_OTP,_KEY_SIM,
 
+	_ID_FORM_LOGIN,
+	# _ID_USER_ACCOUNT
 )
 
 _ERR_TITLE_LOGIN={
@@ -158,7 +163,7 @@ async def route_fgmt_login(request:Request)->Union[json_response,Response]:
 	return Response(
 		body=(
 			f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
-				f"{write_form_login(lang,False)}\n"
+				f"{write_form_login(lang)}\n"
 			"""</section>"""
 		),
 		content_type=_MIMETYPE_HTML
@@ -198,12 +203,13 @@ async def route_api_login(request:Request)->Union[json_response,Response]:
 			{
 				_LANG_EN:"Check the 'username' field",
 				_LANG_ES:"Revise el campo 'username' (nombre de usuario)"
-			}[lang],_TYPE_BROWSER
+			}[lang],
+			_TYPE_BROWSER
 		)
 
-	lmethod=util_valid_str(
-		request_data.get(_KEY_LMETHOD),
-		True
+	sim=util_valid_str(
+		request_data.get(_KEY_SIM),
+		lowerit=True
 	)
 
 	res_userid=await async_run(
@@ -220,7 +226,8 @@ async def route_api_login(request:Request)->Union[json_response,Response]:
 
 		return response_errormsg(
 			_ERR_TITLE_LOGIN[lang],
-			f"{tl}<br>{res_userid[1]}",_TYPE_BROWSER
+			f"{tl}<br>{res_userid[1]}",
+			_TYPE_BROWSER
 		)
 
 	userid=res_userid[1]
@@ -268,8 +275,8 @@ async def route_api_login(request:Request)->Union[json_response,Response]:
 
 			return Response(
 				body=(
-					f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
-						f"{write_form_otp(lang,username)}\n"
+					f"""<section hx-swap-oob="innerHTML:#{_ID_FORM_LOGIN}">""" "\n"
+						f"{write_form_otp(lang,username,depth=1)}\n"
 					"</section>\n"
 					f"{html_text_popup}"
 				),
@@ -294,14 +301,35 @@ async def route_api_login(request:Request)->Union[json_response,Response]:
 
 	if not is_root:
 
-		if lmethod not in (_KEY_CON_EMAIL,_KEY_CON_TELEGRAM):
-			return response_errormsg(
-				_ERR_TITLE_LOGIN[lang],
-				{
-					_LANG_EN:"The selected method is reserved for the administrator only",
-					_LANG_ES:"El método seleccionado está reservado para el administrador"
-				}[lang],_TYPE_BROWSER
-			)
+		# if lmethod not in (_KEY_CON_EMAIL,_KEY_CON_TELEGRAM):
+		if sim is None:
+
+			allowed=_CFG_FLAG_E_LOGIN_BACKEND_OTP_ALL in request.app[_CFG_FLAGS]
+			if not allowed:
+
+				return response_errormsg(
+					_ERR_TITLE_LOGIN[lang],
+					{
+						_LANG_EN:"The selected method is reserved for the administrator only",
+						_LANG_ES:"El método seleccionado está reservado para el administrador"
+					}[lang],
+					_TYPE_BROWSER
+				)
+
+		if sim is not None:
+
+			if sim not in (
+				_KEY_CON_EMAIL,
+				_KEY_CON_TELEGRAM
+			):
+				return response_errormsg(
+					_ERR_TITLE_LOGIN[lang],
+					{
+						_LANG_EN:"The selected method is not implemented",
+						_LANG_ES:"El método seleccionado no está implementado"
+					}[lang],
+					_TYPE_BROWSER
+				)
 
 	error_msg:Optional[str]=login_prefs.get(_ERR)
 	if error_msg is not None:
@@ -359,8 +387,9 @@ async def route_api_login(request:Request)->Union[json_response,Response]:
 
 	return Response(
 		body=(
-			f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
-				f"{write_form_otp(lang,username,lmethod)}\n"
+			# f"""<section hx-swap-oob="innerHTML:#{_ID_FORM_LOGIN}">""" "\n"
+			f"""<section hx-swap-oob="innerHTML:#{_ID_FORM_LOGIN}">""" "\n"
+				f"{write_form_otp(lang,username,sim,depth=1)}\n"
 			"</section>"
 			),
 		content_type=_MIMETYPE_HTML
@@ -746,14 +775,14 @@ async def route_api_logout(request:Request)->Union[json_response,Response]:
 async def route_main(request:Request)->Union[json_response,Response]:
 
 	lang=request[_REQ_LANGUAGE]
-	userid=request[_REQ_USERID]
+	# userid=request[_REQ_USERID]
 
 	tl_title={
 		_LANG_EN:"User account",
 		_LANG_ES:"Cuenta de usuario"
 	}[lang]
 
-	tl=await render_html_user_section(request,lang,userid)
+	tl=await render_html_user_section(request,lang)
 
 	html_text=(
 		f"""<section id="{_ID_MSGZONE}">""" "\n"

@@ -14,8 +14,16 @@ from symbols_Any import (
 	_KEY_NAME_QUERY,
 	_KEY_SIGN,_KEY_SIGN_UNAME,
 	_KEY_TAG,_KEY_COMMENT,
+
 	_KEY_DATE,
+		_KEY_DATE_MIN,
+		_KEY_DATE_MAX,
+
 	_KEY_DELETE_AS_ITEM,
+
+	_KEY_JOB,
+		_KEY_JOB_RUN,
+		_KEY_JOB_REVERT
 )
 
 from symbols_assets import (
@@ -37,6 +45,8 @@ from symbols_orders import (
 	_KEY_ORDER_DROP,
 	_KEY_ALGSUM,
 	_KEY_COPY_VALUE,
+
+	_ID_FORM_RUN_OR_REV_ORDERS,
 
 	_ID_FORM_NEW_ORDER,
 	_ID_RESULT_NEW_ORDER,
@@ -71,6 +81,8 @@ from frontend_Any import (
 
 	write_button_submit,
 	write_div_display_error,
+	write_html_input_date,
+	write_html_input_radio,
 	write_html_input_number,
 	write_html_input_string,
 	write_html_input_checkbox,
@@ -118,6 +130,90 @@ def write_button_nav_list_orders(lang:str)->str:
 			f"{tl}"
 		"</button>"
 	)
+
+def write_form_run_or_revert_many_orders(
+		lang:str,
+		full:bool=True
+	)->str:
+
+	tl={
+		_LANG_EN:"Date",
+		_LANG_ES:"Fecha"
+	}[lang]
+	html_text=f"{write_html_input_date(_KEY_DATE,tl)}"
+
+	tl={
+		_LANG_EN:"Min. Date",
+		_LANG_ES:"Fecha ini."
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		f"{write_html_input_date(_KEY_DATE_MIN,tl)}"
+	)
+
+	tl={
+		_LANG_EN:"Max. Date",
+		_LANG_ES:"Fecha fin."
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		f"{write_html_input_date(_KEY_DATE_MAX,tl)}"
+	)
+
+
+
+	avail_opts=[
+		(
+			_KEY_JOB_RUN,
+			{
+				_LANG_EN:"",
+				_LANG_ES:""
+			}[lang]
+		),
+		(
+			_KEY_JOB_REVERT,
+			{
+				_LANG_EN:"",
+				_LANG_ES:""
+			}[lang]
+		)
+	]
+
+
+
+	html_text=(
+		f"""<div class="{_CSS_CLASS_IG_FIELDS}">""" "\n"
+			f"{html_text}\n"
+		"</div>\n"
+		"""<div >""" "\n"
+			f"{write_html_input_radio(_KEY_JOB,options=avail_opts)}"
+		"<div>"
+	)
+
+	tl={
+		_LANG_EN:"Apply changes",
+		_LANG_ES:"Aplicar cambios"
+	}[lang]
+	html_text=(
+		"""<form hx-post="/api/orders/run-or-revert-many" """
+			f"""hx-target="#{_ID_MSGZONE}" """
+			"""hx-trigger=submit """
+			"""hx-swap="innerHTML">""" "\n"
+
+			f"{html_text}\n"
+			f"{write_button_submit(tl)}\n"
+
+		"</form>"
+	)
+
+	if full:
+		html_text=(
+			f"""<div id="{_ID_FORM_RUN_OR_REV_ORDERS}">""" "\n"
+				f"{html_text}\n"
+			"</div>"
+		)
+
+	return html_text
 
 def write_form_new_order(lang:str,full:bool=True)->str:
 

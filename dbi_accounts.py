@@ -9,7 +9,7 @@ from sqlite3 import (
 	Cursor as SQLiteCursor,
 	connect as sqlite_connect
 )
-from typing import Mapping,Optional
+from typing import Mapping,Optional,Union
 
 from motor.motor_asyncio import (
 
@@ -20,7 +20,8 @@ from pymongo import MongoClient
 
 from symbols_Any import (
 	_ERR,
-	_ROOT_USER,_ROOT_USER_ID,
+	_ROOT_USER,
+	_ROOT_USER_ID,
 	_DIR_TEMP,
 )
 
@@ -34,8 +35,8 @@ from symbols_accounts import (
 	_SQL_FILE_USERS,
 		_SQL_TABLE_USERS,
 
-	_SQL_COL_USERID,
-	_SQL_COL_USERNAME,
+	# _SQL_COL_USERID,
+	# _SQL_COL_USERNAME,
 
 )
 
@@ -54,6 +55,7 @@ def util_get_db_file(basedir:Path)->Path:
 	return fp
 
 # 1 - Init the users ldb file and add the root user
+
 def dbi_init_create_users_file(basedir:Path):
 
 	sql_file_path=util_get_db_file(basedir)
@@ -68,8 +70,13 @@ def dbi_init_create_users_file(basedir:Path):
 	cur:SQLiteCursor=con.cursor()
 	cur.executescript(
 		f"""CREATE TABLE {_SQL_TABLE_USERS} ("""
-			f"{_SQL_COL_USERID} varchar(128) UNIQUE,"
-			f"{_SQL_COL_USERNAME} varchar(64) UNIQUE,"
+
+			# f"{_SQL_COL_USERID} varchar(128) UNIQUE,"
+			f"{_KEY_USERID} varchar(128) UNIQUE,"
+
+			# f"{_SQL_COL_USERNAME} varchar(64) UNIQUE,"
+			f"{_KEY_USERNAME} varchar(64) UNIQUE,"
+
 			f"{_KEY_CON_EMAIL} varchar(128) UNIQUE,"
 			f"{_KEY_CON_TELEGRAM} varchar(128) UNIQUE"
 		");\n"
@@ -125,28 +132,8 @@ def dbi_init_import_users(
 	cur.close()
 	con.close()
 
-def ldb_debug_show_users(basedir:Path):
+def util_rdb_user_export(the_user:Mapping)->Mapping:
 
-	print("Showing users")
-
-	try:
-		con:SQLiteConnection=sqlite_connect(
-			util_get_db_file(basedir)
-		)
-		cur:SQLiteCursor=con.cursor()
-		cur.execute(
-			f"SELECT * FROM {_SQL_TABLE_USERS};"
-		)
-		for row in cur.fetchall():
-			print(row)
-
-		cur.close()
-		con.close()
-
-	except Exception as exc:
-		print(f"{exc}")
-
-def util_rdb_user_serialize(the_user:Mapping)->Mapping:
 	# Prepares the user data to be written to the remote database
 	# NOTE: returns an entirely new Mapping
 
@@ -166,7 +153,11 @@ def util_rdb_user_serialize(the_user:Mapping)->Mapping:
 		_KEY_CON_TELEGRAM:telegram,
 	}
 
-def util_rdb_user_deserialize(the_user:Mapping)->Mapping:
+def util_rdb_user_import(
+		the_user:Mapping,
+		for_ldb:bool=False
+	)->Union[tuple,Mapping]:
+
 	# Prepares the userdata from the remote database to be used internally by the program
 	# NOTE: returns an entirely new Mapping
 
@@ -174,6 +165,14 @@ def util_rdb_user_deserialize(the_user:Mapping)->Mapping:
 	username=the_user.get(_KEY_USERNAME)
 	email=the_user.get(_KEY_CON_EMAIL)
 	telegram=the_user.get(_KEY_CON_TELEGRAM)
+
+	if for_ldb:
+		return (
+			userid,
+			username,
+			email,
+			telegram
+		)
 
 	noneval=f"None.{userid}"
 
@@ -187,48 +186,6 @@ def util_rdb_user_deserialize(the_user:Mapping)->Mapping:
 		ready.update({_KEY_CON_TELEGRAM:telegram})
 
 	return ready
-
-# def ldbi_save_user(
-# 		basedir:Path,
-
-# 		userid:str,
-# 		username:str,
-
-# 		email:Optional[str]=None,
-# 		telegram:Optional[str]=None,
-
-# 	)->Optional[str]:
-
-# 	sql_query=(
-# 			f"INSERT INTO {_SQL_TABLE_USERS}"
-# 				f"VALUES ("
-# 				f""" "{userid}","{username}");"""
-# 	)
-
-
-
-
-
-
-# 	try:
-# 		con:SQLiteConnection=sqlite_connect(
-# 			basedir.joinpath(
-# 				_DIR_TEMP,
-# 				_SQL_FILE_USERS
-# 			)
-# 		)
-# 		cur:SQLiteCursor=con.cursor()
-# 		cur.execute(
-# 			f"INSERT INTO {_SQL_TABLE_USERS}"
-# 				f""" VALUES ("{userid}","{username}");"""
-# 		)
-# 		con.commit()
-# 		cur.close()
-# 		con.close()
-# 	except Exception as exc:
-# 		return f"{exc}"
-
-# 	return None
 
 def ldbi_get_userid(
 		basedir:Path,
@@ -245,10 +202,12 @@ def ldbi_get_userid(
 		)
 		cur:SQLiteCursor=con.cursor()
 		cur.execute(
-			f"SELECT {_SQL_COL_USERID} "
+			# f"SELECT {_SQL_COL_USERID} "
+			f"SELECT {_KEY_USERID} "
 			# f"SELECT * "
 				f"FROM {_SQL_TABLE_USERS} "
-				f"""WHERE {_SQL_COL_USERNAME}="{username}";"""
+				# f"""WHERE {_SQL_COL_USERNAME}="{username}";"""
+				f"""WHERE {_KEY_USERNAME}="{username}";"""
 		)
 		result_row=cur.fetchone()
 		con.commit()
@@ -284,9 +243,11 @@ def ldbi_get_username(
 		)
 		cur:SQLiteCursor=con.cursor()
 		cur.execute(
-			f"SELECT {_SQL_COL_USERNAME} "
+			# f"SELECT {_SQL_COL_USERNAME} "
+			f"SELECT {_KEY_USERNAME} "
 				f"FROM {_SQL_TABLE_USERS} "
-				f"""WHERE {_SQL_COL_USERID}="{userid}";"""
+				# f"""WHERE {_SQL_COL_USERID}="{userid}";"""
+				f"""WHERE {_KEY_USERID}="{userid}";"""
 		)
 		result_row=cur.fetchone()
 		cur.close()
@@ -397,22 +358,158 @@ async def dbi_CreateUser(
 		return {_ERR:f"{exc}"}
 
 	if get_result:
-		return util_rdb_user_deserialize(user_data)
+		return util_rdb_user_import(user_data)
 
 	return {}
 
+#OK
+def ldb_get_one_or_all_users(
+
+		basedir:Path,
+
+		userid:Optional[str],
+		username:Optional[str],
+
+		con_telegram:Optional[str],
+		con_email:Optional[str],
+
+		inc_root:bool,
+
+	)->Mapping:
+
+	# Returned users are all deserialized
+
+	the_query=""
+
+	has_userid=(userid is not None)
+	has_username=(username is not None)
+	has_telegram=(con_telegram is not None)
+	has_email=(con_email is not None)
+
+	get_all=(
+		(not has_userid) and
+		(not has_username) and
+		(not has_telegram) and
+		(not has_email)
+	)
+
+	the_query=f"SELECT * FROM {_SQL_TABLE_USERS}"
+
+	ready=False
+
+	if not get_all:
+		if has_userid:
+			# the_query=f"{the_query} WHERE {_SQL_COL_USERID}='{userid}'"
+			the_query=f"{the_query} WHERE {_KEY_USERID}='{userid}'"
+			ready=True
+
+		if (not ready) and has_username:
+			# the_query=f"{the_query} WHERE {_SQL_COL_USERNAME}='{username}'"
+			the_query=f"{the_query} WHERE {_KEY_USERNAME}='{username}'"
+			ready=True
+
+		if (not ready) and has_email:
+			the_query=f"{the_query} WHERE {_KEY_CON_EMAIL}='{con_email}'"
+			ready=True
+
+		if (not ready) and has_telegram:
+			the_query=f"{the_query} WHERE {_KEY_CON_TELEGRAM}='{con_telegram}'"
+			ready=True
+
+	the_query=f"{the_query};"
+
+	results=[]
+
+	print(
+		"Running query:",
+		the_query
+	)
+
+	try:
+		con:SQLiteConnection=sqlite_connect(
+			util_get_db_file(basedir)
+		)
+		cur:SQLiteCursor=con.cursor()
+		cur.execute(the_query)
+		for row in cur.fetchall():
+
+			if not inc_root:
+				if row[0]==_ROOT_USER_ID:
+					continue
+
+			results.append(
+				# row
+				util_rdb_user_import(
+					{
+						"_id":row[0],
+						_KEY_USERNAME:row[1],
+						_KEY_CON_EMAIL:row[2],
+						_KEY_CON_TELEGRAM:row[3]
+					}
+				)
+			)
+
+		cur.close()
+		con.close()
+
+	except Exception as exc:
+		return {_ERR:str(exc)}
+
+	return {_MONGO_COL_USERS:results}
+
+# async def dbi_QueryOrListUsers(
+# 		rdbc:AsyncIOMotorClient,
+# 		name_db:str,
+# 		user_id:str,
+# 		username:str,
+# 		extra:Mapping={},
+# 	)->Mapping:
+
+# 	pass
+
+# Ok
+def ldbi_delete_user(
+		basedir:Path,
+		userid:str
+	)->Optional[str]:
+
+	try:
+		con:SQLiteConnection=sqlite_connect(
+			util_get_db_file(basedir)
+		)
+		cur:SQLiteCursor=con.cursor()
+		cur.execute(
+			(
+				f"DELETE FROM {_SQL_TABLE_USERS} "
+					# f"""WHERE {_SQL_COL_USERID}="{userid}";"""
+					f"""WHERE {_KEY_USERID}="{userid}";"""
+			)
+		)
+		con.commit()
+		cur.close()
+		con.close()
+	except Exception as exc:
+		return f"{exc}"
+
+	return None
+
 async def dbi_DeleteUser(
+		basedir:Path,
 		rdbc:AsyncIOMotorClient,
 		name_db:str,
 		userid:str,
-		match_extra:Mapping={}
+		# match_extra:Mapping={}
 	)->Mapping:
 
 	match_this={"_id":userid}
-	# if match_username is not None:
-	# 	match_this.update({_KEY_USERNAME:match_username})
-	if not len(match_extra)==0:
-		match_this.update(match_extra)
+
+	msg_err=await to_thread(
+		ldbi_delete_user,
+		basedir,
+		userid
+	)
+	if msg_err is not None:
+		return {_ERR:msg_err}
 
 	try:
 		tgtcol:AsyncIOMotorCollection=rdbc[name_db][_MONGO_COL_USERS]
@@ -421,16 +518,6 @@ async def dbi_DeleteUser(
 		return {_ERR:f"{exc}"}
 
 	return {}
-
-async def dbi_QueryUser(
-		rdbc:AsyncIOMotorClient,
-		name_db:str,
-		user_id:str,
-		username:str,
-		extra:Mapping={},
-	)->Mapping:
-
-	pass
 
 ###############################################################################
 

@@ -21,13 +21,27 @@ port: 6969
 #   timeout-session: 60
 
 # Special flags
+# NOTE:
+# Some of the flags are not safe to use, and are only useful in local networks away from the internet
+# By default all unsafe flags are all commented, if you want to shoot yourself in the foot it's your problem, not mine
 
 flags:
-  # (Debug) Prints all assets at startup. Keep in mind that they are all loaded at startup anyways for caching purposes, this flag only prints them on screen
+  # (debug)
+  # Prints all assets at startup
+  # Keep in mind that all assets are loaded at startup anyways for caching purposes, this flag only prints them on screen
+  # It is recommended to disable this flag on a production database, because spitting out all the assets at startup can be annoying
   - e-startup-print-assets
 
-  # (Dangerous) Access directly as root in the same machine the server is running. This is useful if you want to run SHLED only as a desktop application completely offline or in a small local network that you trust
-  #- e-root-local-autologin
+  # (unsafe)
+  # If the client is connected to localhost on the same machine, a button for direct login as root will appear instead of the usual login form, it will not ask for the password
+  # Highly recommended if you want to run SHLED in your desktop without the hassle of introducing a username + the generated password
+  #- e-login-root-local-autologin
 
-  # (Debug) Allows all the the CSS files in the sources directory to be reloaded in every /page/ request instead of baking them all together into one file at startup
+  # (unsafe)
+  # Enables backend OTP (None/hidden sign in method) for all users, not just root
+  #- e-login-backend-otp-for-all
+
+  # (debug)
+  # Allows all the the CSS files in the sources directory to be loaded individually instead of baking them all together into a single file at startup
+  # This is useful for customization purposes
   #- d-startup-css-baking

@@ -8,12 +8,14 @@ _KEY_CON_TELEGRAM="telegram"
 _KEY_USERID="userid"
 _KEY_USERNAME="username"
 
+# NOTE: SIM = Sign In Method
+
 _KEY_OTP="otp"
 _KEY_DATE="date"
 # _MS_UA="user_agent"
 # _MS_IP="ip_address"
 _KEY_AKEY="access_key"
-_KEY_LMETHOD="lmethod"
+_KEY_SIM="sim"
 
 _MONGO_COL_USERS="users"
 
@@ -26,9 +28,16 @@ _SQL_TABLE_ACTIVE_SESSIONS="ActiveSessions"
 
 _SQL_COL_DATE="TheDate"
 _SQL_COL_USERID="UserID"
-_SQL_COL_USERNAME="UserName"
-_SQL_COL_TGUID="TelegramUserID"
-_SQL_COL_EMAIL="Email"
+# _SQL_COL_USERNAME="UserName"
+# _SQL_COL_TGUID="TelegramUserID"
+# _SQL_COL_EMAIL="Email"
 _SQL_COL_OTP="OneTimePassword"
 _SQL_COL_AKEY="AccessKey"
 _SQL_COL_SID="SessionID"
+
+_ID_FORM_LOGIN="form-login"
+_ID_USER_ACCOUNT="user-account"
+
+def id_user(userid:str)->str:
+	return f"user-{userid}"
+

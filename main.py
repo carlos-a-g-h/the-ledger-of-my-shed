@@ -35,10 +35,15 @@ from control_accounts import (
 from control_admin import (
 	# _ROUTE_PAGE as _ROUTE_PAGE_ADMIN,
 	route_main as route_Admin,
-	route_api_change_config as route_Admin_api_ChangeConfig,
-	route_api_update_known_asset_names as route_Admin_api_UpdateKnownAssetNames,
+
 	route_fgmt_section_users as route_Admin_fgmt_UsersConfig,
-	route_fgmt_section_misc as route_Admin_fgmt_MiscConfig
+		route_api_new_user as route_Admin_api_new_user,
+		route_api_search_users as route_Admin_api_search_users,
+		route_api_delete_user as route_Admin_api_delete_user,
+
+	route_fgmt_section_misc as route_Admin_fgmt_MiscConfig,
+		route_api_change_config as route_Admin_api_ChangeConfig,
+		route_api_update_known_asset_names as route_Admin_api_UpdateKnownAssetNames,
 )
 
 from control_assets import (
@@ -46,7 +51,7 @@ from control_assets import (
 	route_fgmt_export_options as route_Assets_fgmt_ExportOptions,
 	route_api_export_as_excel as route_Assets_api_ExportAsExcel,
 	route_api_select_asset as route_Assets_api_GetAsset,
-	route_fgmt_asset_details as route_Assets_fgmt_AssetDetails,
+	route_fgmt_asset_dashboard as route_Assets_fgmt_AssetDetails,
 	route_fgmt_new_asset as route_Assets_fgmt_NewAsset,
 	route_api_new_asset as route_Assets_api_NewAsset,
 	route_api_asset_edit_definition as route_Assets_api_EditDefinition,
@@ -130,7 +135,19 @@ from symbols_accounts import (
 )
 from symbols_assets import _ROUTE_PAGE as _ROUTE_PAGE_ASSETS
 from symbols_orders import _ROUTE_PAGE as _ROUTE_PAGE_ORDERS
-from symbols_admin import _ROUTE_PAGE as _ROUTE_PAGE_ADMIN
+
+from symbols_admin import (
+
+	_ROUTE_PAGE as _ROUTE_PAGE_ADMIN,
+		_ROUTE_FGMT_USERS as _ROUTE_ADMIN_FGMT_USERS,
+			_ROUTE_API_USERS_NEW as _ROUTE_ADMIN_API_USERS_NEW,
+			_ROUTE_API_USERS_SEARCH as _ROUTE_ADMIN_API_USERS_SEARCH,
+			_ROUTE_API_USERS_DELETE as _ROUTE_ADMIN_API_USERS_DELETE,
+
+		_ROUTE_FGMT_MISC as _ROUTE_ADMIN_FGMT_MISC,
+			_ROUTE_API_MISC_CHANGE_CONFIG as _ROUTE_ADMIN_API_MISC_CHANGE_CONFIG,
+			_ROUTE_API_MISC_UKANC as _ROUTE_ADMIN_API_MISC_UKANC,
+)
 
 def read_config(path_config:Path)->dict:
 
@@ -304,25 +321,35 @@ def build_app(
 			route_Admin
 		),
 			web_GET(
-				"/fgmt/admin/misc",
+				_ROUTE_ADMIN_FGMT_MISC,
 				route_Admin_fgmt_MiscConfig
 			),
 				web_POST(
-					"/api/admin/misc/change-config",
+					_ROUTE_ADMIN_API_MISC_CHANGE_CONFIG,
 					route_Admin_api_ChangeConfig
 				),
 				web_POST(
-					"/api/admin/misc/update-known-assets",
+					_ROUTE_ADMIN_API_MISC_UKANC,
 					route_Admin_api_UpdateKnownAssetNames
 				),
 
 			web_GET(
-				"/fgmt/admin/users",
+				_ROUTE_ADMIN_FGMT_USERS,
 				route_Admin_fgmt_UsersConfig
 			),
+				web_POST(
+					_ROUTE_ADMIN_API_USERS_NEW,
+					route_Admin_api_new_user
+				),
+				web_POST(
+					_ROUTE_ADMIN_API_USERS_SEARCH,
+					route_Admin_api_search_users
+				),
+				web_DELETE(
+					_ROUTE_ADMIN_API_USERS_DELETE,
+					route_Admin_api_delete_user
+				),
 
-				# /fgmt/admin/users/get-user
-				# /fgmt/admin/users/search
 
 		# ACCOUNT
 

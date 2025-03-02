@@ -1,13 +1,15 @@
 #!/usr/bin/python3.9
 
-from typing import Optional
+from typing import Mapping,Optional
 
 from aiohttp.web import Request
 
 from symbols_accounts import (
 	_ROUTE_CHECKIN,
+	_KEY_USERID,
 	_KEY_CON_EMAIL,_KEY_CON_TELEGRAM,
-	_KEY_LMETHOD,_KEY_OTP,_KEY_USERNAME
+	_KEY_SIM,_KEY_OTP,_KEY_USERNAME,
+	id_user,
 )
 
 from control_Any import (
@@ -18,7 +20,14 @@ from control_Any import (
 from symbols_Any import (
 	_LANG_EN,_LANG_ES,
 	_REQ_USERID,
-	_CFG_ACC_TIMEOUT_SESSION
+	_CFG_ACC_TIMEOUT_SESSION,
+
+)
+
+from symbols_accounts import (
+	_ID_FORM_LOGIN,
+	_ID_USER_ACCOUNT
+
 )
 
 from frontend_Any import (
@@ -26,14 +35,14 @@ from frontend_Any import (
 	_ID_MSGZONE,
 
 	_CSS_CLASS_COMMON,
-	# _CSS_CLASS_HORIZONTAL,
+	_CSS_CLASS_CONTROLS,
 	_CSS_CLASS_NAV,
+	_CSS_CLASS_IG_FIELDS,
 
+	write_html_input_string,
+	write_html_input_radio,
 	# write_button_anchor,
 )
-
-_ID_FORM_LOGIN="form-login"
-_ID_USER_ACCOUNT="user-account"
 
 # def write_link_account(lang:str,return_there:bool=False)->str:
 
@@ -50,6 +59,53 @@ _ID_USER_ACCOUNT="user-account"
 # 		}[lang],
 # 		"/page/accountss"
 # 	)
+
+def write_html_user(
+		lang:str,
+		data:Mapping,
+		full:bool=True
+	)->str:
+
+	userid=data.get(_KEY_USERID)
+
+	username=data.get(_KEY_USERNAME)
+
+	con_telegram=data.get(_KEY_CON_TELEGRAM)
+
+	con_email=data.get(_KEY_CON_EMAIL)
+
+	html_text=(
+		f"<div>{username} | {userid}</div>\n"
+	)
+
+	if con_telegram is not None:
+		tl={
+			_LANG_EN:"Telegram user",
+			_LANG_ES:"Usuario de Telegram"
+		}[lang]
+		html_text=(
+			f"{html_text}\n"
+			f"<div>{tl}: <code>{con_telegram}</code></div>"
+		)
+
+	if con_email is not None:
+		tl={
+			_LANG_EN:"E-Mail",
+			_LANG_ES:"Correo electrónico"
+		}[lang]
+		html_text=(
+			f"{html_text}\n"
+			f"<div>{tl}: <code>{con_email}</code></div>"
+		)
+
+	if full:
+		html_text=(
+			f"""<div id={id_user(userid)} class="{_CSS_CLASS_COMMON}">""" "\n"
+				f"{html_text}\n"
+			"</div>"
+		)
+
+	return html_text
 
 def write_button_login(lang:str)->str:
 
@@ -72,51 +128,52 @@ def write_button_login(lang:str)->str:
 	)
 
 
-def write_form_login(lang:str,full:bool=True)->str:
+def write_form_login(lang:str,depth:int=0)->str:
 
 	# Sends: POST /api/accounts/login {username:String,vmethod:String}
 
-	html_text=(
-		"""<form """
-			"""hx-post="/api/accounts/login" """
-			f"""hx-target="#{_ID_MSGZONE}" """
-			"""hx-swap="innerHTML" """
-			">"
-	)
-
 	tl={
 		_LANG_EN:"Username",
-		_LANG_ES:"Nombre de usuario"
+		_LANG_ES:"Nombre de usuario",
 	}[lang]
 	html_text=(
-		f"{html_text}\n"
-		f"<div>{tl}</div>\n"
-		"<div>"
-			f"""<input name="username" type=text class={_CSS_CLASS_NAV} required>"""
+		f"""<div class="{_CSS_CLASS_IG_FIELDS}">""" "\n"
+			f"{write_html_input_string(_KEY_USERNAME,tl,required=True)}\n"
 		"</div>"
 	)
 
 	tl={
-		_LANG_EN:"Verification method",
-		_LANG_ES:"Método de verificación"
+		_LANG_EN:"Sign in method",
+		_LANG_ES:"Método de inicio de sesión"
 	}[lang]
+	sim_opts=[
+		(
+			_KEY_CON_EMAIL,
+			{
+				_LANG_EN:"E-Mail",
+				_LANG_ES:"Correo electrónico"
+			}[lang]
+		),
+		(
+			_KEY_CON_TELEGRAM,
+			{
+				_LANG_EN:"E-Mail",
+				_LANG_ES:"Correo electrónico"
+			}[lang]
+		),
+		(
+			"",
+			{
+				_LANG_EN:"None/hidden",
+				_LANG_ES:"Ninguno/oculto"
+			}[lang]
+		),
+	]
 	html_text=(
 		f"{html_text}\n"
-		f"<div>{tl}</div>\n"
-
 		"<div>\n"
-			"<div>\n"
-				f"""<input id=vm-email name="{_KEY_LMETHOD}" type=radio value="{_KEY_CON_EMAIL}" checked>""" "\n"
-				"""<label for="vm-email">E-Mail</label>""" "\n"
-			"</div>"
-			"<div>\n"
-				f"""<input id=vm-telegram name="{_KEY_LMETHOD}" type=radio value="{_KEY_CON_TELEGRAM}">""" "\n"
-				"""<label for="vm-telegram">Telegram</label>""" "\n"
-			"</div>\n"
-			"<div>\n"
-				f"""<input id=vm-none name="{_KEY_LMETHOD}" type=radio value="">""" "\n"
-				"""<label for="vm-none">Backend/Local</label>""" "\n"
-			"</div>"
+			f"""<label for="{_KEY_SIM}">{tl}</label>""" "\n"
+			f"{write_html_input_radio(_KEY_SIM,options=sim_opts)}\n"
 		"</div>"
 	)
 
@@ -125,22 +182,35 @@ def write_form_login(lang:str,full:bool=True)->str:
 		_LANG_ES:"Siguiente"
 	}[lang]
 	html_text=(
+		"""<form hx-post="/api/accounts/login" """
+			f"""hx-target="#{_ID_MSGZONE}" """
+			"""hx-swap="innerHTML">""" "\n"
+
 			f"{html_text}\n"
-			f"""<button class="{_CSS_CLASS_COMMON}" type=submit>{tl}</button>""" "\n"
+
+			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
+				f"""<button class="{_CSS_CLASS_COMMON}" type=submit>{tl}</button>""" "\n"
+			"</div>\n"
+
 		"</form>"
 	)
 
-	if full:
+	if depth<2:
 		tl={
 			_LANG_EN:"Session login",
 			_LANG_ES:"Inicio de sesión"
 		}[lang]
 		html_text=(
-			"<div>\n"
-				f"<h3>{tl}</h3>\n"
-				f"""<div id="{_ID_FORM_LOGIN}">""" "\n"
-					f"{html_text}\n"
-				"</div>\n"
+			f"<h3>{tl}</h3>\n"
+			f"""<div id="{_ID_FORM_LOGIN}-inner">""" "\n"
+				f"{html_text}\n"
+			"</div>"
+		)
+
+	if depth<1:
+		html_text=(
+			f"""<div id="{_ID_FORM_LOGIN}">""" "\n"
+				f"{html_text}\n"
 			"</div>"
 		)
 
@@ -149,87 +219,82 @@ def write_form_login(lang:str,full:bool=True)->str:
 def write_form_otp(
 		lang:str,
 		username:str,
-		vmethod:Optional[str]=None,
-		full:bool=True,
+		sim:Optional[str]=None,
+		depth:int=0,
 	)->str:
 
 	# Sends: POST /api/accounts/login-otp {username:String,otp:String}
 
-	# NOTE: The form needs to lead to a full page in order to make those cookies, so I can't use HTMX here
-
-	html_text=(
-		"""<form method="POST" """
-			"""action="/api/accounts/login-otp" """
-			">"
-	)
+	# NOTE: The form needs to lead to a full page load to make those cookies, so I can't use HTMX here
 
 	tl={
 		_LANG_EN:"Enter the generated password",
 		_LANG_ES:"Introduzca la contraseña generada"
 	}[lang]
 	html_text=(
-		f"{html_text}\n"
-		f"<div>{tl}</div>\n"
-		"<div>\n"
-			f"""<input name="{_KEY_USERNAME}" type=hidden value="{username}">""" "\n"
-			f"""<input name="{_KEY_OTP}" type=text class={_CSS_CLASS_COMMON} required>"""
-		"</div>"
+		f"""<input name="{_KEY_USERNAME}" type=hidden value="{username}">""" "\n"
+
+		f"{write_html_input_string(_KEY_OTP,tl,maxlen=32)}"
 	)
+
+	sim_ok=False
+	if sim==_KEY_CON_EMAIL:
+		sim_ok=True
+		tl={
+			_LANG_EN:"The generated password has been sent to your e-mail",
+			_LANG_ES:"La contraseña generada ha sido enviada a su correo electrónico"
+		}[lang]
+
+	if sim==_KEY_CON_TELEGRAM:
+		sim_ok=True
+		tl={
+			_LANG_EN:"The generated password has been sent to you through the Telegram bot",
+			_LANG_ES:"La contraseña generada ha sido enviada a través del bot de Telegram"
+		}[lang]
+
+	if sim_ok:
+		html_text=(
+			f"{html_text}\n"
+			f"<div>[ {tl} ]</div>"
+		)
 
 	tl={
 		_LANG_EN:"Confirm",
 		_LANG_ES:"Confirmar"
 	}[lang]
 	html_text=(
+		f"{html_text}\n"
+		f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
+			f"""<button class="{_CSS_CLASS_COMMON}" type=submit>{tl}</button>""" "\n"
+		"<div>"
+	)
+
+	html_text=(
+		"""<form method="POST" """
+			"""action="/api/accounts/login-otp" """
+			">\n"
+
 			f"{html_text}\n"
-			f"""<button class="{_CSS_CLASS_COMMON}" type=submit>{tl}</button>"""
+
 		"</form>"
 	)
 
-	if vmethod is not None:
-
-		known=False
-
-		tl=""
-
-		if vmethod==_KEY_CON_EMAIL:
-			known=True
-			tl={
-				_LANG_EN:"The generated password has been sent to your e-mail",
-				_LANG_ES:"La contraseña generada fue enviada a su correo electrónico"
-			}[lang]
-
-		if vmethod==_KEY_CON_TELEGRAM:
-			known=True
-			tl={
-				_LANG_EN:"The generated password has been sent to you through the Telegram bot",
-				_LANG_ES:"La contraseña generada ha sido enviada a través del bot de Telegram"
-			}[lang]
-
-		if not known:
-
-			known=True
-			tl={
-				_LANG_EN:"The generated password has been sent through other means",
-				_LANG_ES:"La contraseña generada ha sido enviada por otros medios"
-			}[lang]
-
-		html_text=(
-			f"{html_text}\n"
-			f"<div>{tl}</div>"
-		)
-
-	if full:
+	if depth<2:
 		tl={
 			_LANG_EN:"Session login (OTP)",
 			_LANG_ES:"Inicio de sesión (OTP)"
 		}[lang]
 		html_text=(
-			"<div>\n"
-				f"<h3>{tl}</h3>\n"
-				f"""<div id="{_ID_FORM_LOGIN}">""" "\n"
-					f"{html_text}\n"
-				"</div>\n"
+			f"<h3>{tl}</h3>\n"
+			f"""<div id="{_ID_FORM_LOGIN}-inner">""" "\n"
+				f"{html_text}\n"
+			"</div>"
+		)
+
+	if depth<1:
+		html_text=(
+			f"""<div id="{_ID_FORM_LOGIN}">""" "\n"
+				f"{html_text}\n"
 			"</div>"
 		)
 
@@ -291,7 +356,7 @@ def write_button_logout(lang:str)->str:
 
 async def render_html_user_section(
 		request:Request,
-		lang:str,full:bool=False,
+		lang:str,full:bool=True,
 	)->str:
 
 	html_text=""

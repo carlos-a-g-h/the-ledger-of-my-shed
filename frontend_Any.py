@@ -22,6 +22,8 @@ _ID_NAV_TWO="nav-2"
 _ID_NAV_TWO_OPTS="nav-2-opts"
 _ID_MSGZONE="msgzone"
 _ID_LOGGING="logging"
+_ID_REQ_RES="request-result"
+
 
 # _CSS_CLASS_HX_SWAPPABLE="swappable"
 
@@ -67,7 +69,7 @@ _CSS_CLASS_DANGER="danger"
 _CSS_CLASS_FOCUSED="focused"
 
 _SCRIPT_ALPINE="""<script defer src="/src/local/alpine.js"></script>"""
-_SCRIPT_HTMX="""<script src="/src/local/htmx.min.js"></script>"""
+_SCRIPT_HTMX="""<script src="/src/local/htmx.js"></script>"""
 _SCRIPT_HYPERSCRIPT="""<script src="/src/local/hyperscript.js"></script>"""
 
 _STYLE_CUSTOM="""<link rel="stylesheet" href="/src/special/custom.css">"""

@@ -14,13 +14,12 @@ More will be added but this is what you can do right now:
 
 - CRUD operations for assets definitions
 - Accumulative history for each asset
-- Large scale record modifications using orders
-- User accounts system with dynamic passwords
-- Export assets and orders as excel files
+- Large scale record modifications using orders. Orders are by default locked down uopon executing and can be used for auditing or accurate book keeping
+- User accounts system with dynamic passwords. Users can be created or deleted by the root account
+- Export assets and orders as excel files. The resulting excel files can be edited for any specific purposes
 
 ### Pending
 
-- User creation functionality (the only user right now is root)
 - Propper API (route naming, authorization, etc... ) for custom clients
 - Better CSS consistency
 
@@ -28,14 +27,15 @@ More will be added but this is what you can do right now:
 
 ### Backend
 
-- AioHTTP (A web server framework for Python)
-- MongoDB (Using the motor library)
-- SQLite (Available on the Python standard library)
+- AioHTTP.server (Asynchronous web server for python)
+- MongoDB (Remote/main database, motor and pymongo libraries)
+- SQLite (Local/caching database, python's SQLite3 library)
 
 ### Frontend
 
 - Vainilla HTML/CSS
-- HTMX (It is bundled along with this project but you can provide your own if you want to)
+- HTMX
+- AlpineJS
 
 ## How to run this ?
 
@@ -70,3 +70,15 @@ NOTE: Relative paths are relative not to your working directory, but to the prog
 Add/modify CSS files to the sources directory. At the startup phase, the files will be concatenated into a single 'custom.css' file and this is the CSS file that will be loaded on each page request
 
 There is a flag called 'd-startup-css-baking', this flag disables the default CSS "baking phase" and allows you to modify the CSS in a way more comfortable way while the server is running
+
+### Bring your own files
+
+The HTMX and AlpineJS files that come with SHLED can be updated with newer versions or replaced with your own copies
+
+```
+$ wget https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js -O sources/alpine.js
+```
+
+```
+$ wget https://unpkg.com/htmx.org@2.x.x -O sources/htmx.min.js
+```

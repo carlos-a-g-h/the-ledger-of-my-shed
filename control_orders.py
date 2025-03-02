@@ -264,7 +264,7 @@ def write_layout_search_modes(lang:str,order_id:str)->str:
 	)
 
 	alpine_x_data=(
-		"{ tab: window.location.hash ? window.location.hash.substring(1) : 'standard' }"
+		"{ tab : 'standard' }"
 	)
 
 	return (

@@ -1,5 +1,6 @@
 #!/usr/bin/python3.9
 
+from asyncio import to_thread
 from typing import Optional,Union
 
 from aiohttp.web import (
@@ -11,27 +12,60 @@ from symbols_Any import (
 
 	_APP_LANG,_LANG_EN,_LANG_ES,
 	_APP_PROGRAMDIR,
+	_APP_RDBC,_APP_RDBN,
+
 	_MIMETYPE_HTML,
 	_TYPE_CUSTOM,_TYPE_BROWSER,
 	_CFG_LANG,_CFG_PORT,
-	_REQ_LANGUAGE,_REQ_USERID,
+	_REQ_LANGUAGE,_REQ_USERID,_REQ_CLIENT_TYPE,
 	_CFG_PORT_MIN,_CFG_PORT_MAX,
 
+	_KEY_GETRES,
+	_KEY_DELETE_AS_ITEM,
+
+	_ERR,
+
 	_ROOT_USER_ID,
+	_ROOT_USER,
 	# _CFG_FLAGS,
 	# _CFG_FLAG_ROOT_LOCAL_AUTOLOGIN
 )
 
-from symbols_admin import _ROUTE_PAGE
+from symbols_accounts import (
+
+	_MONGO_COL_USERS,
+
+	_KEY_USERID,
+		_KEY_USERNAME,
+		_KEY_CON_EMAIL,
+		_KEY_CON_TELEGRAM,
+
+	id_user,
+)
+
+
+from symbols_admin import (
+
+	_ROUTE_PAGE,
+
+	_ID_CREATE_USER,
+	_ID_SEARCH_USERS,
+
+	_ID_LAYOUT_SETTINGS_USERS,
+	_ID_MISC_SETTINGS,
+)
 
 from frontend_Any import (
 
 	_ID_NAV_ONE,
 	_ID_NAV_TWO,_ID_NAV_TWO_OPTS,
-	_ID_MAIN,_ID_MAIN_ONE,_ID_MAIN_TWO,
+	_ID_MAIN,
+	#_ID_MAIN_ONE,_ID_MAIN_TWO,
 	_ID_MSGZONE,
+	_ID_REQ_RES,
 
 	_CSS_CLASS_NAV,
+	_CSS_CLASS_SWITCH,
 
 	# _STYLE_CUSTOM,
 	# _STYLE_POPUP,
@@ -45,15 +79,22 @@ from frontend_Any import (
 
 # from frontend_accounts import write_html_user_section
 
-from frontend_accounts import render_html_user_section
+from frontend_accounts import (
+
+	write_html_user,
+	render_html_user_section,
+)
 
 from frontend_admin import (
+
+	write_html_user_as_item,
+	# write_button_delete_user,
 
 	write_form_update_config,
 	write_button_update_known_asset_names,
 	write_button_nav_users,
 	write_button_nav_misc_settings,
-	write_form_create_user,
+	write_form_new_user,
 	write_form_search_users,
 )
 
@@ -71,6 +112,14 @@ from control_Any import (
 
 from control_assets import util_update_known_assets
 
+from dbi_accounts import (
+	dbi_CreateUser,
+	dbi_DeleteUser,
+	# dbi_QueryOrListUsers,
+
+	ldb_get_one_or_all_users,
+)
+
 from internals import (
 	util_valid_bool,
 	util_valid_str,
@@ -86,44 +135,81 @@ _ERR_TITLE_CONFIG_CHANGE={
 	_LANG_ES:"Error de cambio de configuración"
 }
 
-async def route_fgmt_section_users(
-		request:Request
-	)->Union[json_response,Response]:
+_ERR_TITLE_NEW_USER={
+	_LANG_EN:"Failed to create new user",
+	_LANG_ES:"Fallo al crear el usuario nuevo"
+}
 
-	# GET: /fgmt/admin/users
+_ERR_TITLE_SEARCH_USERS={
+	_LANG_EN:"Search/listing error",
+	_LANG_ES:"Error de búsqueda o listado"
+}
 
-	assert_referer(
-		request,
-		_TYPE_BROWSER,
-		_ROUTE_PAGE
+_ERR_TITLE_DELETE_USER={
+	_LANG_EN:"Unable to delete the user",
+	_LANG_ES:"Fallo al eliminar el usuario"
+}
+
+# layouts
+
+def write_layout_users(lang:str)->str:
+
+	x_data=(
+		"{ currpage:0 , nothing:'<!-- EMPTY -->' }"
 	)
 
-	lang=request[_REQ_LANGUAGE]
+	code_empty=(
+		f"document.getElementById('{_ID_REQ_RES}').innerHTML=nothing"
+	)
 
-	return Response(
-		body=(
-			f"""<section hx-swap-oob="innerHTML:#{_ID_NAV_TWO_OPTS}">""" "\n"
-				f"{write_ul([write_button_nav_misc_settings(lang)])}\n"
-			"</section>\n"
+	##############################################################################
 
-			f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
+	tl={
+		_LANG_EN:"Create user(s)",
+		_LANG_ES:"Crear usuario(s)"
+	}[lang]
+	html_text=(
+		f"""<div class="{_CSS_CLASS_SWITCH}">""" "\n"
+			f"""<button class="{_CSS_CLASS_SWITCH}" x-on:click="currpage=0;{code_empty};">{tl}</button>"""
+	)
 
-				"<!-- USER SETTINGS -->\n"
+	tl={
+		_LANG_EN:"Search user(s)",
+		_LANG_ES:"Buscar usuario(s)"
+	}[lang]
+	html_text=(
+			f"{html_text}\n"
+			f"""<button class="{_CSS_CLASS_SWITCH}" x-on:click="currpage=1;{code_empty};">{tl}</button>""" "\n"
+		"</div>"
+	)
 
-				f"""<div id="{_ID_MAIN_ONE}">""" "\n"
-					f"{write_form_create_user(lang)}\n"
+	html_text=(
+		f"""<div x-data="{x_data}" id="{_ID_LAYOUT_SETTINGS_USERS}">""" "\n"
+
+			f"{html_text}\n"
+
+			"""<div>""" "\n"
+
+				"""<div x-show="currpage===0">""" "\n"
+					f"{write_form_new_user(lang)}\n"
 				"</div>\n"
 
-				f"""<div id="{_ID_MAIN_TWO}">""" "\n"
+				"""<div x-show="currpage===1">""" "\n"
 					f"{write_form_search_users(lang)}\n"
 				"</div>\n"
 
-			"</section>\n"
+			"</div>\n"
 
-			"<!-- USER ACCOUNTS MANAGEMENT -->"
-		),
-		content_type=_MIMETYPE_HTML
+			f"""<div id="{_ID_REQ_RES}">""" "\n"
+				"<!-- EMPTY -->\n"
+			"</div>"
+
+		"</div>"
 	)
+
+	return html_text
+
+# routes
 
 async def route_fgmt_section_misc(
 		request:Request
@@ -139,17 +225,19 @@ async def route_fgmt_section_misc(
 
 	lang=request[_REQ_LANGUAGE]
 
-	return Response(
-		body=(
-			f"""<section hx-swap-oob="innerHTML:#{_ID_NAV_TWO_OPTS}">""" "\n"
-				f"{write_ul([write_button_nav_users(lang)])}\n"
-			"</section>\n"
+	html_text=(
+		f"""<ul hx-swap-oob="innerHTML:#{_ID_NAV_TWO_OPTS}">""" "\n"
+			f"{write_ul([write_button_nav_users(lang)],full=False)}\n"
+		"</ul>\n\n"
 
-			f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
-				f"{write_form_update_config(lang)}\n"
-				f"{write_button_update_known_asset_names(lang)}\n"
-			"</section>"
-		),
+		f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
+			f"{write_form_update_config(lang)}\n"
+			f"{write_button_update_known_asset_names(lang)}\n"
+		"</section>"
+	)
+
+	return Response(
+		body=html_text,
 		content_type=_MIMETYPE_HTML
 	)
 
@@ -323,9 +411,9 @@ async def route_api_change_config(
 
 	return Response(
 		body=(
-			"""<section hx-swap-oob="innerHTML:#admin-config">""" "\n"
+			f"""<div hx-swap-oob="innerHTML:#{_ID_MISC_SETTINGS}-inner">""" "\n"
 				f"{write_form_update_config(lang,False)}"
-			"</section>\n"
+			"</div>\n"
 			f"{write_popupmsg(html_text)}"
 		),
 		content_type=_MIMETYPE_HTML
@@ -375,6 +463,334 @@ async def route_api_update_known_asset_names(
 		content_type=_MIMETYPE_HTML
 	)
 
+# routes / users
+
+async def route_fgmt_section_users(
+		request:Request
+	)->Union[json_response,Response]:
+
+	# GET: /fgmt/admin/users
+
+	assert_referer(
+		request,
+		_TYPE_BROWSER,
+		_ROUTE_PAGE
+	)
+
+	lang=request[_REQ_LANGUAGE]
+
+	return Response(
+		body=(
+			# f"""<section hx-swap-oob="innerHTML:#{_ID_NAV_TWO_OPTS}">""" "\n"
+			# 	f"{write_ul([write_button_nav_misc_settings(lang)])}\n"
+			# "</section>\n"
+			f"""<ul hx-swap-oob="innerHTML:#{_ID_NAV_TWO_OPTS}">""" "\n"
+				f"{write_ul([write_button_nav_misc_settings(lang)],full=False)}\n"
+			"</ul>\n\n"
+
+			f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
+
+				f"{write_layout_users(lang)}\n"
+
+			"</section>\n"
+
+			"<!-- USER ACCOUNTS MANAGEMENT -->"
+		),
+		content_type=_MIMETYPE_HTML
+	)
+
+async def route_api_new_user(
+		request:Request
+	)->Union[json_response,Response]:
+
+	# POST: /api/admin/users/new-user
+
+	ct=request[_REQ_CLIENT_TYPE]
+
+	assert_referer(request,ct,_ROUTE_PAGE)
+
+	lang=request[_REQ_LANGUAGE]
+
+	req_data=await get_request_body_dict(ct,request)
+	if req_data is None:
+		return response_errormsg(
+			_ERR_TITLE_NEW_USER[lang],
+			_ERR_DETAIL_DATA_NOT_VALID[lang],
+			ct,status_code=406
+		)
+
+	username=util_valid_str(
+		req_data.get(_KEY_USERNAME),
+		lowerit=True
+	)
+	if username is None:
+		return response_errormsg(
+			_ERR_TITLE_NEW_USER[lang],
+			{
+				_LANG_EN:"The username is mandatory",
+				_LANG_ES:"El nombre de usuario es obligatorio"
+			}[lang],
+			ct,status_code=406
+		)
+
+	if username==_ROOT_USER:
+		return response_errormsg(
+			_ERR_TITLE_NEW_USER[lang],
+			{
+				_LANG_EN:"That usename is already taken (by the admin)",
+				_LANG_ES:"Ese nombre de usuario ya está ocupado (por el administrador)"
+			}[lang],
+			ct,status_code=406
+		)
+
+	acc_telegram=util_valid_str(
+		req_data.get(_KEY_CON_TELEGRAM)
+	)
+
+	acc_email=util_valid_str(
+		req_data.get(_KEY_CON_EMAIL),
+		lowerit=True
+	)
+
+	get_result=True
+	if ct==_TYPE_CUSTOM:
+		get_result=util_valid_bool(
+			req_data.get(_KEY_GETRES),
+			dval=False
+		)
+
+
+	dbir_cu=await dbi_CreateUser(
+		request.app[_APP_PROGRAMDIR],
+		request.app[_APP_RDBC],
+		request.app[_APP_RDBN],
+		username,
+		con_telegram=acc_telegram,
+		con_email=acc_email,
+		get_result=get_result
+	)
+	if ct==_TYPE_CUSTOM:
+		return dbir_cu
+
+	err_msg=dbir_cu.get(_ERR)
+	if err_msg is not None:
+		return response_errormsg(
+			_ERR_TITLE_NEW_USER[lang],
+			f"{_ERR_DETAIL_DBI_FAIL[lang]}: {err_msg}",
+			ct,status_code=400
+		)
+
+
+	html_text=(
+		f"""<div hx-swap-oob="innerHTML:#{_ID_CREATE_USER}-inner">""" "\n"
+			f"{write_form_new_user(lang,full=False)}\n"
+		"</div>\n"
+
+		f"""<div hx-swap-oob="afterbegin:#{_ID_REQ_RES}">""" "\n"
+			f"{write_html_user(lang,dbir_cu)}\n"
+		"</div>\n"
+
+		f"<!-- USER {dbir_cu.get(_KEY_USERID)} CREATED -->"
+	)
+
+	return Response(
+		body=html_text,
+		content_type=_MIMETYPE_HTML
+	)
+
+async def route_api_search_users(
+		request:Request
+	)->Union[json_response,Response]:
+
+	ct=request[_REQ_CLIENT_TYPE]
+	assert_referer(request,ct,_ROUTE_PAGE)
+
+	lang=request[_REQ_LANGUAGE]
+
+	req_data=await get_request_body_dict(ct,request)
+	if req_data is None:
+		return response_errormsg(
+			_ERR_TITLE_SEARCH_USERS[lang],
+			_ERR_DETAIL_DATA_NOT_VALID[lang],
+			ct,status_code=406
+		)
+
+	username=util_valid_str(
+		req_data.get(_KEY_USERNAME),
+		lowerit=True
+	)
+
+	con_telegram=util_valid_str(
+		req_data.get(_KEY_CON_TELEGRAM)
+	)
+
+	con_email=util_valid_str(
+		req_data.get(_KEY_CON_EMAIL)
+	)
+
+	query_result=await to_thread(
+		ldb_get_one_or_all_users,
+		request.app[_APP_PROGRAMDIR],
+		None,username,
+		con_telegram,
+		con_email,
+		False
+	)
+	msg_err=query_result.get(_ERR)
+	if msg_err is not None:
+		tl={
+			_LANG_EN:"Details",
+			_LANG_ES:"Detalles"
+		}[lang]
+		return response_errormsg(
+			_ERR_TITLE_SEARCH_USERS[lang],
+			f"{tl}: {msg_err}",
+			ct,status_code=400
+		)
+
+	if ct==_TYPE_CUSTOM:
+		return query_result
+
+	html_text=""
+
+	found=len(
+		query_result[_MONGO_COL_USERS]
+	)
+
+	for user in query_result[_MONGO_COL_USERS]:
+
+		html_text=(
+			f"{html_text}\n"
+			f"{write_html_user_as_item(lang,user)}"
+		)
+
+	html_text=(
+
+		f"""<div hx-swap-oob="innerHTML:#{_ID_SEARCH_USERS}-inner">""" "\n"
+			f"{write_form_search_users(lang,full=False)}\n"
+		"</div>\n"
+
+		f"""<div hx-swap-oob="innerHTML:#{_ID_REQ_RES}">""" "\n"
+			f"{html_text}\n"
+		"</div>\n"
+	)
+
+	if not found==0:
+		html_text=(
+			f"{html_text}\n"
+			f"<!-- FOUND: {found} -->"
+		)
+
+	if found==0:
+		tl={
+			_LANG_EN:"No users match the provided data",
+			_LANG_ES:"Ningún usuario concuerda con la información dada"
+		}[lang]
+		html_text=(
+			f"{html_text}\n"
+			f"{write_popupmsg(tl)}"
+		)
+
+	return Response(
+		body=html_text,
+		content_type=_MIMETYPE_HTML
+	)
+
+async def route_api_delete_user(
+		request:Request
+	)->Union[json_response,Response]:
+
+	ct=request[_REQ_CLIENT_TYPE]
+	assert_referer(request,ct,_ROUTE_PAGE)
+
+	lang=request[_REQ_LANGUAGE]
+
+	req_data=await get_request_body_dict(ct,request)
+	if req_data is None:
+		return response_errormsg(
+			_ERR_TITLE_DELETE_USER[lang],
+			_ERR_DETAIL_DATA_NOT_VALID[lang],
+			ct,status_code=406
+		)
+
+	userid=util_valid_str(
+		req_data.get(_KEY_USERID),
+		lowerit=True
+	)
+	if userid is None:
+		return response_errormsg(
+			_ERR_TITLE_DELETE_USER[lang],
+			{
+				_LANG_EN:"User ID missing",
+				_LANG_ES:"Falta el ID de usuario"
+			}[lang],
+			ct,status_code=406
+		)
+
+	if userid==_ROOT_USER_ID:
+		return response_errormsg(
+			_ERR_TITLE_DELETE_USER[lang],
+			{
+				_LANG_EN:"The admin is immortal",
+				_LANG_ES:"El administrador es inmortal"
+			}[lang],
+			ct,status_code=406
+		)
+
+	dbi_res=await dbi_DeleteUser(
+		request.app[_APP_PROGRAMDIR],
+		request.app[_APP_RDBC],
+		request.app[_APP_RDBN],
+		userid
+	)
+	err_msg=dbi_res.get(_ERR)
+	if err_msg is not None:
+		tl={
+			_LANG_EN:"Details",
+			_LANG_ES:"Detalles"
+		}[lang]
+		return response_errormsg(
+			_ERR_TITLE_DELETE_USER[lang],
+			f"{tl}: {err_msg}",
+			ct,status_code=406
+		)
+
+	if ct==_TYPE_CUSTOM:
+		return json_response(dbi_res)
+
+	delete_as_item=util_valid_bool(
+		req_data.get(_KEY_DELETE_AS_ITEM),
+		dval=False
+	)
+
+	html_text="<!-- USER DELETED -->"
+
+	if delete_as_item:
+
+		html_text=(
+			f"{html_text}\n"
+			f"""<div hx-swap-oob="outerHTML:#{id_user(userid)}">""" "\n"
+				f"<!-- THANOS SNAPPED: {userid}-->\n"
+			"</div>"
+		)
+
+	if not delete_as_item:
+
+		html_text=(
+			f"{html_text}\n"
+			f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
+				f"{write_layout_users(lang)}\n"
+			"</section>"
+
+		)
+
+	return Response(
+		body=html_text,
+		content_type=_MIMETYPE_HTML
+	)
+
+# the page
+
 async def route_main(
 		request:Request
 	)->Union[json_response,Response]:
@@ -390,7 +806,7 @@ async def route_main(
 	}[lang]
 
 
-	tl=await render_html_user_section(request,lang,userid)
+	tl=await render_html_user_section(request,lang)
 
 	html_text=(
 		f"""<section id="{_ID_MSGZONE}">""" "\n"
@@ -415,7 +831,10 @@ async def route_main(
 			ul_id=_ID_NAV_TWO_OPTS,
 			ul_classes=[_CSS_CLASS_NAV]
 		)
-		html_text=f"{html_text}\n{tl}"
+		html_text=(
+			f"{html_text}\n"
+			f"{tl}"
+		)
 
 	html_text=(
 			f"{html_text}\n"
@@ -431,6 +850,7 @@ async def route_main(
 			request,
 			f"SHLED / {tl_title}",
 			html_text,
-			uses_htmx=True
+			uses_htmx=True,
+			uses_alpine=True,
 		)
 	)
