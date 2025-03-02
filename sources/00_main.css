@@ -173,11 +173,10 @@ div.assets-in-order > details > form > div.controls {
   padding:16px
 }
 
-
-
 #main-1,#main-2 {
 	display:flex;
 	flex-direction:column;
+	flex-wrap:nowrap;
 	gap:12px;
 }
 

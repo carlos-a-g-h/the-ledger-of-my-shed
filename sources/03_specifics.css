@@ -1,14 +1,21 @@
 div.form-inside-a-div > form,
+#form-asset-history>form,
 #form-asset-to-order-lucky >form,
 #form-new-order >form,
 #form-new-asset > form,
 #form-search-assets,
 #form-search-assets > form,
-#form-assets-to-spreadsheet > form {
+#form-assets-to-spreadsheet > form,
+#layout-settings-users,
+#form-login-inner > form,
+#form-search-users-inner>form,
+#form-create-user-inner>form {
   display:flex;
   flex-direction: column;
+  flex-wrap: nowrap;
   gap:16px;
 }
+
 
 #form-assets-to-spreadsheet > form > div {
   display:flex;
@@ -27,7 +34,8 @@ div.form-inside-a-div > form,
 
 #form-asset-editor > form > div.common,
 #result-search-assets,
-result-new-asset,
+#request-result,
+#asset-history,
 div.item-order,
 div.item-asset,
 div.order-info {
