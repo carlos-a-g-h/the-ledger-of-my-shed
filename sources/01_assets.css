@@ -1,0 +1,46 @@
+#asset-ematch,
+#asset-ematch-form,
+#asset-editor,
+#asset-editor-form,
+#asset-history,
+#asset-history-form,
+#search-assets,
+#assets-search-form > form,
+#assets-to-spreadsheet > form,
+#new-asset,
+#new-asset-form > form {
+	display:flex;
+	flex-direction: column;
+	flex-wrap: nowrap;
+	gap:16px;
+}
+
+
+div.item-asset,
+#assets-search-info,
+#result-search-assets,
+#layout-assets-search,
+#assets-to-spreadsheet > form > div {
+	display:flex;
+	flex-direction: column;
+	flex-wrap:nowrap;
+	gap:8px;
+}
+
+@media screen and (orientation: landscape) {
+	#layout-assets-search #assets-search-result {
+		display: flex;
+		flex-direction: row;
+		flex-wrap: wrap;
+		gap:8px;
+	}
+}
+
+@media screen and (orientation: portrait) {
+	#layout-assets-search #assets-search-result {
+		display: flex;
+		flex-direction: column;
+		flex-wrap: nowrap;
+		gap:8px;
+	}
+}

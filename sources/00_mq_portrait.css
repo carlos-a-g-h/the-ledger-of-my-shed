@@ -1,0 +1,93 @@
+@media screen and (orientation: portrait) {
+
+	#main-menu >div {
+		display:flex;
+		width:128px;
+		flex-direction: column;
+		flex-wrap: nowrap;
+	}
+
+	#nav-1 {
+		display:flex;
+		flex-direction: column;
+		align-items:center;
+		justify-content:space-between;
+		gap:4px;
+		width:100vw;
+		height:72px;
+	}
+	#nav-1 > div {
+		display: flex;
+		justify-content:center;
+		flex-direction: column;
+		flex-grow: 1;
+		height: 100%;
+	}
+
+	#nav-1 > ul.nav {
+		display:flex;
+		flex-grow: 1;
+		flex-direction: row;
+		align-items: end;
+		height:40px;
+	}
+	#nav-1 > ul.nav > li {
+		height:40px;
+		width:128px;
+		display:flex;
+	}
+
+	#nav-2 {
+		bottom:0;
+		left:0;
+		width:100vw;
+		padding:16px;
+
+		border-top: 1px solid black;
+		display:flex;
+		flex-direction:column-reverse;
+		align-items:center;
+		gap:24px;
+	}
+	#nav-2 > ul.nav {
+		display:flex;
+		flex-direction: row;
+		gap:1em;
+	}
+	#user-account {
+		display:flex;
+		flex-direction: row;
+		gap:12px;
+	}
+	#user-account div {
+		font-weight: bold;
+		font-size: xx-large;
+		align-self: start;
+	}
+	#main {
+		display:flex;
+		flex-direction: column;
+		flex-wrap: nowrap;
+		gap:1em;
+		margin-left: 1em;
+		margin-right: 1em;
+		margin-top: 80px;
+		margin-bottom:160px;
+	}
+
+	#layout-assets-search {
+		display:flex;
+		flex-direction: column;
+		flex-wrap: nowrap;
+		gap:8px;
+	}
+
+	#order-dashboard{
+		display:flex;
+		flex-direction: column;
+		flex-wrap: nowrap;
+		gap:2em;
+		
+	}
+
+}

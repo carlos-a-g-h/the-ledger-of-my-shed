@@ -1,0 +1,57 @@
+@media screen and (orientation: landscape) {
+  #all-orders {
+    display:flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap:8px;
+  }
+}
+
+@media screen and (orientation: portrait) {
+  #all-orders {
+    display:flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap:8px;
+  }
+}
+
+#form-new-order >form,
+#order-asset-tools,
+#form-asset-to-order-bnq,
+#form-asset-to-order-bnq-inner>form {
+	display:flex;
+	flex-direction: column;
+	flex-wrap:nowrap;
+	gap:16px;
+}
+
+div.item-order,
+div.order-info,
+#order-info,
+#order-assets,
+#order-assets-list {
+  display:flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap:8px;
+}
+
+#form-run-or-revert-order > form {
+  display:flex;
+  flex-direction:row;
+  gap:16px;
+  align-items:center;
+  justify-content: space-around;
+}
+
+div.asset-in-order > div > div.controls {
+	justify-content: space-between;
+	margin-top:1em;
+	margin-bottom:1em;
+}
+div.asset-in-order > div > div.controls > div.common {
+	min-width:64px;
+	max-width:160px;
+}
+

@@ -1,0 +1,9 @@
+#layout-settings-users,
+#form-login-inner > form,
+#form-search-users-inner>form,
+#form-create-user-inner>form {
+  display:flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap:16px;
+}
