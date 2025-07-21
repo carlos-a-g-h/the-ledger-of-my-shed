@@ -196,7 +196,8 @@ jobs:
     strategy:
       max-parallel: 2
       matrix:
-        binary: [ windows-latest, ubuntu-24.04, ubuntu-22.04, ubuntu-20.04 ]
+        # binary: [ windows-latest, ubuntu-24.04, ubuntu-22.04, ubuntu-20.04 ]
+        binary: [ windows-latest, ubuntu-24.04, ubuntu-22.04 ]
 
     runs-on: ubuntu-latest
     steps:
