@@ -230,7 +230,15 @@ def write_html_assets_search_results(
 			)
 			continue
 
-		asset_id=search_results[idx][_KEY_ASSET]
+		asset_id=None
+		if isinstance(search_results[idx],tuple):
+			if len(search_results[idx])==2:
+				if not search_results[idx][0]==_ERR:
+					asset_id=search_results[idx][0]
+
+		if isinstance(search_results[idx],Mapping):
+			if _KEY_ASSET in search_results[idx].keys():
+				asset_id=search_results[idx][_KEY_ASSET]
 
 		html_text=(
 			f"{html_text}\n"
