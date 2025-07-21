@@ -31,9 +31,13 @@ from symbols_Any import (
 
 from symbols_assets import(
 	# _KEY_NAME,
-	_ID_FORM_ASSET_EMATCH,
-	_ID_FORM_SEARCH_ASSETS,
-	_ID_RESULT_SEARCH_ASSETS,
+	_ID_ASSET_EMATCH,
+		_ID_ASSET_EMATCH_FORM,
+
+	_ID_ASSETS_SEARCH,
+		_ID_ASSETS_SEARCH_FORM,
+		_ID_ASSETS_SEARCH_RESULT,
+
 	_KEY_INC_SUPPLY as _KEY_GET_SUPPLY,
 	_KEY_INC_VALUE as _KEY_GET_VALUE,
 )
@@ -75,14 +79,12 @@ def write_form_asset_ematch(lang:str,full:bool=True)->str:
 			_LANG_ES:"Búsqueda precisa"
 		}[lang]
 		html_text=(
-			# f"""<div id="{_ID_FORM_ASSET_EMATCH}" """
-			# "<div>\n"
-			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
+			f"""<div id="{_ID_ASSET_EMATCH}" """
+				f"""class="{_CSS_CLASS_COMMON}">""" "\n"
 
 				f"<h3>{tl}</h3>\n"
 
-				# f"""<div class="{_CSS_CLASS_HX_SWAPPABLE}">""" "\n"
-				f"""<div id="{_ID_FORM_ASSET_EMATCH}">""" "\n"
+				f"""<div id="{_ID_ASSET_EMATCH_FORM}">""" "\n"
 					f"{html_text}\n"
 				"</div>\n"
 
@@ -94,7 +96,7 @@ def write_form_asset_ematch(lang:str,full:bool=True)->str:
 def write_button_cleanup(lang:str)->str:
 
 	onclick=(
-		f""" document.getElementById('{_ID_RESULT_SEARCH_ASSETS}').innerHTML='<!-- ALL CLEAN -->' """
+		f""" document.getElementById('{_ID_ASSETS_SEARCH_RESULT}').innerHTML='<!-- ALL CLEAN -->' """
 	)
 
 	tl={
@@ -116,6 +118,7 @@ def write_form_search_assets(
 		full:bool=True,
 		decorate:bool=False,
 		show_title:bool=True,
+		# show_cleanup_btn:bool=False
 	)->str:
 
 	order_specific=isinstance(order_id,str)
@@ -206,6 +209,10 @@ def write_form_search_assets(
 			"</div>"
 		)
 
+	# html_cleanup_btn=""
+	# if show_cleanup_btn:
+	# 	html_cleanup_btn=write_button_cleanup(lang)
+
 	tl={
 		_LANG_EN:"Perform search",
 		_LANG_ES:"Realizar búsqueda"
@@ -214,16 +221,17 @@ def write_form_search_assets(
 			f"{html_text}\n"
 			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
 				"""<button type="submit" """
-					f"""class="{_CSS_CLASS_COMMON}" """
-					">"
+					f"""class="{_CSS_CLASS_COMMON}">"""
 					f"{tl}"
 				"</button>"
+
+				# f"{html_cleanup_btn}"
+
 			"</div>\n"
 		"</form>"
 	)
 
 	if full:
-
 
 		attr_class=""
 		if decorate:
@@ -241,9 +249,9 @@ def write_form_search_assets(
 			)
 
 		html_text=(
-			f"<div {attr_class}>\n"
+			f"""<div id="{_ID_ASSETS_SEARCH}" {attr_class}>""" "\n"
 				f"{title_part}\n"
-				f"""<div id={_ID_FORM_SEARCH_ASSETS}>""" "\n"
+				f"""<div id={_ID_ASSETS_SEARCH_FORM}>""" "\n"
 					f"{html_text}\n"
 				"</div>\n"
 			"</div>"
@@ -251,16 +259,10 @@ def write_form_search_assets(
 
 		html_text=(
 			f"{html_text}\n"
-			f"""<div id={_ID_RESULT_SEARCH_ASSETS}>""" "\n"
+			f"""<div id={_ID_ASSETS_SEARCH_RESULT}>""" "\n"
 				"<!-- SEARCH RESULTS GO HERE -->\n"
 			"</div>"
 		)
-
-		# if order_specific:
-		# 	html_text=(
-		# 		f"{html_text}\n"
-		# 		f"{write_form_add_asset_to_order_lucky(lang,order_id)}"
-		# 	)
 
 	if order_specific:
 		html_text=(

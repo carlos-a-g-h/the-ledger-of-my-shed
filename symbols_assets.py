@@ -2,6 +2,11 @@
 
 _ROUTE_PAGE="/page/assets"
 
+_SQL_FILE_ASSETS="assets.cache"
+_SQL_TABLE_ASSETS="Assets"
+
+_FILE_ASSETS="assets.db"
+
 _COL_ASSETS="assets"
 
 _KEY_NAME="name"
@@ -19,16 +24,25 @@ _KEY_INC_VALUE="include_value"
 
 _ID_LAYOUT_ASSETS_SEARCH="layout-assets-search"
 
-_ID_FORM_ASSETS_TO_SPREADSHEET="form-assets-to-spreadsheet"
-_ID_FORM_NEW_ASSET="form-new-asset"
-_ID_RESULT_NEW_ASSET="result-new-asset"
-_ID_FORM_SEARCH_ASSETS="form-search-assets"
-_ID_RESULT_SEARCH_ASSETS="result-search-assets"
-_ID_FORM_ASSET_EMATCH="form-asset-ematch"
+_ID_ASSETS_TO_SPREADSHEET="assets-to-spreadsheet"
 
-_ID_FORM_ASSET_EDITOR="form-asset-editor"
-_ID_FORM_ASSET_HISTORY="form-asset-history"
+_ID_NEW_ASSET="new-asset"
+_ID_NEW_ASSET_FORM="new-asset-form"
+
+_ID_ASSETS_SEARCH="assets-search"
+_ID_ASSETS_SEARCH_FORM="assets-search-form"
+_ID_ASSETS_SEARCH_RESULT="assets-search-result"
+
+_ID_ASSET_EMATCH="asset-ematch"
+_ID_ASSET_EMATCH_FORM="asset-ematch-form"
+
+_ID_ASSET_EDITOR="asset-editor"
+_ID_ASSET_EDITOR_FORM="asset-editor-form"
+
 _ID_ASSET_HISTORY="asset-history"
+_ID_ASSET_HISTORY_FORM="asset-history-form"
+_ID_ASSET_HISTORY_RECORDS="asset-history-records"
+
 _ID_ASSET_INFO="asset-info"
 _ID_ASSET_SUPPLY="asset-supply"
 

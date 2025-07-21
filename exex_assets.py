@@ -26,7 +26,7 @@ from symbols_assets import (
 	_KEY_RECORD_MOD
 )
 
-from dbi_assets import dbi_assets_AssetQuery
+from dbi_assets import dbi_rem_AssetQuery
 from internals import (
 	util_valid_int,
 	util_valid_str,
@@ -577,7 +577,7 @@ async def main(
 	print("\tdate_min",date_min)
 	print("\tdate_max",date_max)
 
-	result_aq=await dbi_assets_AssetQuery(
+	result_aq=await dbi_rem_AssetQuery(
 		rdbc,rdbn,
 		get_tag=True,
 		get_value=True,
@@ -615,7 +615,7 @@ if __name__=="__main__":
 	rdbn="test"
 
 	all_assets=async_run(
-		dbi_assets_AssetQuery(
+		dbi_rem_AssetQuery(
 			rdbc,rdbn,
 			get_value=True,
 			get_history=True

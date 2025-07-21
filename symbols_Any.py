@@ -13,6 +13,8 @@ _ONE_MB=1048576
 _DIR_TEMP="temp"
 _DIR_SOURCES="sources"
 
+_MONGO_URL_DEFAULT="mongodb://127.0.0.1:27017"
+
 # Errors
 
 _ERR="error"
@@ -34,8 +36,9 @@ _APP_CACHE_ASSETS="AssetsCache"
 _APP_BAKED_CSS="Baked_CSS"
 _APP_RDBN="MongoDB-DB-Name"
 _APP_RDBC="MongoDB-Client"
+_APP_TGHC="Telegram-Client"
 
-# Date conversio formats
+# Date conversion formats
 
 _FMT_DATE_YMDHMS="%Y-%m-%d-%H-%M-%S"
 _FMT_DATE_YMDHM="%Y-%m-%d-%H-%M"
@@ -56,6 +59,7 @@ _MIMETYPE_JS="application/javascript"
 _MIMETYPE_JSON="application/json"
 _MIMETYPE_FORM="application/x-www-form-urlencoded"
 _MIMETYPE_EXCEL="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+_MIMETYPE_SQLITE3="application/vnd.sqlite3"
 
 # HTTP Headers
 
@@ -99,6 +103,7 @@ _REQ_CLIENT_TYPE="Client_Type"
 _REQ_IS_HTMX="RequestFromHTMX"
 _REQ_HAS_SESSION="Has_Session?"
 _REQ_LANGUAGE="Language"
+_REQ_PATH="Path_In_Pathlib"
 
 # Config file
 
@@ -111,7 +116,9 @@ _CFG_ACC_TIMEOUT_OTP="timeout-otp"
 _CFG_ACC_TIMEOUT_SESSION="timeout-session"
 
 _CFG_FLAGS="flags"
+_CFG_FLAG_D_SECURITY="d-security"
 _CFG_FLAG_E_STARTUP_PRINT_ASSETS="e-startup-print-assets"
+_CFG_FLAG_E_STARTUP_PRINT_NW_INTERFACES="e-startup-print-nw-interfaces"
 _CFG_FLAG_D_STARTUP_CSS_BAKING="d-startup-css-baking"
 _CFG_FLAG_E_LOGIN_ROOT_LOCAL_AUTOLOGIN="e-login-root-local-autologin"
 _CFG_FLAG_E_LOGIN_BACKEND_OTP_ALL="e-login-backend-otp-for-all"
@@ -123,14 +130,24 @@ _CFG_PORT="port"
 _CFG_PORT_MIN=1024
 _CFG_PORT_MAX=65535
 
-# Keys/Fields agnostic for ANYTHING
+_CFG_TELEGRAM="telegram"
+_CFG_TELEGRAM_API_ID="api-id"
+_CFG_TELEGRAM_API_HASH="api-hash"
+_CFG_TELEGRAM_BOT_TOKEN="bot-token"
+_CFG_TELEGRAM_API_LVL="tg-api-lvl"
 
+# Keys/Fields fit for for ANYTHING
 
+_KEY_ID="_id"
+_KEY_STATUS="status"
+# _KEY_MQUALITY="mquality"
 _KEY_SIGN="sign"
 _KEY_SIGN_UNAME="sign_uname"
 _KEY_TAG="tag"
 _KEY_COMMENT="comment"
 _KEY_DATE="date"
+
+_KEY_FOCUS="focus"
 
 _KEY_GETRES="get-result"
 

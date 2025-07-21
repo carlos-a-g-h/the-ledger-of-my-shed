@@ -53,7 +53,7 @@ from symbols_orders import (
 	_KEY_ORDER_IS_FLIPPED
 )
 
-from dbi_assets import dbi_assets_AssetQuery
+from dbi_assets import dbi_rem_AssetQuery
 
 async def dbi_orders_IsItLocked(
 		rdbc:AsyncIOMotorClient,
@@ -304,7 +304,7 @@ async def dbi_orders_PatchAsset(
 			not isinstance(the_value,int)
 		)
 
-		the_asset=await dbi_assets_AssetQuery(
+		the_asset=await dbi_rem_AssetQuery(
 			rdbc,name_db,
 			asset_id_list=[asset_id],
 			get_value=get_that_value
@@ -420,7 +420,7 @@ async def dbi_orders_DropAsset(
 			not isinstance(the_value,int)
 		)
 
-		the_asset=await dbi_assets_AssetQuery(
+		the_asset=await dbi_rem_AssetQuery(
 			rdbc,name_db,
 			asset_id_list=[asset_id],
 			get_value=get_that_value

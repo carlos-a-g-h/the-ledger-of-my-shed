@@ -7,15 +7,17 @@ from pathlib import Path
 from secrets import token_hex
 
 from typing import (
-	Any,Mapping,
-	Union,Optional
+	Any,
+	Mapping,
+	# Union,
+	Optional
 )
 
 from aiohttp.web import (
-	Application,
+	# Application,
 	Request,
 	Response,json_response,
-	FileResponse
+	FileResponse,HTTPError
 )
 
 from control_Any import (
@@ -36,17 +38,23 @@ from control_Any import (
 from control_assets_search import (
 	_ERR_TITLE_SEARCH_ASSETS,
 	_ERR_DETAIL_MATCH_MTO,
-	util_asset_fuzzy_finder,
+	# util_asset_fuzzy_finder,
 )
 
 from dbi_assets import (
 
-	dbi_assets_EditAssetMetadata,
-	dbi_assets_CreateAsset,
-	dbi_assets_AssetQuery,
-	dbi_assets_DropAsset,
-	dbi_assets_History_AddRecord,
-	dbi_assets_History_GetSingleRecord
+	# aw_dbi_loc_update_anames,
+	# aw_dbi_loc_query_assets_by_name,
+	# dbi_loc_GetAssetNames,
+	dbi_loc_QueryByName,
+	dbi_loc_UpdateAssetNames,
+
+	dbi_rem_EditAssetMetadata,
+	dbi_rem_CreateAsset,
+	dbi_rem_AssetQuery,
+	dbi_rem_DropAsset,
+	dbi_rem_History_AddRecord,
+	dbi_rem_History_GetSingleRecord
 )
 
 from exex_assets import (
@@ -129,7 +137,7 @@ from symbols_Any import (
 	# _ROOT_USER_REAL,
 
 	_LANG_EN,_LANG_ES,
-	_APP_CACHE_ASSETS,
+	# _APP_CACHE_ASSETS,
 	# _APP_ROOT_USERID,
 	_APP_PROGRAMDIR,
 
@@ -144,10 +152,12 @@ from symbols_Any import (
 
 	_APP_RDBC,_APP_RDBN,
 
+	_REQ_PATH,
 	_REQ_CLIENT_TYPE,_REQ_LANGUAGE,
 	_REQ_USERID,_REQ_HAS_SESSION,
 
-	_CFG_FLAGS,_CFG_FLAG_E_STARTUP_PRINT_ASSETS,
+	# _CFG_FLAGS,
+	# _CFG_FLAG_E_STARTUP_PRINT_ASSETS,
 
 	_KEY_NAME_QUERY,
 	_KEY_TAG,
@@ -165,19 +175,28 @@ from symbols_Any import (
 
 from symbols_assets import (
 
-	_ID_FORM_ASSET_EDITOR,
-	_ID_FORM_NEW_ASSET,
-	# _ID_RESULT_NEW_ASSET,
 	_ID_LAYOUT_ASSETS_SEARCH,
+
+	_ROUTE_PAGE,
+
+	# _ID_ASSET_EDITOR,
 	_ID_ASSET_INFO,
 
-	_ID_FORM_ASSET_HISTORY,
+	# _ID_NEW_ASSET,
+		_ID_NEW_ASSET_FORM,
+
 	_ID_ASSET_HISTORY,
+		_ID_ASSET_HISTORY_FORM,
+		_ID_ASSET_HISTORY_RECORDS,
+
+	_ID_ASSET_EDITOR_FORM,
+
 	_ID_ASSET_SUPPLY,
 
 	_KEY_ASSET,
 	_KEY_NAME,
 	_KEY_VALUE,
+	_KEY_SUPPLY,
 	# _KEY_TOTAL,
 	_KEY_RECORD_UID,
 	_KEY_RECORD_MOD,
@@ -191,9 +210,9 @@ from symbols_assets import (
 
 )
 
-# from internals import util_rnow
+from symbols_orders import _ROUTE_PAGE as _ROUTE_PAGE_ORDERS
 
-_ROUTE_PAGE="/page/assets"
+# from internals import util_rnow
 
 _ERR_TITLE_RECORD_MOD={
 	_LANG_EN:"History modification error",
@@ -265,42 +284,7 @@ def util_convert_asset_to_kv(
 
 	return {asset_id:asset_name}
 
-async def util_update_known_assets(
-		app:Application,
-		startup:bool=True
-	)->bool:
-
-	dbi_result=await dbi_assets_AssetQuery(
-		app[_APP_RDBC],
-		app[_APP_RDBN]
-	)
-
-	size=len(dbi_result)
-
-	if startup:
-		if _CFG_FLAG_E_STARTUP_PRINT_ASSETS in app[_CFG_FLAGS]:
-			print("Assets: {",dbi_result,"}")
-
-	if size==0:
-		return False
-
-	x=-1
-	while True:
-		x=x+1
-		if x==size:
-			break
-
-		app[_APP_CACHE_ASSETS].update(
-			util_convert_asset_to_kv(
-				dbi_result.pop()
-			)
-		)
-
-	return True
-
-async def route_fgmt_new_asset(
-		request:Request
-	)->Union[json_response,Response]:
+async def route_fgmt_new_asset(request:Request)->Response:
 
 	# /fgmt/assets/new
 	# hx-target: #messages
@@ -333,9 +317,7 @@ async def route_fgmt_new_asset(
 		content_type=_MIMETYPE_HTML
 	)
 
-async def route_api_new_asset(
-		request:Request
-	)->Union[json_response,Response]:
+async def route_api_new_asset(request:Request)->Response:
 
 	# POST /api/assets/new
 	# hx-target: #messages
@@ -368,24 +350,34 @@ async def route_api_new_asset(
 			ct,status_code=406
 		)
 
-	ematch=util_asset_fuzzy_finder(
-		request.app,
-		asset_name,
-		find_exact_only=True
+	# NOTE: OK
+
+	match_found:Optional[tuple]=await dbi_loc_QueryByName(
+		request.app[_APP_PROGRAMDIR],
+		asset_name,exact=True
 	)
-	if len(ematch)>0:
+	if match_found is not None:
 
-		ematch_id=ematch[_KEY_ASSET]
+		iserr=(match_found[0]==_ERR)
 
-		tl={
-			_LANG_EN:"An asset with the same name already exists",
-			_LANG_ES:"Un activo con el mismo nombre ya existe"
-		}[lang]
-		return response_errormsg(
-			_ERR_TITLE_NEW_ASSET[lang],
-			f"{tl};ID = {ematch_id}",
-			ct,status_code=406
-		)
+		msg_err:Optional[str]=None
+		if iserr:
+			msg_err=f"{_ERR_DETAIL_DBI_FAIL[lang]}: {match_found[1]}"
+
+		if not iserr:
+			if match_found[1].strip().lower()==asset_name.strip().lower():
+				tl={
+					_LANG_EN:"An asset with the same name already exists",
+					_LANG_ES:"Un activo con el mismo nombre ya existe"
+				}[lang]
+				msg_err=f"{tl}: {match_found[0]} {match_found[1]}"
+
+		if msg_err is not None:
+			return response_errormsg(
+				_ERR_TITLE_NEW_ASSET[lang],
+				msg_err,
+				ct,status_code=406
+			)
 
 	asset_sign=util_valid_str(
 		request_data.get(_KEY_SIGN)
@@ -432,6 +424,10 @@ async def route_api_new_asset(
 		request_data.get(_KEY_VALUE),
 		fallback=0,minimum=0
 	)
+	asset_supply=util_valid_int_ext(
+		request_data.get(_KEY_SUPPLY),
+		fallback=0,minimum=0
+	)
 
 	vlvl=2
 	if ct==_TYPE_CUSTOM:
@@ -442,13 +438,15 @@ async def route_api_new_asset(
 
 	asset_id=token_hex(8)
 
-	result=await dbi_assets_CreateAsset(
+	result=await dbi_rem_CreateAsset(
+		request.app[_APP_PROGRAMDIR],
 		request.app[_APP_RDBC],
 		request.app[_APP_RDBN],
-		asset_id,asset_name,
-		asset_sign,asset_tag=asset_tag,
-		asset_value=asset_value,
+		asset_id,asset_name,asset_sign,
+		asset_tag=asset_tag,
 		asset_comment=asset_comment,
+		asset_value=asset_value,
+		asset_supply=asset_supply,
 		verblvl=vlvl
 	)
 
@@ -460,10 +458,15 @@ async def route_api_new_asset(
 			ct,400
 		)
 
-	# Add the new asset to the cache
-	request.app[_APP_CACHE_ASSETS].update({
-		asset_id:asset_name
-	})
+	# msg_err:Optional[str]=await dbi_loc_UpdateAssetNames(
+	# 	request.app[_APP_PROGRAMDIR],
+	# 	items_add=[(asset_id,asset_name)]
+	# )
+	# if msg_err is not None:
+	# 	print(
+	# 		f"{dbi_loc_UpdateAssetNames.__name__}()",
+	# 		_ERR,msg_err
+	# 	)
 
 	if ct==_TYPE_CUSTOM:
 		return json_response(data=result)
@@ -474,17 +477,13 @@ async def route_api_new_asset(
 		_LANG_EN:"Asset created",
 		_LANG_ES:"Activo creado"
 	}[lang]
-	html_popup=write_popupmsg(f"<h2>{tl}</h2>")
+	html_popup=write_popupmsg(tl)
 
 	return Response(
 		body=(
 			f"{html_popup}\n"
 
-			# f"""<section hx-swap-oob="innerHTML:#{_ID_NAVIGATION}">""" "\n"
-			# 	f"{write_ul([write_button_nav_search_assets(lang)])}\n"
-			# "</section>\n"
-
-			f"""<div hx-swap-oob="innerHTML:#{_ID_FORM_NEW_ASSET}">""" "\n"
+			f"""<div hx-swap-oob="innerHTML:#{_ID_NEW_ASSET_FORM}">""" "\n"
 				f"{write_form_new_asset(lang,False)}\n"
 			"</div>\n"
 
@@ -495,9 +494,7 @@ async def route_api_new_asset(
 		content_type=_MIMETYPE_HTML
 	)
 
-async def route_fgmt_search_assets(
-		request:Request
-	)->Union[json_response,Response]:
+async def route_fgmt_search_assets(request:Request)->Response:
 
 	# GET: /fgmt/assets/search-assets
 	# hx-target: #messages
@@ -537,20 +534,42 @@ async def route_fgmt_search_assets(
 		content_type=_MIMETYPE_HTML
 	)
 
-async def route_fgmt_asset_dashboard(
-		request:Request
-	)->Union[json_response,Response]:
+async def route_fgmt_asset_dashboard(request:Request)->Response:
 
 	# GET /fgmt/assets/pool/{asset_id}
+	# GET /fgmt/assets/pool/{asset_id}/as-msgbox
 	# POST /api/assets/exact-match
 
-	assert_referer(
-		request,
-		_TYPE_BROWSER,
-		_ROUTE_PAGE
-	)
-
+	orders_or_assets_page=False
 	ct=request[_REQ_CLIENT_TYPE]
+	if ct==_TYPE_BROWSER:
+		orders_or_assets_page=(
+			request.path.startswith("/fgmt/assets/pool/") and
+			request[_REQ_PATH].name=="details"
+		)
+		if not orders_or_assets_page:
+			assert_referer(
+				request,
+				_TYPE_BROWSER,
+				_ROUTE_PAGE
+			)
+
+		if orders_or_assets_page:
+			in_assets=assert_referer(
+				request,
+				_TYPE_BROWSER,
+				_ROUTE_PAGE,
+				explode=False
+			)
+			in_orders=assert_referer(
+				request,
+				_TYPE_BROWSER,
+				_ROUTE_PAGE_ORDERS,
+				explode=False
+			)
+			if not (in_assets or in_orders):
+				print(request.path,"REFERER NOT VALID")
+				raise HTTPError("Referer not valid")
 
 	authorized=request[_REQ_HAS_SESSION]
 
@@ -577,17 +596,37 @@ async def route_fgmt_asset_dashboard(
 			)
 
 		if query_name is not None:
-			results_qn=util_asset_fuzzy_finder(
-				request.app,query_name
-			)
-			print("RESULTS",results_qn)
-			if len(results_qn)==1:
-				asset_id=results_qn[0].get(_KEY_ASSET)
 
-			if asset_id is None:
+			msg_err:Optional[str]=None
+
+			matches_found:list=await dbi_loc_QueryByName(
+				request.app[_APP_PROGRAMDIR],
+				query_name,
+			)
+
+			total_found=len(matches_found)
+
+			if total_found==0:
+				msg_err={
+					_LANG_EN:"Unable to find any matches",
+					_LANG_ES:"No se pudo encontrar nada"
+				}[lang]
+
+			if total_found==1:
+				item=matches_found.pop()
+				iserr=(item[0]==_ERR)
+				if iserr:
+					msg_err=f"{_ERR_DETAIL_DBI_FAIL[lang]}: {item[1]}"
+				if not iserr:
+					asset_id=item[0]
+
+			if total_found>1:
+				msg_err=_ERR_DETAIL_MATCH_MTO[lang]
+
+			if msg_err is not None:
 				return response_errormsg(
-					_ERR_TITLE_SEARCH_ASSETS[lang],
-					_ERR_DETAIL_MATCH_MTO[lang],
+					_ERR_TITLE_NEW_ASSET[lang],
+					msg_err,
 					ct,status_code=406
 				)
 
@@ -602,10 +641,16 @@ async def route_fgmt_asset_dashboard(
 			ct,status_code=406
 		)
 
+	render_as_msgbox=False
 	render_all=True
 	render_info=False
 	render_history=False
 	if request.path.startswith("/fgmt/assets/pool"):
+
+		render_as_msgbox=(
+			request[_REQ_PATH].name=="details"
+		)
+
 		specific=util_valid_str(
 			request.query.get("spec"),
 			lowerit=True
@@ -624,7 +669,7 @@ async def route_fgmt_asset_dashboard(
 	inc_supply=True
 	inc_history=True
 
-	if render_info:
+	if render_info or render_as_msgbox:
 		inc_history=False
 
 	if render_history:
@@ -634,7 +679,7 @@ async def route_fgmt_asset_dashboard(
 		inc_value=False
 		inc_supply=False
 
-	result_aq=await dbi_assets_AssetQuery(
+	result_aq=await dbi_rem_AssetQuery(
 		request.app[_APP_RDBC],
 		request.app[_APP_RDBN],
 		asset_id_list=[asset_id],
@@ -660,6 +705,22 @@ async def route_fgmt_asset_dashboard(
 	if ct==_TYPE_CUSTOM:
 		return json_response(result_aq)
 
+	if render_as_msgbox:
+
+		html_text=write_popupmsg(
+			write_html_asset_info(lang,result_aq),
+			{
+				_LANG_EN:"Asset details",
+				_LANG_ES:"Detalles del activo"
+			}[lang]
+		)
+
+		return Response(
+			body=html_text,
+			content_type=_MIMETYPE_HTML
+		)
+
+
 	html_text=write_ul(
 		[
 			write_button_nav_new_asset(lang),
@@ -679,14 +740,17 @@ async def route_fgmt_asset_dashboard(
 
 	if render_all:
 		html_text=(
+			f"{html_text}\n"
 			f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
+				"<!-- RENDERING ALL -->\n"
 				f"{write_layout_asset_panel(lang,result_aq,authorized)}\n"
 			"</section>"
 		)
+
 	if render_history:
 		html_text=(
 			f"{html_text}\n"
-			f"""<div hx-swap-oob="innerHTML:#{_ID_ASSET_HISTORY}">""" "\n"
+			f"""<div hx-swap-oob="innerHTML:#{_ID_ASSET_HISTORY_RECORDS}">""" "\n"
 				"<!-- REFRESHING HISTORY -->\n"
 				f"{write_html_asset_history_records(lang,asset_id,result_aq.get(_KEY_HISTORY),authorized)}\n"
 			"</div>"
@@ -706,9 +770,7 @@ async def route_fgmt_asset_dashboard(
 		content_type=_MIMETYPE_HTML
 	)
 
-async def route_api_select_asset(
-		request:Request
-	)->Union[json_response,Response]:
+async def route_api_select_asset(request:Request)->Response:
 
 	# NOTE: For custom clients only....?
 
@@ -757,7 +819,7 @@ async def route_api_select_asset(
 		False
 	)
 
-	result=await dbi_assets_AssetQuery(
+	result=await dbi_rem_AssetQuery(
 		request.app[_APP_RDBC],
 		request.app[_APP_RDBN],
 		asset_id_list=[asset_id],
@@ -781,9 +843,7 @@ async def route_api_select_asset(
 
 	return json_response(data=result)
 
-async def route_api_asset_edit_definition(
-		request:Request
-	)->Union[json_response,Response]:
+async def route_api_asset_edit_definition(request:Request)->Response:
 
 	# POST /api/assets/pool/{asset_id}/edit
 	# POST /api/assets/edit-metadata
@@ -856,7 +916,7 @@ async def route_api_asset_edit_definition(
 		dval=False
 	)
 
-	result_mdchange=await dbi_assets_EditAssetMetadata(
+	result_mdchange=await dbi_rem_EditAssetMetadata(
 		request.app[_APP_RDBC],
 		request.app[_APP_RDBN],
 
@@ -880,14 +940,19 @@ async def route_api_asset_edit_definition(
 		)
 
 	if change_name:
-		request.app[_APP_CACHE_ASSETS].update({
-			asset_id:asset_name
-		})
+		await dbi_loc_UpdateAssetNames(
+			request.app[_APP_PROGRAMDIR],
+			items_add=[(asset_id,asset_name)]
+		)
+		# await aw_dbi_loc_update_anames(
+		# 	request.app[_APP_PROGRAMDIR],
+		# 	[(asset_id,asset_name)]
+		# )
 
 	if ct==_TYPE_CUSTOM:
 		return json_response(data=result_mdchange)
 
-	result_nv=await dbi_assets_AssetQuery(
+	result_nv=await dbi_rem_AssetQuery(
 		request.app[_APP_RDBC],
 		request.app[_APP_RDBN],
 		asset_id_list=[asset_id],
@@ -914,7 +979,7 @@ async def route_api_asset_edit_definition(
 				f"{write_html_asset_info(lang,result_nv,False)}\n"
 			"</div>\n"
 
-			f"""<details hx-swap-oob="innerHTML:#{_ID_FORM_ASSET_EDITOR}">""" "\n"
+			f"""<details hx-swap-oob="innerHTML:#{_ID_ASSET_EDITOR_FORM}">""" "\n"
 				f"{write_form_edit_asset_definition(lang,asset_id,full=False)}\n"
 			"</details>\n"
 
@@ -923,11 +988,10 @@ async def route_api_asset_edit_definition(
 		content_type=_MIMETYPE_HTML
 	)
 
-async def route_api_drop_asset(
-		request:Request
-	)->Union[json_response,Response]:
+async def route_api_drop_asset(request:Request)->Response:
 
 	# DELETE /api/assets/pool/{asset_id}/drop
+	# DELETE /api/assets/pool/{asset_id}/drop-as-item
 	# hx-target: #messages
 
 	# DELETE /api/assets/drop-asset
@@ -974,15 +1038,13 @@ async def route_api_drop_asset(
 				False
 			)
 
-	if browser_only:
-
-		# Browser only
+	if ct==_TYPE_BROWSER:
 
 		asset_id=request.match_info[_KEY_ASSET]
 
-	if ct==_TYPE_BROWSER:
 		delete_as_item=(
-			Path(request.path).name=="drop-asset"
+			Path(request.path).name=="drop-as-item",
+			False
 		)
 
 	if not isinstance(asset_id,str):
@@ -995,22 +1057,34 @@ async def route_api_drop_asset(
 			ct,status_code=406
 		)
 
-	dbi_result=await dbi_assets_DropAsset(
+	# msg_err:Optional[str]=await dbi_loc_UpdateAssetNames(
+	# 	request.app[_APP_PROGRAMDIR],
+	# 	items_del=[asset_id]
+	# )
+	# if msg_err is not None:
+	# 	return response_errormsg(
+	# 		_ERR_TITLE_SEARCH_ASSETS[lang],
+	# 		f"{_ERR_DETAIL_DBI_FAIL[lang]}"
+	# 		f": {msg_err}",
+	# 		ct,status_code=400
+	# 	)
+
+	dbi_result:Mapping=await dbi_rem_DropAsset(
+		request.app[_APP_PROGRAMDIR],
 		request.app[_APP_RDBC],
 		request.app[_APP_RDBN],
 		asset_id,outverb=vlevel
 	)
-	error_msg:Optional[str]=dbi_result.get(_ERR)
-	if error_msg is not None:
+	msg_err:Optional[str]=dbi_result.get(_ERR)
+	if msg_err is not None:
 		return response_errormsg(
 			_ERR_TITLE_SEARCH_ASSETS[lang],
 			f"{_ERR_DETAIL_DBI_FAIL[lang]}"
-			f": {error_msg}",
+			f": {msg_err}",
 			ct,status_code=400
 		)
 
 	# Remove the asset from the cache
-	request.app[_APP_CACHE_ASSETS].pop(asset_id)
 
 	if ct==_TYPE_CUSTOM:
 		return json_response(data=dbi_result)
@@ -1019,7 +1093,7 @@ async def route_api_drop_asset(
 		_LANG_EN:"Asset deleted",
 		_LANG_ES:"Activo eliminado"
 	}[lang]
-	html_text=write_popupmsg(f"<h2>{tl}</h2>")
+	html_text=write_popupmsg(tl)
 
 	if delete_as_item:
 
@@ -1027,7 +1101,7 @@ async def route_api_drop_asset(
 			f"{html_text}\n"
 
 			f"""<section hx-swap-oob="outerHTML:#{html_id_asset(asset_id)}">""" "\n"
-				f"<!-- DELETED: {asset_id} -->"
+				f"<!-- DELETED: {asset_id} -->\n"
 			"</section>"
 
 		)
@@ -1057,9 +1131,7 @@ async def route_api_drop_asset(
 		content_type=_MIMETYPE_HTML
 	)
 
-async def route_api_add_record(
-		request:Request
-	)->Union[json_response,Response]:
+async def route_api_add_record(request:Request)->Response:
 
 	# POST /api/assets/pool/{asset_id}/history/add
 	# POST /api/assets/history/add
@@ -1180,7 +1252,7 @@ async def route_api_add_record(
 			fallback=2,minimum=0,maximum=2
 		)
 
-	result_arecord=await dbi_assets_History_AddRecord(
+	result_arecord=await dbi_rem_History_AddRecord(
 		request.app[_APP_RDBC],
 		request.app[_APP_RDBN],
 		asset_id,record_sign,record_mod,
@@ -1211,7 +1283,7 @@ async def route_api_add_record(
 		_LANG_EN:"Added the new record",
 		_LANG_ES:"Se agregó el registro"
 	}[lang]
-	html_text=write_popupmsg(f"<h2>{tl}</h2>")
+	html_text=write_popupmsg(tl)
 
 	html_record=write_html_record(
 		lang,asset_id,result_arecord,
@@ -1226,11 +1298,11 @@ async def route_api_add_record(
 			"???"
 		"</code>\n"
 
-		f"""<div hx-swap-oob="innerHTML:#{_ID_FORM_ASSET_HISTORY}">""" "\n"
+		f"""<div hx-swap-oob="innerHTML:#{_ID_ASSET_HISTORY_FORM}">""" "\n"
 			f"{write_form_add_record(lang,asset_id,full=False)}\n"
 		"</div>\n"
 
-		f"""<div hx-swap-oob="afterbegin:#{_ID_ASSET_HISTORY}">""" "\n"
+		f"""<div hx-swap-oob="afterbegin:#{_ID_ASSET_HISTORY_RECORDS}">""" "\n"
 			f"{html_record}\n"
 		"</div>"
 	)
@@ -1240,9 +1312,7 @@ async def route_api_add_record(
 		content_type=_MIMETYPE_HTML
 	)
 
-async def route_api_get_record(
-		request:Request
-	)->Union[json_response,Response]:
+async def route_api_get_record(request:Request)->Response:
 
 	# GET /fgmt/assets/pool/{asset_id}/history/records/{record_id}
 	# POST /api/assets/get-history-record
@@ -1292,7 +1362,7 @@ async def route_api_get_record(
 			ct,status_code=400
 		)
 
-	dbi_result=await dbi_assets_History_GetSingleRecord(
+	dbi_result=await dbi_rem_History_GetSingleRecord(
 		request.app[_APP_RDBC],
 		request.app[_APP_RDBN],
 		asset_id,record_uid
@@ -1314,7 +1384,11 @@ async def route_api_get_record(
 	html_text=write_popupmsg(
 		write_html_record_detailed(
 			lang,asset_id,dbi_result
-		)
+		),
+		{
+			_LANG_EN:"Record details",
+			_LANG_ES:"Detalles del registro"
+		}[lang]
 	)
 
 	return Response(
@@ -1322,9 +1396,7 @@ async def route_api_get_record(
 		content_type=_MIMETYPE_HTML
 	)
 
-async def route_fgmt_export_options(
-		request:Request
-	)->Union[json_response,Response]:
+async def route_fgmt_export_options(request:Request)->Response:
 
 	# /fgmt/assets/export-options
 
@@ -1356,9 +1428,7 @@ async def route_fgmt_export_options(
 		content_type=_MIMETYPE_HTML
 	)
 
-async def route_api_export_as_excel(
-		request:Request
-	)->Union[json_response,Response]:
+async def route_api_export_as_excel(request:Request)->Response:
 
 	# /api/assets/export-as-excel
 
@@ -1504,9 +1574,7 @@ async def route_api_export_as_excel(
 		}
 	)
 
-async def route_main(
-		request:Request
-	)->Union[json_response,Response]:
+async def route_main(request:Request)->Response:
 
 	lang=request[_REQ_LANGUAGE]
 	# userid=request[_REQ_USERID]
@@ -1516,7 +1584,8 @@ async def route_main(
 		_LANG_ES:"Gestor básico de activos"
 	}[lang]
 
-	tl=await render_html_user_section(request,lang)
+	# tl=await render_html_user_section(request,lang)
+	tl=render_html_user_section(request,lang)
 
 	html_text=(
 		f"""<section id="{_ID_MSGZONE}">""" "\n"

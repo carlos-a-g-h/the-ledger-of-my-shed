@@ -32,16 +32,23 @@ flags:
   # It is recommended to disable this flag on a production database, because spitting out all the assets at startup can be annoying
   - e-startup-print-assets
 
-  # (unsafe)
-  # If the client is connected to localhost on the same machine, a button for direct login as root will appear instead of the usual login form, it will not ask for the password
-  # Highly recommended if you want to run SHLED in your desktop without the hassle of introducing a username + the generated password
-  #- e-login-root-local-autologin
+  # (debug)
+  # Allows all the the CSS files in the sources directory to be loaded individually instead of baking them all together into a single file at startup
+  # This is useful for customization purposes
+  #- d-startup-css-baking
 
   # (unsafe)
   # Enables backend OTP (None/hidden sign in method) for all users, not just root
   #- e-login-backend-otp-for-all
 
-  # (debug)
-  # Allows all the the CSS files in the sources directory to be loaded individually instead of baking them all together into a single file at startup
-  # This is useful for customization purposes
-  #- d-startup-css-baking
+  # (unsafe)
+  # If the client is connected to localhost on the same machine, a button for direct login as root will appear instead of the usual login form, it will not ask for the password
+  # Highly recommended if you want to run SHLED in your desktop without the hassle of introducing a username + the generated password
+  #- e-login-root-local-autologin
+
+  # (unsafe af)
+  # Disable security through user accounts authorization and authentication: no login, direct access as root account
+  # Recommended ONLY IF you are running completely offline and in a environment 100% under your control
+  # Nulls the effect of the "e-login-root-local-autologin" flag
+  # - d-security
+

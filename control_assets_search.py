@@ -1,15 +1,19 @@
 #!/usr/bin/python3.9
 
+from pathlib import Path
+
 from typing import (
 	Mapping,
 	Union,Optional
 )
 
 from aiohttp.web import (
-	Application,
+	# Application,
 	Request,
 	Response,json_response
 )
+
+from motor.motor_asyncio import AsyncIOMotorClient
 
 from control_Any import (
 
@@ -25,17 +29,22 @@ from control_Any import (
 
 from dbi_assets import (
 
-	dbi_assets_AssetQuery,
+	dbi_rem_AssetQuery,
+	dbi_loc_QueryByName,
+	# dbi_loc_GetAssetNames,
+	# aw_dbi_loc_query_assets_by_name,
 )
 
 from frontend_Any import (
 	_CSS_CLASS_COMMON,
+	_CSS_CLASS_CONTROLS,
 	# _CSS_CLASS_HORIZONTAL
 )
 
 from frontend_assets import (
 	write_html_asset_info,
 	write_html_asset_as_item,
+	write_button_asset_msgbox,
 )
 
 from frontend_assets_search import (
@@ -56,7 +65,8 @@ from symbols_Any import (
 	_ERR,
 
 	_LANG_EN,_LANG_ES,
-	_APP_CACHE_ASSETS,
+	# _APP_CACHE_ASSETS,
+	_APP_PROGRAMDIR,
 
 	_TYPE_CUSTOM,
 
@@ -79,12 +89,14 @@ from symbols_assets import (
 	_COL_ASSETS,
 
 	_KEY_ASSET,
-	_KEY_NAME,
+	# _KEY_NAME,
 	# _KEY_SUPPLY,
 
-	_ID_FORM_SEARCH_ASSETS,
-	_ID_RESULT_SEARCH_ASSETS,
+	_ID_ASSETS_SEARCH,
+		_ID_ASSETS_SEARCH_FORM,
+		_ID_ASSETS_SEARCH_RESULT,
 
+	_CSS_CLASS_ITEM_ASSET,
 	_KEY_INC_VALUE as _KEY_GET_VALUE,
 	_KEY_INC_SUPPLY as _KEY_GET_SUPPLY,
 
@@ -106,83 +118,11 @@ _ERR_DETAIL_MATCH_MTO={
 	_LANG_ES:"Se necesita una única coincidencia"
 }
 
-def util_asset_fuzzy_finder(
-		app:Application,
-		text_raw:str,
-		find_exact_only:bool=False,
-		first_one_only:bool=False,
-	)->Union[list,Mapping]:
-
-	query_result:Union[list,Mapping]={
-		True:{},
-		False:[]
-	}[find_exact_only]
-
-	text=text_raw.lower().strip()
-	if len(text)==0:
-		return query_result
-
-	exact_match={}
-	exact_match_found=False
-
-	print(
-		"Query by name:",
-		text_raw
-	)
-
-	for asset_id in app[_APP_CACHE_ASSETS]:
-		asset_name=app[_APP_CACHE_ASSETS][asset_id]
-		row=asset_name.lower().strip()
-		print("{",text,"}:in:{",row,"}")
-		if row.find(text)<0:
-			continue
-
-		if not exact_match_found:
-			if row==text:
-
-				print(
-					"\tEXACT_MATCH",
-					asset_name
-				)
-
-				exact_match.update({
-					_KEY_ASSET:asset_id,
-					_KEY_NAME:asset_name,
-					"exact":True
-				})
-				exact_match_found=True
-				if find_exact_only:
-					break
-
-				continue
-
-		print(
-			"\tPARTIAL_MATCH",
-			asset_name
-		)
-
-		query_result.append({
-			_KEY_ASSET:asset_id,
-			_KEY_NAME:asset_name,
-			"exact":False
-		})
-
-	if find_exact_only:
-		return exact_match
-
-	if (not first_one_only) and exact_match_found:
-		query_result.append(exact_match)
-
-	if first_one_only:
-		if exact_match_found:
-			return exact_match
-
-		return query_result.pop()
-
-	return query_result
-
 async def util_search_assets(
-		app:Application,
+
+		basedir:Path,
+		rdb_client:AsyncIOMotorClient,
+		rdb_name:str,
 
 		authorized:bool,
 
@@ -202,9 +142,17 @@ async def util_search_assets(
 	if query_by_name:
 
 		list_match_names.extend(
-			util_asset_fuzzy_finder(
-				app,by_name
+			(
+				await dbi_loc_QueryByName(
+					basedir,
+					by_name,
+				)
 			)
+		)
+
+		print(
+			f"{util_search_assets.__name__}/{dbi_loc_QueryByName.__name__}()",
+			list_match_names
 		)
 
 	beyond_name=(
@@ -224,10 +172,10 @@ async def util_search_assets(
 			continue
 		asset_id_list.append(asset_id)
 
-	result=await dbi_assets_AssetQuery(
+	result=await dbi_rem_AssetQuery(
 
-		app[_APP_RDBC],
-		app[_APP_RDBN],
+		rdb_client,
+		rdb_name,
 
 		asset_id_list=asset_id_list,
 
@@ -243,9 +191,66 @@ async def util_search_assets(
 
 	return [result]
 
-async def route_api_search_assets(
-		request:Request
-	)->Union[json_response,Response]:
+def write_html_assets_search_results(
+		lang:str,
+		search_results:list,
+		order_id:Optional[str],
+		authorized:bool
+	)->str:
+
+	size=len(search_results)
+
+	if size==0:
+
+		tl={
+			_LANG_EN:"Nothing was found",
+			_LANG_ES:"No se pudo encontrar nada"
+		}[lang]
+
+		return f"<strong>{tl}</strong>"
+
+	order_oriented=(
+		order_id is not None
+	)
+
+	html_text=""
+
+	idx=-1
+
+	while True:
+		idx=idx+1
+		if idx>size-1:
+			break
+
+		if not order_oriented:
+			html_text=html_text+write_html_asset_as_item(
+				lang,search_results[idx],
+				authorized=authorized,
+				is_search_result=True
+			)
+			continue
+
+		asset_id=search_results[idx][_KEY_ASSET]
+
+		html_text=(
+			f"{html_text}\n"
+			f"""<div class="{_CSS_CLASS_COMMON} {_CSS_CLASS_ITEM_ASSET}">""" "\n"
+				"<div>\n"
+					f"{write_html_asset_info(lang,search_results[idx],full=False)}\n"
+				"</div>\n"
+				f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
+					f"{write_button_asset_msgbox(lang,asset_id)}"
+				"</div>\n"
+				f"{write_form_add_asset_to_order(lang,order_id,asset_id)}\n"
+			"</div>"
+		)
+
+	return html_text
+
+async def route_api_search_assets(request:Request)->Response:
+
+	# POST /api/assets/search-assets
+	# hx-target #messages
 
 	ct=request[_REQ_CLIENT_TYPE]
 
@@ -276,12 +281,6 @@ async def route_api_search_assets(
 			ct,status_code=406
 		)
 
-	# straight_to_the_item=False
-	# if not ct==_TYPE_CUSTOM:
-	# 	straight_to_the_item=util_valid_bool(
-	# 		request_data.get(_KEY_GO_STRAIGHT)
-	# 	)
-
 	search_name=util_valid_str(
 		request_data.get(_KEY_NAME_QUERY)
 	)
@@ -305,7 +304,10 @@ async def route_api_search_assets(
 
 	search_results=(
 		await util_search_assets(
-			request.app,
+			request.app[_APP_PROGRAMDIR],
+			request.app[_APP_RDBC],
+			request.app[_APP_RDBN],
+
 			authorized,
 
 			by_name=search_name,
@@ -316,28 +318,40 @@ async def route_api_search_assets(
 			grab_supply=grab_total
 		)
 	)
-	empty=(len(search_results)==0)
 	print(
 		"search_results",
 		search_results
 	)
-	if not empty:
-		msg_err:Optional[str]=util_valid_str(
-			search_results[0].get(_ERR)
-		)
-		if msg_err is not None:
-			return response_errormsg(
-				_ERR_TITLE_SEARCH_ASSETS[lang],
-				f"{_ERR_DETAIL_DBI_FAIL[lang]}; {msg_err}",
-				ct,400
-			)
+	empty=(len(search_results)==0)
+	# if len(search_results)==1:
+	# 	msg_err:Optional[str]=None
+	# 	if isinstance(search_results[0],Mapping):
+	# 		msg_err=util_valid_str(
+	# 			search_results[0].get(_ERR)
+	# 		)
+	# 	if isinstance(search_results[0],tuple):
+	# 		if len
+	# 		msg_err=util_valid_str(
+	# 			search_results[0][0]==_ERR
+	# 		)
+	# 	if msg_err is not None:
+	# 		return response_errormsg(
+	# 			_ERR_TITLE_SEARCH_ASSETS[lang],
+	# 			f"{_ERR_DETAIL_DBI_FAIL[lang]}; {msg_err}",
+	# 			ct,400
+	# 		)
 
 	if ct==_TYPE_CUSTOM:
 		return json_response(
 			data={_COL_ASSETS:search_results}
 		)
 
-	html_text_params=""
+	html_text=""
+
+	order_id:Optional[str]=None
+	if in_orders_page:
+		order_id=request.match_info[_KEY_ORDER]
+
 	params_used=(
 		isinstance(search_sign,str) or
 		isinstance(search_tag,str) or
@@ -348,14 +362,14 @@ async def route_api_search_assets(
 			_LANG_EN:"Parameters used",
 			_LANG_ES:"Parámetros usados"
 		}[lang]
-		html_text_params=f"<h3>{tl}</h3>"
+		html_text=f"<h3>{tl}</h3>"
 		if isinstance(search_name,str):
 			tl={
 				_LANG_EN:"Name",
 				_LANG_ES:"Nombre"
 			}[lang]
-			html_text_params=(
-				f"{html_text_params}\n"
+			html_text=(
+				f"{html_text}\n"
 				f"<p>{tl}: <code>{search_name}</code></p>"
 			)
 		if isinstance(search_sign,str):
@@ -363,8 +377,8 @@ async def route_api_search_assets(
 				_LANG_EN:"Sign",
 				_LANG_ES:"Firma"
 			}[lang]
-			html_text_params=(
-				f"{html_text_params}\n"
+			html_text=(
+				f"{html_text}\n"
 				f"<p>{tl}: <code>{search_sign}</code></p>"
 			)
 		if isinstance(search_tag,str):
@@ -372,89 +386,49 @@ async def route_api_search_assets(
 				_LANG_EN:"Tag",
 				_LANG_ES:"Etiqueta"
 			}[lang]
-			html_text_params=(
-				f"{html_text_params}\n"
+			html_text=(
+				f"{html_text}\n"
 				f"<p>{tl}: <code>{search_tag}</code></p>"
 			)
 
-	lang=request[_REQ_LANGUAGE]
+	empty=len(html_text)==0
 
-	order_id:Optional[str]=None
-	if in_orders_page:
-		order_id=request.match_info[_KEY_ORDER]
+	if empty:
+		html_text="<!-- SEARCH PERFORMED -->"
+	if not empty:
+		html_text=(
+			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
+				"<div>\n"
+					f"{html_text}\n"
+				"</div>\n"
+				f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
+					f"{write_button_cleanup(lang)}\n"
+				"</div>\n"
+			"</div>"
+		)
 
-	html_text=f"<!-- sign: {search_sign} ; tag: {search_tag}-->\n"
+	# if not len(search_results)==0:
+	# 	html_text=(
+	# 		f"{html_text}\n"
+	# 		f"{write_button_cleanup(lang)}\n"
+	# 	)
 
-	tl={
-		_LANG_EN:"Asset(s) found",
-		_LANG_ES:"Activo(s) encontrado(s)"
-	}[lang]
+	# show_cleanup_btn=(
+	# 	not len(search_results)==0
+	# )
+
 	html_text=(
-		f"{html_text}\n"
+		f"<!-- sign: {search_sign} ; tag: {search_tag}-->\n"
 
-		f"""<div hx-swap-oob="innerHTML:#{_ID_FORM_SEARCH_ASSETS}">""" "\n"
+		f"""<div hx-swap-oob="innerHTML:#{_ID_ASSETS_SEARCH_FORM}">""" "\n"
 			f"{write_form_search_assets(lang,order_id=order_id,authorized=authorized,full=False)}\n"
 		"</div>\n"
 
-		f"""<div hx-swap-oob="innerHTML:#{_ID_RESULT_SEARCH_ASSETS}">""" "\n"
-			f"{html_text_params}\n"
-	)
-
-	found=len(search_results)
-
-	found_stuff=(found>0)
-
-	if not found_stuff:
-		tl={
-			_LANG_EN:"Nothing was found",
-			_LANG_ES:"No se pudo encontrar nada"
-		}[lang]
-		html_text=(
+		f"""<div hx-swap-oob="innerHTML:#{_ID_ASSETS_SEARCH_RESULT}">""" "\n"
 			f"{html_text}\n"
-			f"<strong>{tl}</strong>\n"
-		)
-
-	if found_stuff:
-
-		html_text=(
-			f"{html_text}\n"
-			f"{write_button_cleanup(lang)}\n"
-		)
-
-		while True:
-			found=found-1
-			if found<0:
-				break
-
-			if in_assets_page:
-				html_text=(
-					f"{html_text}\n"
-					f"{write_html_asset_as_item(lang,search_results[found],authorized=authorized)}"
-				)
-
-				continue
-
-			asset_id=search_results[found][_KEY_ASSET]
-
-			html_text=(
-				f"{html_text}\n"
-				f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
-					"<!-- FOUND! { -->\n"
-					f"{write_html_asset_info(lang,search_results[found],False)}\n"
-					f"{write_form_add_asset_to_order(lang,order_id,asset_id)}\n"
-					"<!-- } FOUND! -->\n"
-				"</div>"
-			)
-
-		# html_text=(
-		# 		f"{html_text}\n"
-		# 		f"{write_button_cleanup(lang)}\n"
-		# 	"</div>"
-		# )
-
-
-	html_text=(
-			f"{html_text}\n"
+			# f"""<div id="{_ID_ASSETS_SEARCH_RESULT}">""" "\n"
+			f"{write_html_assets_search_results(lang,search_results,order_id,authorized)}\n"
+			"</div>\n"
 		"</div>"
 	)
 
@@ -463,3 +437,14 @@ async def route_api_search_assets(
 		content_type=_MIMETYPE_HTML
 	)
 
+if __name__=="__main__":
+
+	from asyncio import run
+	from pathlib import Path
+
+	res=run(
+		dbi_loc_QueryByName(
+			Path("."),"prueb"
+		)
+	)
+	print(res)

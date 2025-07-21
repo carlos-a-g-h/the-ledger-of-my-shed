@@ -19,14 +19,20 @@ _ID_RESULT_NEW_ORDER="result-new-order"
 
 _ID_LAYOUT_ASSETS_SEARCH="layout-assets-search"
 
-_ID_FORM_ADD_ASSET_LUCKY="form-asset-to-order-lucky"
+_ID_ALL_ORDERS="all-orders"
+_ID_ORDER_ASSET_TOOLS="order-asset-tools"
+_ID_FORM_ADD_ASSET_BNQ="form-asset-to-order-bnq"
 _ID_FORM_RUN_OR_REVERT_ORDER="form-run-or-revert-order"
 _ID_ORDER_ASSETS="order-assets"
 
 _ID_FORM_RUN_OR_REV_ORDERS="form-run-or-rev-orders"
 
 _CSS_CLASS_ITEM_ORDER="item-order"
-_CSS_CLASS_ORDER_INFO="order-info"
+
+_ID_ORDER_DASHBOARD="order-dashboard"
+_ID_ORDER_INFO="order-info"
+_ID_ORDER_VALUE="order-value"
+# _CSS_CLASS_ORDER_INFO="order-info"
 
 def html_id_order(
 		order_id:str,

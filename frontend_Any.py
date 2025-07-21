@@ -4,6 +4,8 @@ from asyncio import to_thread as async_run_blk
 from pathlib import Path
 from typing import Any,Optional,Union
 
+from internals import exc_info
+
 from symbols_Any import (
 	_LANG_EN,_LANG_ES,
 	_ONE_MB,
@@ -38,6 +40,7 @@ _CSS_CLASS_MSGZONE_BUTTON="msgzone-button"
 # _CSS_CLASS_TITLE_UNIQUE="title-uniq"
 # _CSS_CLASS_TITLE="title"
 
+_CSS_CLASS_TABS="tabs"
 _CSS_CLASS_SWITCH="switch"
 _CSS_CLASS_NAV="nav"
 
@@ -156,7 +159,7 @@ def util_css_bake(
 			except Exception as exc:
 				print(
 					f"Baking failed on file:\n\t{fse}\n"
-					f"\tReason: {exc}"
+					f"\tReason: {exc_info(exc)}"
 				)
 				continue
 
@@ -189,6 +192,20 @@ async def util_css_pull(path_base:Path)->Optional[Path]:
 	return path_file
 
 # Components... ?
+
+def write_button_return(
+		lang:str,
+		prev_page:str
+	)->str:
+
+	return write_button_anchor(
+		{
+			_LANG_EN:"Return",
+			_LANG_ES:"Volver"
+		}[lang],
+		prev_page
+	)
+
 
 def write_button_reset(
 		lang,
@@ -237,6 +254,58 @@ def write_button_submit(
 			f"{label}"
 		"</button>"
 	)
+
+def write_html_tabs(
+		content=[
+			("Page one","Contents for page one"),
+			("Page two","Contents for page two")
+		],
+	custom_id:Optional[str]=None
+	)->str:
+
+	html_text=""
+
+	tab_idx=-1
+	for tab_con in content:
+		tab_idx=tab_idx+1
+		html_text=(
+			f"{html_text}\n"
+			f"""<button x-on:click="curtab = {tab_idx};">"""
+				f"{tab_con[0]}"
+			"</button>"
+		)
+
+	html_text=(
+		f"""<div class="{_CSS_CLASS_SWITCH}">""" "\n"
+			f"{html_text}\n"
+		"</div>"
+	)
+
+	tab_idx=-1
+	for tab_con in content:
+		tab_idx=tab_idx+1
+		html_text=(
+			f"{html_text}\n"
+			f"""<div x-show="curtab === {tab_idx}">""" "\n"
+				f"{tab_con[1]}\n"
+			"</div>"
+		)
+
+	x_data="{ curtab : 0 }"
+
+	id_param=""
+	if custom_id is not None:
+		id_param=(
+			f""" id="{custom_id}" """
+		).strip()
+
+	html_text=(
+		f"""<div {id_param} class="{_CSS_CLASS_TABS}" x-data="{x_data}">""" "\n"
+			f"{html_text}\n"
+		"</div>"
+	)
+
+	return html_text
 
 def write_html_input_checkbox(
 		name:str,label:str,
@@ -577,7 +646,7 @@ def write_popupmsg_closemsg(okbtn:bool=False)->str:
 
 def write_popupmsg(
 		content:str,
-		title:Optional[str]=None
+		title:Optional[str]=None,
 	)->str:
 
 	html_text=(
@@ -590,14 +659,18 @@ def write_popupmsg(
 		html_text=(
 			f"{html_text}\n"
 				f"""<div class="{_CSS_CLASS_MSGZONE_TITLE}">""" "\n"
-					f"{title}\n"
+					f"<h3>{title}</h3>\n"
 				"</div>"
 		)
+
+	content_ok=content
+	if title is None:
+		content_ok=f"<h2>{content}</h2>"
 
 	html_text=(
 					f"{html_text}\n"
 					f"""<div class="{_CSS_CLASS_MSGZONE_CONTENT}">""" "\n"
-						f"{content}\n"
+						f"{content_ok}\n"
 					"</div>\n"
 					f"""<div class="{_CSS_CLASS_MSGZONE_CONTROLS}">""" "\n"
 						f"{write_popupmsg_closemsg(True)}\n"
@@ -611,26 +684,16 @@ def write_popupmsg(
 
 def write_html_logging_area(lang:str)->str:
 
-	html_text=(
-		"<code>\n"
-			"<!-- CHEAP LOGGING -->\n"
-		"</code>"
-	)
-
-	html_text=(
-		f"""<div id="{_ID_LOGGING}" class="{_CSS_CLASS_COMMON}">""" "\n"
-			"<!-- CHEAP LOGGING -->\n"
-		"</div>"
-	)
-
 	tl={
 		_LANG_EN:"Recent actions",
 		_LANG_ES:"Acciones recientes"
 	}[lang]
 	html_text=(
-		f"<h3>{tl}</h3>\n"
-		"<div>\n"
-			f"{html_text}\n"
+		f"""<div id="{_ID_LOGGING}">""" "\n"
+			f"<h3>{tl}</h3>\n"
+			f"""<div id="{_ID_LOGGING}-inner" class="{_CSS_CLASS_COMMON}">""" "\n"
+				"<!-- CHEAP LOGGING -->\n"
+			"</div>\n"
 		"</div>"
 	)
 

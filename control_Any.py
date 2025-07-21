@@ -1,6 +1,6 @@
 #!/usr/bin/python3.9
 
-from asyncio import to_thread as async_run
+# from asyncio import to_thread as async_run
 
 from pathlib import Path
 from typing import Optional,Union,Mapping
@@ -21,6 +21,26 @@ from aiohttp.web import (
 )
 
 from yarl import URL as yarl_URL
+
+from dbi_accounts import dbi_loc_GetUser
+
+from dbi_accounts_sessions import (
+
+	# _KEY_USERNAME,
+
+	# _SESSION_PENDING,
+	_SESSION_ACTIVE,
+
+	util_check_session_data,
+
+	aw_util_get_session_id,
+	# aw_dbi_read_session,
+	dbi_loc_ReadSession,
+	# aw_dbi_drop_session,
+	dbi_loc_DropSession,
+	# aw_dbi_renovate_active_session
+	dbi_loc_RenovateActiveSession
+)
 
 from frontend_Any import (
 
@@ -61,6 +81,7 @@ from internals import (
 from symbols_Any import (
 
 	_ROOT_USER_ID,
+	_ROOT_USER,
 	_ONE_MB,
 	_ERR,
 
@@ -80,11 +101,14 @@ from symbols_Any import (
 
 	_COOKIE_AKEY,_COOKIE_USER,
 
+	_REQ_PATH,
 	_REQ_IS_HTMX,
-	_REQ_USERID,_REQ_ACCESS_KEY,_REQ_CLIENT_TYPE,
+	_REQ_USERID,_REQ_USERNAME,
+	_REQ_ACCESS_KEY,_REQ_CLIENT_TYPE,
 	_REQ_HAS_SESSION,_REQ_LANGUAGE,
 
 	_CFG_FLAGS,
+	_CFG_FLAG_D_SECURITY,
 	_CFG_FLAG_E_LOGIN_ROOT_LOCAL_AUTOLOGIN,
 	_CFG_FLAG_D_STARTUP_CSS_BAKING,
 
@@ -95,23 +119,18 @@ from symbols_Any import (
 )
 
 from symbols_assets import _ROUTE_PAGE as _ROUTE_PAGE_ASSETS
+
 from symbols_orders import _ROUTE_PAGE as _ROUTE_PAGE_ORDERS
+
 from symbols_admin import _ROUTE_PAGE as _ROUTE_PAGE_ADMIN
 from symbols_accounts import (
 	# _ROUTE_CHECKIN,
-	_ROUTE_PAGE as _ROUTE_PAGE_ACCOUNTS
+	_ROUTE_PAGE as _ROUTE_PAGE_ACCOUNTS,
+	_KEY_USERID,
+	# _KEY_USERNAME
 )
 
-from dbi_accounts import ldbi_get_username
-
-from dbi_accounts_sessions import (
-
-	# _KEY_USERNAME,
-
-	ldbi_read_session,
-	ldbi_drop_session,
-	ldbi_renovate_active_session
-)
+from symbols_emojis import _EMOJI_PACKAGE,_EMOJI_MEMO,_EMOJI_PEOPLE,_EMOJI_TOOL_BOX
 
 _src_files={
 	"special":{
@@ -138,12 +157,10 @@ _ERR_DETAIL_DBI_FAIL={
 # Utilities
 
 def has_local_access(request:Request)->bool:
-	has_it=(
+	return (
 		request.remote=="127.0.0.1" or
 		request.remote=="::1"
 	)
-	print("\nLocal access?",has_it)
-	return has_it
 
 def get_lang(ct:str,request:Request)->str:
 	if ct==_TYPE_CUSTOM:
@@ -157,26 +174,33 @@ async def get_username(
 		userid:Optional[str]=None
 	)->Optional[str]:
 
+	fn=(
+		f"{get_username.__name__}"
+		f"({userid})"
+	)
+
 	userid_ok=userid
 	if userid_ok is None:
 		userid_ok=request[_REQ_USERID]
 
-	result=await async_run(
-		ldbi_get_username,
-		request.app[_APP_PROGRAMDIR],
-		userid_ok
-	)
+	if userid==_ROOT_USER_ID:
+		return _ROOT_USER
 
+	result=await dbi_loc_GetUser(
+		request.app[_APP_PROGRAMDIR],
+		params={_KEY_USERID:userid_ok}
+	)
+	print(fn,result)
 	if result[0]==_ERR:
-		err_msg=(
+		msg_err=(
 			f"Failed to get username from ID {userid_ok}\n"
 			f"{result[1]}"
 		)
 		if explode:
-			raise HTTPNotAcceptable(body=err_msg)
+			raise HTTPNotAcceptable(body=msg_err)
 
 		if not explode:
-			print(err_msg)
+			print(msg_err)
 			return None
 
 	return result[1]
@@ -191,7 +215,8 @@ async def util_patch_doc_with_username(
 		return False
 
 	doc_sign_uname=await get_username(
-		the_req,explode=False,
+		the_req,
+		explode=False,
 		userid=doc_sign
 	)
 	if not isinstance(doc_sign_uname,str):
@@ -294,7 +319,6 @@ def util_get_correct_referer(
 
 	return the_referer
 
-
 def is_root_local_autologin_allowed(request:Request)->bool:
 
 	if request.remote not in ("::1","127.0.0.1"):
@@ -317,16 +341,23 @@ async def get_request_body_dict(
 	content_type=content_type.strip().lower()
 
 	if (
-			client_type==_TYPE_BROWSER and
-			content_type.find(_MIMETYPE_FORM)>-1
-		):
+		client_type==_TYPE_BROWSER and
+		content_type.find(_MIMETYPE_FORM)>-1
+	):
 
-		return (await request.post())
+		if request.method=="POST":
+			return (
+				await request.post()
+			)
+		if request.method=="DELETE":
+			return (
+				request.query.copy()
+			)
 
 	if (
-			client_type==_TYPE_CUSTOM and
-			content_type.find(_MIMETYPE_JSON)>-1
-		):
+		client_type==_TYPE_CUSTOM and
+		content_type.find(_MIMETYPE_JSON)>-1
+	):
 
 		request_data:Optional[Mapping]=None
 
@@ -339,7 +370,6 @@ async def get_request_body_dict(
 		return request_data
 
 	return None
-
 
 # Responses
 
@@ -375,16 +405,19 @@ def response_errormsg(
 
 	return Response(
 		body=write_popupmsg(
-			f"<p>{text_details}</p>",
-			f"<h2>{text_error}</h2>"
+			text_details,
+			text_error,
 		),
 		content_type=_MIMETYPE_HTML
 	)
 
-def response_popupmsg(html_inner:str)->Response:
+def response_popupmsg(
+		html_inner:str,
+		title:Optional[str]=None
+	)->Response:
 
 	return Response(
-		body=write_popupmsg(html_inner),
+		body=write_popupmsg(html_inner,title),
 		content_type=_MIMETYPE_HTML
 	)
 
@@ -443,10 +476,11 @@ async def response_fullpage_ext(
 		)
 
 	if not devmode_css:
-		path_css=await async_run(
-			util_css_pull,
-			path_programdir
-		)
+		# path_css=await async_run(
+		# 	util_css_pull,
+		# 	path_programdir
+		# )
+		path_css=await util_css_pull(path_programdir)
 		if path_css is not None:
 			head_tag.append(
 				_STYLE_CUSTOM
@@ -529,50 +563,85 @@ async def process_session_checkin(request:Request,test_only:bool=False)->Optiona
 
 	ip_address,user_agent=util_get_pid_from_request(request)
 
-	active_session=await async_run(
-		ldbi_read_session,
+	# basedir=request.app[_APP_PROGRAMDIR]
+
+	session_id=await aw_util_get_session_id(
+		userid,ip_address,
+		user_agent
+	)
+
+	msg_err:Optional[str]=await dbi_loc_RenovateActiveSession(
 		request.app[_APP_PROGRAMDIR],
-		userid,ip_address,user_agent,False
+		session_id,
+		access_key,
+		request.app[_CFG_ACC_TIMEOUT_SESSION]
 	)
-	if active_session[0]==_ERR:
-		return f"Failed to read active session: {active_session[1]}"
 
-	if not active_session[1]==userid:
-		return "??? The User ID does not match"
-
-	stored_date=util_valid_date(
-		active_session[2],
-		get_dt=True
+	print(
+		f"{process_session_checkin.__name__}()",
+		msg_err
 	)
-	if not access_key==active_session[3]:
-		return "The stored access key does not match"
+	return msg_err
 
-	if util_date_calc_expiration(
-		stored_date,request.app[_CFG_ACC_TIMEOUT_SESSION],
-		get_age=False,get_exp_date=False
-	).get("expired"):
-		if test_only:
-			return "The active sesion expired"
+	##############################################################################
 
-		await async_run(
-			ldbi_drop_session,
-			request.app[_APP_PROGRAMDIR],
-			userid,ip_address,user_agent,True
-		)
-		return "The active session expired. It has been destroyed?"
+	# from_cookie=util_extract_from_cookies(request)
+	# if from_cookie is None:
+	# 	return "The request has either no credentials or the they are not valid"
 
-	if test_only:
-		return None
+	# userid,access_key=from_cookie
 
-	msg_error=await async_run(
-		ldbi_renovate_active_session,
-		request.app[_APP_PROGRAMDIR],
-		userid,ip_address,user_agent
-	)
-	if msg_error is not None:
-		return f"Failed to renovate the active session: {msg_error}"
+	# ip_address,user_agent=util_get_pid_from_request(request)
 
-	return None
+	# basedir=request.app[_APP_PROGRAMDIR]
+
+	# session_id=await aw_util_get_session_id(userid,ip_address,user_agent)
+
+	# # active_session=await aw_dbi_read_session(
+	# active_session=await dbi_loc_ReadSession(
+	# 	basedir,session_id,
+	# 	target_status=_SESSION_ACTIVE
+	# )
+	# print(
+	# 	f"[{process_session_checkin.__name__}] active_session = {active_session}"
+	# )
+	# if active_session[0]==_ERR:
+	# 	return active_session[1]
+
+	# stored_date=util_valid_date(
+	# 	active_session[0],
+	# 	get_dt=True
+	# )
+	# if not access_key==active_session[1]:
+	# 	return "The stored access key does not match"
+
+	# if util_date_calc_expiration(
+	# 	stored_date,
+	# 	request.app[_CFG_ACC_TIMEOUT_SESSION],
+	# 	get_age=False,
+	# 	get_exp_date=False
+	# ).get("expired"):
+
+	# 	if test_only:
+	# 		return "The active sesion expired"
+
+	# 	msg_err=await dbi_loc_DropSession(
+	# 		basedir,session_id,
+	# 		_SESSION_ACTIVE
+	# 	)
+	# 	if msg_err is not None:
+	# 		return msg_err
+
+	# if test_only:
+	# 	return None
+
+	# msg_err=await dbi_loc_RenovateActiveSession(
+	# 	basedir,session_id
+	# )
+	# if msg_err is not None:
+	# 	return msg_err
+
+	# return None
 
 # Middleware factory
 
@@ -586,7 +655,7 @@ async def the_middleware_factory(app,handler):
 		client_type=get_client_type(request)
 		if client_type is None:
 			return Response(
-				body="Can't tell if you're a browser or a custom client, play by the rules, kid",
+				body="Can't tell if you're a browser or a custom client",
 				status=406,
 			)
 		client_is_browser=(not client_type==_TYPE_CUSTOM)
@@ -594,7 +663,6 @@ async def the_middleware_factory(app,handler):
 		# Custom client route restrictions
 		if not client_is_browser:
 
-			# All clients must use the /api/ routes
 			if not request.path.startswith("/api/"):
 				return json_response(data={})
 
@@ -617,6 +685,7 @@ async def the_middleware_factory(app,handler):
 
 		request[_REQ_CLIENT_TYPE]=client_type
 		request[_REQ_LANGUAGE]=lang
+		request[_REQ_PATH]=Path(request.path)
 
 		# Check wether the request was performed by HTMX
 		by_htmx=False
@@ -640,10 +709,14 @@ async def the_middleware_factory(app,handler):
 		)
 
 		userid:Optional[str]=None
+		username:Optional[str]=None
 		access_key:Optional[str]=None
 		has_session=False
 
+		# api_local_access=(_CFG_FLAG_D_SECURITY in request.app[_CFG_FLAGS])
+		# if not api_local_access:
 		api_local_access=has_local_access(request)
+		security_disabled=(_CFG_FLAG_D_SECURITY in request.app[_CFG_FLAGS])
 
 		url_is_page=request.path.startswith("/page/")
 
@@ -651,10 +724,25 @@ async def the_middleware_factory(app,handler):
 			request.path.startswith("/api/admin/") or
 			request.path.startswith("/fgmt/admin/")
 		)
+		if security_disabled:
+			if url_is_admin:
+				if request[_REQ_PATH].parts[3]=="users":
+					return Response(
+						body="Access to any account config is restricted",
+						status=406,
+					)
+
 		url_is_account=(
 			request.path.startswith("/api/accounts/") or
 			request.path.startswith("/fgmt/accounts/")
 		)
+		if security_disabled:
+			if url_is_account:
+				return Response(
+					body="Security is disabled, therefore, access to any account/user data is also disabled",
+					status=406,
+				)
+
 		url_is_assets=(
 			request.path.startswith("/api/assets/") or
 			request.path.startswith("/fgmt/assets/")
@@ -666,25 +754,30 @@ async def the_middleware_factory(app,handler):
 
 		# Session and credentials will be verified. The process may change or destroy the credentials
 		requires_session_checkin=True
-		if client_is_browser:
-			requires_session_checkin=(
-				url_is_page or
-				url_is_assets or url_is_orders or
-				url_is_account or url_is_admin
-			)
+		if security_disabled:
+			requires_session_checkin=False
+			has_session=True
+			userid=_ROOT_USER_ID
+			username=_ROOT_USER
 
-		if not client_is_browser:
-			requires_session_checkin=(
-				not api_local_access
-			)
-			if api_local_access:
-				has_session=True
-				userid=_ROOT_USER_ID
+		if not security_disabled:
+			if client_is_browser:
+				requires_session_checkin=(
+					url_is_page or
+					url_is_assets or url_is_orders or
+					url_is_account or url_is_admin
+				)
+			if not client_is_browser:
+				requires_session_checkin=(
+					not api_local_access
+				)
+				if api_local_access:
+					has_session=True
+					userid=_ROOT_USER_ID
 
 		# Session and credentials check-in
 
 		if requires_session_checkin:
-
 			msg_error=(
 				await process_session_checkin(
 					request,
@@ -696,23 +789,20 @@ async def the_middleware_factory(app,handler):
 					"SESSION CHECK-IN FAILED:",
 					msg_error
 				)
-
 			if has_session:
 				userid,access_key=util_extract_from_cookies(request)
-
-			# Allowed means that there will be partial or different content if the session is not valid
+			# NOTE:
+			# "Allowed" means that there will be partial or different content if the session is not valid
 			allowed=(
 				request.path.startswith("/page/assets") or
 				request.path.startswith("/page/orders") or
 				request.path.startswith("/page/accounts")
 				# NOTE: The admin page has zero public access
 			)
-
 			if not allowed:
 				the_referer:Optional[str]=None
 				if not by_htmx:
 					the_referer=util_get_correct_referer(request)
-
 				# if request.path==_ROUTE_CHECKIN:
 				# 	# status_code={
 				# 	# 	True:200,False:403
@@ -722,14 +812,12 @@ async def the_middleware_factory(app,handler):
 				# 		body="<!-- illegal checkin detected -->",
 				# 		# status=status_code
 				# 	)
-
 				if not url_is_account:
 					if (not url_is_page) and (not has_session):
 						return response_unauthorized(
 							lang,client_type,
 							fallback=the_referer
 						)
-
 				if (not url_is_page) and url_is_admin:
 					if not userid==_ROOT_USER_ID:
 						return response_unauthorized(
@@ -737,6 +825,19 @@ async def the_middleware_factory(app,handler):
 							root_access=True,
 							fallback=the_referer
 						)
+			if url_is_page:
+				result_GetUser=await dbi_loc_GetUser(
+					request.app[_APP_PROGRAMDIR],
+					params={_KEY_USERID:userid}
+				)
+				is_err=result_GetUser[0]==_ERR
+				if not is_err:
+					username=result_GetUser[1]
+				if is_err:
+					print(
+						"[!] Username not found",
+						result_GetUser[1]
+					)
 
 		#########################################################
 
@@ -831,12 +932,13 @@ async def the_middleware_factory(app,handler):
 		# 				)
 
 		request[_REQ_USERID]=userid
+		request[_REQ_USERNAME]=username
 		request[_REQ_ACCESS_KEY]=access_key
 		request[_REQ_HAS_SESSION]=has_session
 
 		# The actual request is handled here
 
-		the_response:Union[Response,json_response]=await handler(request)
+		the_response:Union[Response,FileResponse]=await handler(request)
 
 		if requires_session_checkin and client_is_browser and url_is_page:
 
@@ -959,6 +1061,7 @@ async def route_main(
 		_LANG_EN:"Assets",
 		_LANG_ES:"Activos"
 	}[lang]
+	tl=f"{_EMOJI_PACKAGE} {tl}"
 	html_text=(
 		f"{html_text}\n"
 		f"{write_button_anchor(tl,_ROUTE_PAGE_ASSETS,classes=[_CSS_CLASS_COMMON])}"
@@ -968,6 +1071,7 @@ async def route_main(
 		_LANG_EN:"Orders",
 		_LANG_ES:"Órdenes"
 	}[lang]
+	tl=f"{_EMOJI_MEMO} {tl}"
 	html_text=(
 		f"{html_text}\n"
 		f"{write_button_anchor(tl,_ROUTE_PAGE_ORDERS,classes=[_CSS_CLASS_COMMON])}"
@@ -977,17 +1081,17 @@ async def route_main(
 		_LANG_EN:"Account",
 		_LANG_ES:"Cuenta"
 	}[lang]
+	tl=f"{_EMOJI_PEOPLE} {tl}"
 	html_text=(
 		f"{html_text}\n"
 		f"{write_button_anchor(tl,_ROUTE_PAGE_ACCOUNTS,classes=[_CSS_CLASS_COMMON])}"
 	)
 
-	# html_text=f"{html_text}{write_link_account(lang)}"
-
 	tl={
 		_LANG_EN:"System config",
 		_LANG_ES:"Conf. del sistema"
 	}[lang]
+	tl=f"{_EMOJI_TOOL_BOX} {tl}"
 	html_text=(
 		f"{html_text}\n"
 		f"{write_button_anchor(tl,_ROUTE_PAGE_ADMIN,classes=[_CSS_CLASS_COMMON])}"

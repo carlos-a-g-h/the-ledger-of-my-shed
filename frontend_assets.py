@@ -1,7 +1,6 @@
 #!/usr/bin/python3.9
 
-from typing import Mapping
-from typing import Optional
+from typing import Mapping,Optional,Union
 
 from frontend_Any import (
 
@@ -26,6 +25,7 @@ from frontend_Any import (
 	_CSS_CLASS_INPUT_GUARDED,
 
 	# write_button_reset,
+	# write_popupmsg,
 	write_button_submit,
 	write_div_display_error,
 	write_html_input_checkbox,
@@ -54,12 +54,18 @@ from symbols_assets import (
 	_KEY_RECORD_UID,
 	_KEY_RECORD_MOD,
 
-	_ID_FORM_ASSETS_TO_SPREADSHEET,
-	_ID_FORM_NEW_ASSET,
-	# _ID_RESULT_NEW_ASSET,
-	_ID_FORM_ASSET_EDITOR,
-	_ID_FORM_ASSET_HISTORY,
+	_ID_ASSETS_TO_SPREADSHEET,
+
+	_ID_NEW_ASSET,
+		_ID_NEW_ASSET_FORM,
+
+	_ID_ASSET_EDITOR,
+		_ID_ASSET_EDITOR_FORM,
+
 	_ID_ASSET_HISTORY,
+		_ID_ASSET_HISTORY_FORM,
+		_ID_ASSET_HISTORY_RECORDS,
+
 	_ID_ASSET_INFO,
 	_ID_ASSET_SUPPLY,
 
@@ -79,9 +85,9 @@ from symbols_Any import (
 	_KEY_SIGN,_KEY_SIGN_UNAME,
 	_KEY_COMMENT,
 
-	# _KEY_DELETE_AS_ITEM,
+	#_KEY_DELETE_AS_ITEM,
 	_KEY_DATE,
-	# _KEY_DATE_UTC,
+	#_KEY_DATE_UTC,
 	_KEY_DATE_MAX,
 	_KEY_DATE_MIN
 )
@@ -168,6 +174,15 @@ def write_form_new_asset(lang:str,full:bool=True)->str:
 	)
 
 	tl={
+		_LANG_EN:"Initial ammount",
+		_LANG_ES:"Cantidad inicial"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		f"{write_html_input_number(_KEY_SUPPLY,label=tl,value=0,minimum=0)}"
+	)
+
+	tl={
 		_LANG_EN:"Comment",
 		_LANG_ES:"Comentario"
 	}[lang]
@@ -203,9 +218,9 @@ def write_form_new_asset(lang:str,full:bool=True)->str:
 			_LANG_ES:"Creación de un nuevo activo"
 		}[lang]
 		html_text=(
-			f"""<div id="{_ID_FORM_NEW_ASSET}">""" "\n"
+			f"""<div id="{_ID_NEW_ASSET}">""" "\n"
 				f"<h3>{tl}</h3>\n"
-				f"""<div id="{_ID_FORM_NEW_ASSET}-inner">""" "\n"
+				f"""<div id="{_ID_NEW_ASSET_FORM}">""" "\n"
 					f"{html_text}\n"
 				"</div>\n"
 			"</div>\n"
@@ -299,25 +314,29 @@ def write_form_edit_asset_definition(
 	)
 
 
-	tl={
-		_LANG_EN:"Edit definition",
-		_LANG_ES:"Editar definición"
-	}[lang]
 	html_text=(
-		f"<summary>{tl}</summary>\n"
 		f"""<form hx-post="/api/assets/pool/{asset_id}/edit" """ "\n"
 			f"""hx-target="#{_ID_MSGZONE}" """ "\n"
 			"""hx-swap="innerHTML">""" "\n"
 
-			f"{html_text}\n"
+			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
+				f"{html_text}\n"
+			"</div>\n"
 
 		"</form>"
 	)
 
 	if full:
+		tl={
+			_LANG_EN:"Edit definition",
+			_LANG_ES:"Editar definición"
+		}[lang]
 		html_text=(
-			f"""<details id="{_ID_FORM_ASSET_EDITOR}">""" "\n"
-				f"{html_text}\n"
+			f"""<details id="{_ID_ASSET_EDITOR}">""" "\n"
+				f"<summary>{tl}</summary>\n"
+				f"""<div id={_ID_ASSET_EDITOR_FORM}>""" "\n"
+					f"{html_text}\n"
+				"</div>"
 			"</details>"
 		)
 
@@ -331,8 +350,8 @@ def write_button_asset_fullview_or_update(
 
 	tl={
 		True:{
-			_LANG_EN:"View/Manage",
-			_LANG_ES:"Ver/Administrar"
+			_LANG_EN:"Manage",
+			_LANG_ES:"Administrar"
 		}[lang],
 		False:{
 			_LANG_EN:"Refresh now",
@@ -362,39 +381,29 @@ def write_form_drop_asset(
 		delete_entry:bool=True,
 	)->str:
 
-	the_path={
-		True:"/api/assets/drop-asset",
-		False:f"/api/assets/pool/{asset_id}/drop"
-	}[delete_entry]
+	req_url=f"/api/assets/pool/{asset_id}/drop"
+	if delete_entry:
+		req_url=f"{req_url}-as-item"
 
+
+	html_text={
+		_LANG_EN:"Delete",
+		_LANG_ES:"Eliminar"
+	}[lang]
 
 	tl={
 		_LANG_EN:"Are you sure you want to delete this asset?",
 		_LANG_ES:"¿Está seguro de que quiere eliminar este activo?"
 	}[lang]
 	html_text=(
-		f"""<form hx-delete="{the_path}" """
-			"""hx-trigger="submit" """
+		f"""<button hx-delete="{req_url}" """
+			f"""class="{_CSS_CLASS_COMMON} {_CSS_CLASS_DANGER}" """
 			f"""hx-target="#{_ID_MSGZONE}" """
-			"""hx-swap="innerHTML" """
 			f"""hx-confirm="{tl}" """
-			">\n"
-	)
-
-	if delete_entry:
-		html_text=(
-			f"{html_text}\n"
-			f"""<input name="{_KEY_ASSET}" type="hidden" value="{asset_id}">"""
-		)
-
-	tl={
-		_LANG_EN:"Delete",
-		_LANG_ES:"Eliminar"
-	}[lang]
-	html_text=(
-		f"{html_text}\n"
-			f"{write_button_submit(tl,[_CSS_CLASS_COMMON,_CSS_CLASS_DANGER])}\n"
-		"</form>"
+			# """hx-trigger="submit" """
+			"""hx-swap="innerHTML">"""
+			f"{html_text}"
+		"</button>"
 	)
 
 	return html_text
@@ -455,78 +464,12 @@ def write_form_add_record(
 
 		html_text=(
 
-			f"""<div id={_ID_FORM_ASSET_HISTORY}>""" "\n"
+			f"""<div id={_ID_ASSET_HISTORY_FORM}>""" "\n"
 				f"{html_text}\n"
 			"</div>\n"
 		)
 
 	return html_text
-
-	#######################################################################################
-
-	# html_text=(
-	# 	f"""<form hx-post="/api/assets/pool/{asset_id}/history/add" """
-	# 		f"""hx-target="#{_ID_MSGZONE}" """
-	# 		"""hx-swap="innerHTML" """
-	# 		">\n"
-
-	# 		# WARN: HIDDEN INPUT
-	# 		# f"""<input name="{_KEY_ASSET}" """
-	# 		# 	"""type="hidden" """
-	# 		# 	f"""value="{asset_id}" """
-	# 		# 	"required>\n"
-
-	# 		f"""<div class={_CSS_CLASS_IG_FIELDS}>"""
-	# 			# conventional fields {
-
-	# )
-
-	# tl={
-	# 	_LANG_EN:"Add or remove",
-	# 	_LANG_ES:"Agregar o sustraer"
-	# }[lang]
-	# html_text=(
-	# 	f"{html_text}\n"
-	# 	f"{write_html_input_number(_KEY_RECORD_MOD,label=tl,value=0,required=True)}"
-	# )
-
-	# tl={
-	# 	_LANG_EN:"Tag",
-	# 	_LANG_ES:"Etiqueta"
-	# }[lang]
-
-	# html_text=(
-	# 	f"{html_text}\n"
-	# 	f"{write_html_input_string(_KEY_TAG,label=tl)}"
-	# )
-
-	# tl={
-	# 	_LANG_EN:"Comment",
-	# 	_LANG_ES:"Comentario"
-	# }[lang]
-	# html_text=(
-	# 		f"{html_text}\n"
-	# 		# } conventional fields 
-	# 	"</div>\n"
-	# 	f"{write_html_input_textbox(_KEY_COMMENT,label=tl)}"
-	# )
-
-	# tl={
-	# 	_LANG_EN:"Add to history",
-	# 	_LANG_ES:"Agregar al historial"
-	# }[lang]
-	# html_text=(
-	# 		f"{html_text}\n"
-	# 		f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
-	# 			f"{write_button_submit(tl)}\n"
-	# 		"</div>\n"
-
-	# 	# NOTE: end of the form
-	# 	"</form>\n"
-	# )
-
-	# return html_text
-
 
 def write_button_record_details(
 		lang:str,
@@ -641,7 +584,7 @@ def write_html_record_detailed(
 		record_uid:Optional[str]=None,
 	)->str:
 
-	# TODO: fix later, must change this toa grid-able thing
+	# TODO: fix must change this to a grid layout
 
 	record_uid_ok=record_uid
 	if record_uid_ok is None:
@@ -674,16 +617,16 @@ def write_html_record_detailed(
 	):
 		return write_div_display_error(lang,data)
 
-	tl={
-		_LANG_EN:"Record details",
-		_LANG_ES:"Detalles del registro"
-	}[lang]
+	# tl={
+	# 	_LANG_EN:"Record details",
+	# 	_LANG_ES:"Detalles del registro"
+	# }[lang]
 
 	html_text=(
 		# f"{html_text}\n"
-		"""<div style="padding-bottom:8px;">""" "\n"
-			f"<strong>{tl}</strong>\n"
-		"</div>\n"
+		# """<div style="padding-bottom:8px;">""" "\n"
+		# 	f"<strong>{tl}</strong>\n"
+		# "</div>\n"
 		"""<table style="width:100%;text-align:left;">""" "\n"
 			"<tbody>\n"
 				"<tr>\n"
@@ -783,17 +726,35 @@ def write_html_record_detailed(
 
 def write_html_asset_info(
 		lang:str,
-		the_asset:Mapping,
+		asset:Union[tuple,Mapping],
 		full:bool=True
 	)->str:
 
-	print("rendering:",the_asset)
+	print(
+		f"{write_html_asset_info.__name__}()",
+		"rendering:",asset
+	)
 
-	asset_id=util_valid_str(the_asset.get(_KEY_ASSET))
+	asset_id:Optional[str]=None
+	asset_name:Optional[str]=None
+
+	as_tup=isinstance(asset,tuple)
+	as_map=isinstance(asset,Mapping)
+
+	if not (as_tup or as_map):
+		return write_div_display_error(lang)
+
+	if as_tup:
+		if len(asset)==2:
+			asset_id,asset_name=asset
+
+	if as_map:
+		asset_id=util_valid_str(asset.get(_KEY_ASSET))
+		asset_name=util_valid_str(asset.get(_KEY_NAME))
+
 	if not isinstance(asset_id,str):
 		return write_div_display_error(lang)
 
-	asset_name=util_valid_str(the_asset.get(_KEY_NAME))
 	if not isinstance(asset_name,str):
 		return write_div_display_error(lang)
 
@@ -806,93 +767,138 @@ def write_html_asset_info(
 		"</div>"
 	)
 
-	asset_tag=util_valid_str(the_asset.get(_KEY_TAG),True)
-	if isinstance(asset_tag,str):
-		tl={
-			_LANG_EN:"Tag",
-			_LANG_ES:"Etiqueta"
-		}[lang]
-		html_text=(
-			f"{html_text}\n"
-			f"<div>"
-				f"{tl}: <code>{asset_tag}</code>"
-			"</div>"
-		)
+	if as_map:
 
-	asset_sign=util_valid_str(the_asset.get(_KEY_SIGN))
-	asset_sign_uname=util_valid_str(the_asset.get(_KEY_SIGN_UNAME))
-	signed_raw=(isinstance(asset_sign,str))
-	signed_neat=(isinstance(asset_sign_uname,str))
-	if signed_raw or signed_neat:
-		tl={
-			_LANG_EN:"Signed by:",
-			_LANG_ES:"Firmado por:"
-		}[lang]
-		if signed_neat:
-			tl=f"{tl} [ <code>{asset_sign_uname}</code> ]"
-		if signed_raw:
-			tl=f"{tl} [ <code>{asset_sign}</code> ]"
+		asset_tag=util_valid_str(asset.get(_KEY_TAG),True)
+		if isinstance(asset_tag,str):
+			tl={
+				_LANG_EN:"Tag",
+				_LANG_ES:"Etiqueta"
+			}[lang]
+			html_text=(
+				f"{html_text}\n"
+				f"<div>"
+					f"{tl}: <code>{asset_tag}</code>"
+				"</div>"
+			)
 
-		html_text=(
-			f"{html_text}\n"
-			f"<div>{tl}</div>"
-		)
+		asset_sign=util_valid_str(asset.get(_KEY_SIGN))
+		asset_sign_uname=util_valid_str(asset.get(_KEY_SIGN_UNAME))
+		signed_raw=(isinstance(asset_sign,str))
+		signed_neat=(isinstance(asset_sign_uname,str))
+		if signed_raw or signed_neat:
+			tl={
+				_LANG_EN:"Signed by",
+				_LANG_ES:"Firmado por"
+			}[lang]
+			tl=f"{tl}: "
+			if signed_neat:
+				tl=f"{tl} [ <code>{asset_sign_uname}</code> ]"
+			if signed_raw:
+				tl=f"{tl} [ <code>{asset_sign}</code> ]"
 
-	asset_value=util_valid_int(the_asset.get(_KEY_VALUE))
-	if isinstance(asset_value,int):
-		tl={
-			_LANG_EN:"Value",
-			_LANG_ES:"Valor"
-		}[lang]
-		html_text=(
-			f"{html_text}\n"
-			f"<div>{tl}: <code>{asset_value}</code></div>"
-		)
+			html_text=(
+				f"{html_text}\n"
+				f"<div>{tl}</div>"
+			)
 
-	asset_supply=util_valid_int(the_asset.get(_KEY_SUPPLY))
-	if isinstance(asset_supply,int):
-		tl={
-			_LANG_EN:"Current amount",
-			_LANG_ES:"Cantidad actual"
-		}[lang]
-		html_text=(
-			f"{html_text}\n"
-			f"""<div>{tl}: <code id="{_ID_ASSET_SUPPLY}-{asset_id}">{asset_supply}</code></div>"""
-		)
+		asset_value=util_valid_int(asset.get(_KEY_VALUE))
+		if isinstance(asset_value,int):
+			tl={
+				_LANG_EN:"Value",
+				_LANG_ES:"Valor"
+			}[lang]
+			html_text=(
+				f"{html_text}\n"
+				f"<div>{tl}: <code>{asset_value}</code></div>"
+			)
 
-	asset_comment=util_valid_str(the_asset.get(_KEY_COMMENT))
-	if isinstance(asset_comment,str):
-		html_text=(
-			f"{html_text}\n"
-			f"<div><code>{asset_comment}</code></div>"
-		)
+		asset_supply=util_valid_int(asset.get(_KEY_SUPPLY))
+		print("SUPPLY:",asset_supply)
+		if isinstance(asset_supply,int):
+			tl={
+				_LANG_EN:"Current amount",
+				_LANG_ES:"Cantidad actual"
+			}[lang]
+			html_text=(
+				f"{html_text}\n"
+				f"""<div>{tl}: <code id="{_ID_ASSET_SUPPLY}-{asset_id}">{asset_supply}</code></div>"""
+			)
+
+		asset_comment=util_valid_str(asset.get(_KEY_COMMENT))
+		if isinstance(asset_comment,str):
+			html_text=(
+				f"{html_text}\n"
+				f"<div><code>{asset_comment}</code></div>"
+			)
 
 	if full:
 		html_text=(
-			f"""<div id="{html_id_asset(asset_id)}">""" "\n"
+			f"""<div id="{_ID_ASSET_INFO}">""" "\n"
 				f"{html_text}\n"
 			"</div>"
 		)
 
 	return html_text
 
+def write_button_asset_msgbox(lang,asset_id)->str:
+
+	tl={
+		_LANG_EN:"See details",
+		_LANG_ES:"Ver detalles"
+	}[lang]
+
+	return (
+		f"""<button class="{_CSS_CLASS_COMMON}" """
+			f"""hx-get="/fgmt/assets/pool/{asset_id}/details" """
+			f"""hx-target="#{_ID_MSGZONE}" """
+			"""hx-swap="innerHTML" """
+			">"
+			f"{tl}"
+		"</button>"
+	)
+
 def write_html_asset_as_item(
 		lang:str,
-		the_asset:Mapping,
+		# the_asset:Mapping,
+		asset:Union[tuple,Mapping],
 		full:bool=True,
 		authorized:bool=True,
 		focused:bool=False,
+		is_search_result:bool=True
 	)->str:
 
-	asset_id=the_asset.get(_KEY_ASSET)
+	asset_id:Optional[str]=None
+
+	as_tup=(isinstance(asset,tuple))
+	as_map=(isinstance(asset,Mapping))
+
+	if as_tup:
+		if len(asset)==2:
+			asset_id=asset[0]
+
+	if as_map:
+		asset_id=asset.get(_KEY_ASSET)
 
 	html_text=(
 		f"""<div id="{_ID_ASSET_INFO}">""" "\n"
-			f"{write_html_asset_info(lang,the_asset,full=False)}\n"
+			f"{write_html_asset_info(lang,asset,full=False)}\n"
 		"</div>\n"
 		f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
-			f"{write_button_asset_fullview_or_update(lang,asset_id)}\n"
 	)
+
+
+	if is_search_result:
+		html_text=(
+			f"{html_text}\n"
+			f"{write_button_asset_msgbox(lang,asset_id)}\n"
+		)
+
+	html_text=(
+		f"{html_text}\n"
+		f"{write_button_asset_fullview_or_update(lang,asset_id)}\n"
+	)
+
 	if authorized:
 		html_text=(
 			f"{html_text}\n"
@@ -1025,79 +1031,12 @@ def write_html_asset_history(
 
 	html_text=(
 		f"{html_text}\n"
-		f"""<div id="{_ID_ASSET_HISTORY}">""" "\n"
+		f"""<div id="{_ID_ASSET_HISTORY_RECORDS}">""" "\n"
 			f"{write_html_asset_history_records(lang,asset_id,history,authorized)}\n"
 		"</div>"
 	)
 
 	return html_text
-
-	##############################################################################
-
-	# asset_id=data.get(_KEY_ASSET)
-	# if asset_id is None:
-	# 	return write_div_display_error(lang)
-
-	# # History
-
-	# tl={
-	# 	_LANG_EN:"History",
-	# 	_LANG_ES:"Historial"
-	# }[lang]
-	# html_text=(
-	# 	f"<!-- HISTORY FOR {asset_id} -->\n"
-	# 	f"<h3>{tl}</h3>"
-	# )
-
-	# if authorized:
-	# 	html_text=(
-	# 		f"{html_text}\n"
-	# 		f"{write_form_add_record(lang,asset_id)}\n"
-	# 	)
-
-	# html_text=(
-	# 	f"{html_text}\n"
-	# 	f"""<div id="{_ID_ASSET_HISTORY}">"""
-	# )
-	# history_empty=(not isinstance(data.get(_KEY_HISTORY),Mapping))
-	# if not history_empty:
-	# 	history_empty=(len(data[_KEY_HISTORY])==0)
-
-	# if history_empty:
-	# 	html_text=f"{html_text}\n<!-- HISTORY FOR {asset_id} IS EMPTY -->"
-
-	# if not history_empty:
-
-	# 	# The most recent ones will be first
-
-	# 	html_text_history=""
-
-	# 	for record_uid in data[_KEY_HISTORY]:
-	# 		if not isinstance(
-	# 			data[_KEY_HISTORY].get(record_uid),
-	# 			Mapping
-	# 		):
-	# 			continue
-
-	# 		if len(data[_KEY_HISTORY][record_uid])==0:
-	# 			continue
-
-	# 		html_text_history=write_html_record(
-	# 			lang,asset_id,
-	# 			data[_KEY_HISTORY][record_uid],
-	# 			record_uid=record_uid,
-	# 			authorized=authorized,
-	# 		)+f"\n{html_text_history}"
-
-	# 	if len(html_text_history)>0:
-	# 		html_text=f"{html_text}\n{html_text_history}"
-
-	# html_text=(
-	# 		f"{html_text}\n"
-	# 	"</div>"
-	# )
-
-	# return html_text
 
 def write_form_export_assets_as_excel(lang:str):
 
@@ -1200,7 +1139,7 @@ def write_form_export_assets_as_excel(lang:str):
 		# "<div>\n"
 		f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
 			f"<h3>{tl}</h3>\n"
-			f"""<div id="{_ID_FORM_ASSETS_TO_SPREADSHEET}">""" "\n"
+			f"""<div id="{_ID_ASSETS_TO_SPREADSHEET}">""" "\n"
 				f"{html_text}\n"
 			"</div>\n"
 		"</div>"

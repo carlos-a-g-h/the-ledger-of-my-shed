@@ -13,7 +13,7 @@ from openpyxl.cell.cell import Cell
 from openpyxl.comments import Comment
 from openpyxl.worksheet.worksheet import Worksheet
 
-from dbi_assets import dbi_assets_AssetQuery
+from dbi_assets import dbi_rem_AssetQuery
 from dbi_orders import dbi_orders_QueryOrders
 
 from symbols_Any import (
@@ -268,7 +268,7 @@ async def main(
 		doc_order[_COL_ASSETS].keys()
 	)
 
-	the_assets=await dbi_assets_AssetQuery(
+	the_assets=await dbi_rem_AssetQuery(
 		rdbc,rdbn,
 		asset_id_list=the_list,
 		get_value=True,

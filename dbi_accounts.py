@@ -3,22 +3,44 @@
 from asyncio import to_thread
 
 from pathlib import Path
+# from pickle import (
+# 	dumps as pckl_encode,
+# 	loads as pckl_decode
+# )
+
 from secrets import token_hex
 from sqlite3 import (
 	Connection as SQLiteConnection,
-	Cursor as SQLiteCursor,
+	# Cursor as SQLiteCursor,
 	connect as sqlite_connect
 )
 from typing import Mapping,Optional,Union
 
+from aiosqlite import (
+	connect as aio_connect
+)
 from motor.motor_asyncio import (
 
 	AsyncIOMotorClient,
-	AsyncIOMotorCollection
+	AsyncIOMotorCollection,
+	AsyncIOMotorCursor
 )
 from pymongo import MongoClient
 
+from internals import util_valid_str
+from pysqlitekv import (
+	_SQL_TX_BEGIN,
+	_SQL_TX_COMMIT,
+)
+from pysqlitekv import (
+	# db_init as db_init_sync,
+	db_getcur as db_getcur_sync,
+)
+from pysqlitekv_async import db_getcur as aiodb_getcur
 from symbols_Any import (
+
+	_KEY_ID,
+
 	_ERR,
 	_ROOT_USER,
 	_ROOT_USER_ID,
@@ -30,489 +52,672 @@ from symbols_accounts import (
 	_MONGO_COL_USERS,
 
 	_KEY_USERID,_KEY_USERNAME,
-	_KEY_CON_EMAIL,_KEY_CON_TELEGRAM,
+	_KEY_ACC_EMAIL,_KEY_ACC_TELEGRAM,
+	# _KEY_SETTINGS,
 
-	_SQL_FILE_USERS,
-		_SQL_TABLE_USERS,
+	# _SQL_FILE_USERS,
+	_SQL_TABLE_USERS,
 
 	# _SQL_COL_USERID,
 	# _SQL_COL_USERNAME,
 
 )
 
-def util_get_db_file(basedir:Path)->Path:
+_DBF_UACCOUNTS="accounts.db"
 
-	fp=basedir.joinpath(
-		_DIR_TEMP,
-		_SQL_FILE_USERS
-	)
-
-	fp.parent.mkdir(
-		parents=True,
-		exist_ok=True
-	)
-
-	return fp
-
-# 1 - Init the users ldb file and add the root user
-
-def dbi_init_create_users_file(basedir:Path):
-
-	sql_file_path=util_get_db_file(basedir)
-
-	if sql_file_path.is_file():
-		sql_file_path.unlink()
-
-	noneval=f"None.{_ROOT_USER_ID}"
-
-	# try:
-	con:SQLiteConnection=sqlite_connect(sql_file_path)
-	cur:SQLiteCursor=con.cursor()
-	cur.executescript(
-		f"""CREATE TABLE {_SQL_TABLE_USERS} ("""
-
-			# f"{_SQL_COL_USERID} varchar(128) UNIQUE,"
-			f"{_KEY_USERID} varchar(128) UNIQUE,"
-
-			# f"{_SQL_COL_USERNAME} varchar(64) UNIQUE,"
-			f"{_KEY_USERNAME} varchar(64) UNIQUE,"
-
-			f"{_KEY_CON_EMAIL} varchar(128) UNIQUE,"
-			f"{_KEY_CON_TELEGRAM} varchar(128) UNIQUE"
-		");\n"
-		f"INSERT INTO {_SQL_TABLE_USERS} "
-			f"""VALUES ("{_ROOT_USER_ID}","{_ROOT_USER}","{noneval}","{noneval}");"""
-	)
-	con.commit()
-	cur.close()
-	con.close()
-
-# 2 - Download the normal users from the remote database to the local database
-def dbi_init_import_users(
+def util_get_dbfile(
 		basedir:Path,
-		rdbn:str,
-		con_str:Optional[str]=None
+		fname:str,
+		ep:bool=False
+	)->Path:
+
+	dbfile=basedir.joinpath(
+		_DIR_TEMP,
+		fname
+	)
+
+	if ep:
+		dbfile.parent.mkdir(
+			exist_ok=True,
+			parents=True
+		)
+		if dbfile.is_file():
+			dbfile.unlink()
+
+	return dbfile
+
+def util_uaccount_conv_tuple_to_mapping(
+		uaccount:tuple,
+		to_rdb:bool=False
+	)->Mapping:
+
+	if uaccount[0]==_ERR:
+		return {_ERR:uaccount[1]}
+
+	if not len(uaccount)==4:
+		return {_ERR:"Malformed tuple"}
+
+	userid,username,acc_email,acc_telegram=uaccount
+
+	userid_key={
+		True:_KEY_ID,
+		False:_KEY_USERID
+	}[to_rdb]
+
+	uaccount_new={
+		userid_key:userid,
+		_KEY_USERNAME:username
+	}
+
+	if acc_email is not None:
+		uaccount_new.update({_KEY_ACC_EMAIL:acc_email})
+
+	if acc_telegram is not None:
+		uaccount_new.update({_KEY_ACC_TELEGRAM:acc_telegram})
+
+	return uaccount_new
+
+def util_build_insert_params(user:Mapping)->Optional[tuple]:
+
+	userid=user.get(_KEY_USERID),
+	if userid is None:
+		userid=user.get(_KEY_ID)
+
+	if userid is None:
+		return None
+
+	username=user.get(_KEY_USERNAME)
+	if username is None:
+		return None
+
+	uacc_email=user.get(_KEY_ACC_EMAIL)
+	uacc_telegram=user.get(_KEY_ACC_TELEGRAM)
+
+	# user_settings=userid.get(_KEY_SETTINGS)
+	# if isinstance(
+	# 	user_settings,
+	# 	Mapping
+	# ):
+	# 	return (
+	# 		userid,username,
+	# 		uacc_email,uacc_telegram,
+	# 		pckl_encode(user_settings)
+	# 	)
+
+	return (
+		userid,username,
+		uacc_email,uacc_telegram,
+	)
+
+
+def dbi_init(
+
+		basedir:Path,
+		rdb_name:str,
+		rdb_constring:Optional[str]
 	):
 
-	rdbc:MongoClient=MongoClient(con_str)
-	col=rdbc[rdbn][_MONGO_COL_USERS]
+	fn=f"{dbi_init.__name__}()"
 
-	# Ensure unique constraints
-	# col.create_index(_KEY_USERNAME,unique=True)
-	# col.create_index(_KEY_CON_EMAIL,unique=True)
-	# col.create_index(_KEY_CON_TELEGRAM,unique=True)
+	# Create accounts file
 
-	list_of_users=[]
-	print("\nregular users found:")
-	for user in col.find({}):
-		print("\t->",user)
-		list_of_users.append(
-			tuple(
-				user.values()
+	# noneval=util_get_user_noneval(_ROOT_USER_ID)
+
+	filepath=util_get_dbfile(
+		basedir,
+		_DBF_UACCOUNTS,
+		ep=True
+	)
+
+	print(fn,"initializing DB...")
+
+	rdbc:MongoClient=MongoClient(rdb_constring)
+	col=rdbc[rdb_name][_MONGO_COL_USERS]
+
+	with sqlite_connect(filepath) as con:
+		cur=db_getcur_sync(con,begin_transaction=True)
+		cur.execute(
+			f"""CREATE TABLE {_SQL_TABLE_USERS} ("""
+				f"{_KEY_USERID} varchar(128) UNIQUE,"
+				f"{_KEY_USERNAME} varchar(64) UNIQUE,"
+				f"{_KEY_ACC_EMAIL} varchar(128) UNIQUE,"
+				f"{_KEY_ACC_TELEGRAM} varchar(128) UNIQUE"
+				# f"{_KEY_SETTINGS} BLOB"
+			")"
+		)
+		cur.execute(
+			f"INSERT INTO {_SQL_TABLE_USERS} "
+				# "VALUES (?,?,?,?,?)",
+				"VALUES (?,?,?,?)",
+			(
+				_ROOT_USER_ID,
+				_ROOT_USER,
+				None,None,
+				# pckl_encode({})
 			)
 		)
+		sql_str=(
+			f"INSERT OR REPLACE INTO {_SQL_TABLE_USERS} "
+				"VALUES (?,?,?,?)"
+		)
+		user_ok:Optional[tuple]=None
+		for user in col.find({}):
+			user_ok=util_build_insert_params(user)
+			if not isinstance(user_ok,tuple):
+				print(fn,"\tMalformed user:",user)
+				continue
+			print(fn,"\tAdding:",user_ok[0:4])
+			cur.execute(
+				sql_str,
+				user_ok
+			)
+		# cur.execute(_SQL_TX_COMMIT)
+		con.commit()
+		cur.close()
+
+		# nc=con.cursor()
+		# nc.execute(f"SELECT * FROM {_SQL_TABLE_USERS}")
+		# print("-->",nc.fetchall())
+		# nc.close()
 
 	rdbc.close()
 
-	if len(list_of_users)==0:
-		return
-
-	con:SQLiteConnection=sqlite_connect(
-		util_get_db_file(basedir)
-	)
-	cur:SQLiteCursor=con.cursor()
-	cur.executemany(
-		(
-			f"INSERT OR REPLACE INTO {_SQL_TABLE_USERS} "
-				"VALUES (?,?,?,?)"
-		),
-		list_of_users
-	)
-	con.commit()
-	cur.close()
-	con.close()
-
-def util_rdb_user_export(the_user:Mapping)->Mapping:
-
-	# Prepares the user data to be written to the remote database
-	# NOTE: returns an entirely new Mapping
-
-	userid=the_user.get(_KEY_USERID)
-	username=the_user.get(_KEY_USERNAME)
-	email:Optional[str]=the_user.get(_KEY_CON_EMAIL)
-	if email is None:
-		email=f"None.{userid}"
-	telegram:Optional[str]=the_user.get(_KEY_CON_TELEGRAM)
-	if telegram is None:
-		telegram=f"None.{userid}"
-
-	return {
-		"_id":userid,
-		_KEY_USERNAME:username,
-		_KEY_CON_EMAIL:email,
-		_KEY_CON_TELEGRAM:telegram,
-	}
-
-def util_rdb_user_import(
-		the_user:Mapping,
-		for_ldb:bool=False
-	)->Union[tuple,Mapping]:
-
-	# Prepares the userdata from the remote database to be used internally by the program
-	# NOTE: returns an entirely new Mapping
-
-	userid=the_user.get("_id")
-	username=the_user.get(_KEY_USERNAME)
-	email=the_user.get(_KEY_CON_EMAIL)
-	telegram=the_user.get(_KEY_CON_TELEGRAM)
-
-	if for_ldb:
-		return (
-			userid,
-			username,
-			email,
-			telegram
-		)
-
-	noneval=f"None.{userid}"
-
-	ready={
-		_KEY_USERID:userid,
-		_KEY_USERNAME:username,
-	}
-	if not email==noneval:
-		ready.update({_KEY_CON_EMAIL:email})
-	if not telegram==noneval:
-		ready.update({_KEY_CON_TELEGRAM:telegram})
-
-	return ready
-
-def ldbi_get_userid(
-		basedir:Path,
-		username:str,
-	)->tuple:
-
-	# Gets user ID from a given username
-
-	result:Optional[str]=None
-
-	try:
-		con:SQLiteConnection=sqlite_connect(
-			basedir.joinpath(_DIR_TEMP,_SQL_FILE_USERS)
-		)
-		cur:SQLiteCursor=con.cursor()
-		cur.execute(
-			# f"SELECT {_SQL_COL_USERID} "
-			f"SELECT {_KEY_USERID} "
-			# f"SELECT * "
-				f"FROM {_SQL_TABLE_USERS} "
-				# f"""WHERE {_SQL_COL_USERNAME}="{username}";"""
-				f"""WHERE {_KEY_USERNAME}="{username}";"""
-		)
-		result_row=cur.fetchone()
-		con.commit()
-		cur.close()
-		con.close()
-		if result_row is not None:
-			print(result_row,type(result_row))
-			result=result_row[0]
-
-	except Exception as exc:
-		return (_ERR,f"{exc}")
-
-	if result is None:
-		return (
-			_ERR,
-			"The requested user does not exist"
-		)
-
-	return (_KEY_USERID,result)
-
-def ldbi_get_username(
-		basedir:Path,
-		userid:str,
-	)->tuple:
-
-	# Gets username from a given userid
-
-	result:Optional[str]=None
-
-	try:
-		con:SQLiteConnection=sqlite_connect(
-			basedir.joinpath(_DIR_TEMP,_SQL_FILE_USERS)
-		)
-		cur:SQLiteCursor=con.cursor()
-		cur.execute(
-			# f"SELECT {_SQL_COL_USERNAME} "
-			f"SELECT {_KEY_USERNAME} "
-				f"FROM {_SQL_TABLE_USERS} "
-				# f"""WHERE {_SQL_COL_USERID}="{userid}";"""
-				f"""WHERE {_KEY_USERID}="{userid}";"""
-		)
-		result_row=cur.fetchone()
-		cur.close()
-		con.close()
-		if result_row is not None:
-			print(
-				"GetUsernameResult:",
-				result_row
-			)
-			result=result_row[0]
-
-	except Exception as exc:
-		return (_ERR,f"{exc}")
-
-	if result is None:
-		return (
-			_ERR,
-			"The requested user does not exist"
-		)
-
-	# print(
-	# 	userid,"<--",result
-	# )
-
-	return (_KEY_USERNAME,result)
-
 # OK
-def ldbi_create_user(
+async def dbi_rem_CreateUser(
 		basedir:Path,
-		user:tuple,
-	)->Optional[str]:
-
-	try:
-		con:SQLiteConnection=sqlite_connect(
-			util_get_db_file(basedir)
-		)
-		cur:SQLiteCursor=con.cursor()
-		cur.executemany(
-			(
-				f"INSERT INTO {_SQL_TABLE_USERS} "
-					"VALUES (?,?,?,?)"
-			),
-			[user]
-		)
-		con.commit()
-		cur.close()
-		con.close()
-	except Exception as exc:
-		return f"{exc}"
-
-	return None
-
-# OK
-async def dbi_CreateUser(
-		basedir:Path,
-		rdbc:AsyncIOMotorClient,
-		name_db:str,
+		rdb_client:AsyncIOMotorClient,
+		rdb_name:str,
 
 		username:str,
-			con_telegram:Optional[str]=None,
-			con_email:Optional[str]=None,
+			acc_telegram:Optional[str]=None,
+			acc_email:Optional[str]=None,
 
 		get_result:bool=False
 
 	)->Mapping:
 
+	fn=f"{dbi_rem_CreateUser.__name__}()"
+
 	userid=token_hex(24)
 
-	stored_email:Optional[str]=con_email
-	if stored_email is None:
-		stored_email=f"None.{userid}"
-
-	stored_telegram:Optional[str]=con_telegram
-	if stored_telegram is None:
-		stored_telegram=f"None.{userid}"
-
-	user=(
-		userid,
-		username,
-		stored_email,
-		stored_telegram
-	)
-
-	# Create the user locally first
-	result=await to_thread(
-		ldbi_create_user,
-		basedir,user
-	)
-	if result is not None:
-		return {_ERR:result}
-
-	user_data={
-		"_id":userid,
+	user_new={
+		_KEY_ID:userid,
 		_KEY_USERNAME:username,
-		_KEY_CON_EMAIL:stored_email,
-		_KEY_CON_TELEGRAM:stored_telegram
 	}
-
-	print(
-		"User data serialized for mongodb:",
-		user_data
-	)
+	if acc_email is not None:
+		user_new.update({
+			_KEY_ACC_EMAIL:acc_email,
+		})
+	if acc_telegram is not None:
+		user_new.update({
+			_KEY_ACC_TELEGRAM:acc_telegram,
+		})
 
 	try:
-		tgtcol:AsyncIOMotorCollection=rdbc[name_db][_MONGO_COL_USERS]
-		await tgtcol.insert_one(user_data)
+		async with aio_connect(
+				util_get_dbfile(
+					basedir,
+					_DBF_UACCOUNTS
+				)
+			) as sqlcon:
+			async with sqlcon.cursor() as sqlcur:
+				await sqlcur.execute(_SQL_TX_BEGIN)
+				await sqlcur.execute(
+					f"INSERT INTO {_SQL_TABLE_USERS} "
+						"VALUES (?,?,?,?)",
+					(
+						userid,
+						username,
+						acc_email,
+						acc_telegram,
+					)
+				)
+				tgtcol:AsyncIOMotorCollection=rdb_client[rdb_name][_MONGO_COL_USERS]
+				await tgtcol.insert_one(user_new)
+				await sqlcur.execute(_SQL_TX_COMMIT)
 	except Exception as exc:
-		return {_ERR:f"{exc}"}
+		return {_ERR:f"{fn} {exc}"}
 
 	if get_result:
-		return util_rdb_user_import(user_data)
+
+		user_new.update({_KEY_USERID:userid})
+		user_new.pop(_KEY_ID)
+
+		return user_new
 
 	return {}
 
-#OK
-def ldb_get_one_or_all_users(
-
+async def dbi_loc_GetUser(
 		basedir:Path,
+		params:Mapping={},
+		as_map:int=0,
+	)->Union[tuple,Mapping]:
 
-		userid:Optional[str],
-		username:Optional[str],
+	the_query=f"SELECT * FROM {_SQL_TABLE_USERS}"
+	woa={
+		False:"WHERE",
+		True:"AND"
+	}
+	ok=False
+	userid:Optional[str]=params.get(_KEY_USERID)
+	if userid is not None:
+		the_query=(
+			f"{the_query} {woa[ok]} "
+			f"""{_KEY_USERID}="{userid}" """
+		)
+		ok=True
+	username:Optional[str]=params.get(_KEY_USERNAME)
+	if username is not None:
+		the_query=(
+			f"{the_query} {woa[ok]} "
+			f"""{_KEY_USERNAME}="{username}" """
+		)
+		ok=True
+	uacc_email:Optional[str]=params.get(_KEY_ACC_EMAIL)
+	if uacc_email is not None:
+		the_query=(
+			f"{the_query} {woa[ok]} "
+			f"""{_KEY_ACC_EMAIL}="{uacc_email}" """
+		)
+		ok=True
+	uacc_telegram:Optional[str]=params.get(_KEY_ACC_TELEGRAM)
+	if uacc_telegram is not None:
+		the_query=(
+			f"{the_query} {woa[ok]} "
+			f"""{_KEY_ACC_TELEGRAM}="{uacc_telegram}" """
+		)
 
-		con_telegram:Optional[str],
-		con_email:Optional[str],
+	userdata:Optional[tuple]
 
-		inc_root:bool,
+	ret_mapping=(as_map in [1,2])
 
+	try:
+		async with aio_connect(
+				util_get_dbfile(
+					basedir,
+					_DBF_UACCOUNTS,
+				)
+			) as con:
+			async with con.cursor() as cur:
+				await cur.execute(
+					the_query.strip()
+				)
+				userdata=await cur.fetchone()
+	except Exception as exc:
+		if ret_mapping:
+			return {_ERR:f"{exc}"}
+
+		return (_ERR,f"{exc}")
+
+	if ret_mapping:
+
+		keyname={
+			1:_KEY_USERID,
+			2:_KEY_ID
+		}[as_map]
+		userdata_map={
+			keyname:userdata[0],
+			_KEY_USERNAME:userdata[1]
+		}
+		if userdata[2] is not None:
+			userdata_map.update({_KEY_ACC_EMAIL:userdata[2]})
+		if userdata[3] is not None:
+			userdata_map.update({_KEY_ACC_TELEGRAM:userdata[3]})
+
+		return userdata_map
+
+	return userdata
+
+def util_bquery_EditUser(
+		userid:str,
+		username:Optional[str]=None,
+		ch_set:Mapping={},
+		ch_unset:list=[],
+	)->str:
+
+	ch_username=isinstance(username,str)
+
+	stuff_to_set=(len(ch_set)>0)
+	stuff_to_unset=(len(ch_unset)>0)
+
+	query=f"""UPDATE {_SQL_TABLE_USERS} SET """
+	count=0
+	size=len(ch_set)+len(ch_unset)
+	if ch_username:
+		size=size+1
+		count=count+1
+		query=(
+			f"{query}"
+			f"""{_KEY_USERNAME}="{username}" """
+		)
+		if not count==size:
+			query=f"{query.strip()},"
+
+	if stuff_to_unset:
+		for keyname in ch_unset:
+			count=count+1
+			query=(
+				f"{query}"
+				f"{keyname}=NULL"
+			)
+			if not count==size:
+				query=f"{query.strip()},"
+
+	if stuff_to_set:
+		for keyname,value in ch_set.items():
+			count=count+1
+			query=(
+				f"{query}"
+				f"""{keyname}="{value}" """
+			)
+			if not count==size:
+				query=f"{query.strip()},"
+
+	query=(
+		f"{query}"
+		f"""WHERE {_KEY_USERID}="{userid}" """
+	)
+
+	return query.strip()
+
+	# try:
+	# 	async with aio_connect(
+	# 			util_get_dbfile(
+	# 				basedir,
+	# 				_DBF_UACCOUNTS
+	# 			)
+	# 		) as sqlcon:
+	# 		cur=await aiodb_getcur(
+	# 			sqlcon,
+	# 			begin_transaction=True
+	# 		)
+	# 		await cur.execute(query.strip())
+	# 		await cur.execute(_SQL_TX_COMMIT)
+
+	# except Exception as exc:
+	# 	return f"{exc}"
+
+	# return None
+
+def util_user_tuple_to_mapping(
+		user:tuple,
+		for_rdb:bool=False
 	)->Mapping:
 
-	# Returned users are all deserialized
+	userid=user[0]
+	username=user[1]
+	acc_email=user[2]
+	acc_telegram=user[3]
 
-	the_query=""
+	data={}
+	if userid is not None:
+		keyname={
+			True:_KEY_ID,
+			False:_KEY_USERID
+		}[for_rdb]
+		data.update({keyname:userid})
+	if username is not None:
+		data.update({_KEY_USERNAME:username})
+	if acc_email is not None:
+		data.update({_KEY_ACC_EMAIL:acc_email})
+	if acc_telegram is not None:
+		data.update({_KEY_ACC_TELEGRAM:acc_telegram})
 
-	has_userid=(userid is not None)
-	has_username=(username is not None)
-	has_telegram=(con_telegram is not None)
-	has_email=(con_email is not None)
+	return data
 
-	get_all=(
-		(not has_userid) and
-		(not has_username) and
-		(not has_telegram) and
-		(not has_email)
-	)
+async def dbi_loc_QueryUsers(
+		basedir:Path,
+		params:Mapping={},
+		as_map:int=0,
+	)->list:
 
 	the_query=f"SELECT * FROM {_SQL_TABLE_USERS}"
 
-	ready=False
+	size=len(params)
+	if size>0:
+		use_and=False
+		for key,val in params.items():
+			if use_and:
+				the_query=f"{the_query} AND"
+			if not use_and:
+				the_query=f"{the_query} WHERE"
+				use_and=True
+			the_query=f"""{the_query} {key}="{val}" """
 
-	if not get_all:
-		if has_userid:
-			# the_query=f"{the_query} WHERE {_SQL_COL_USERID}='{userid}'"
-			the_query=f"{the_query} WHERE {_KEY_USERID}='{userid}'"
-			ready=True
-
-		if (not ready) and has_username:
-			# the_query=f"{the_query} WHERE {_SQL_COL_USERNAME}='{username}'"
-			the_query=f"{the_query} WHERE {_KEY_USERNAME}='{username}'"
-			ready=True
-
-		if (not ready) and has_email:
-			the_query=f"{the_query} WHERE {_KEY_CON_EMAIL}='{con_email}'"
-			ready=True
-
-		if (not ready) and has_telegram:
-			the_query=f"{the_query} WHERE {_KEY_CON_TELEGRAM}='{con_telegram}'"
-			ready=True
-
-	the_query=f"{the_query};"
-
-	results=[]
+		the_query=the_query.strip()
 
 	print(
-		"Running query:",
+		f"{dbi_loc_QueryUsers}()",
 		the_query
 	)
 
+	items=[]
+
+	as_mapping=(as_map>0)
+	for_rdb=(as_map==2)
+
 	try:
-		con:SQLiteConnection=sqlite_connect(
-			util_get_db_file(basedir)
-		)
-		cur:SQLiteCursor=con.cursor()
-		cur.execute(the_query)
-		for row in cur.fetchall():
-
-			if not inc_root:
-				if row[0]==_ROOT_USER_ID:
-					continue
-
-			results.append(
-				# row
-				util_rdb_user_import(
-					{
-						"_id":row[0],
-						_KEY_USERNAME:row[1],
-						_KEY_CON_EMAIL:row[2],
-						_KEY_CON_TELEGRAM:row[3]
-					}
+		async with aio_connect(
+				util_get_dbfile(
+					basedir,
+					_DBF_UACCOUNTS
 				)
-			)
-
-		cur.close()
-		con.close()
+			) as con:
+			async with con.cursor() as cur:
+				async for item in cur.execute(the_query):
+					if as_mapping:
+						item.append(
+							util_user_tuple_to_mapping(
+								item,
+								for_rdb=for_rdb
+							)
+						)
+						continue
+					items.append(item)
 
 	except Exception as exc:
-		return {_ERR:str(exc)}
+		msg_err=f"{exc}"
+		if as_map:
+			return [{_ERR:msg_err}]
 
-	return {_MONGO_COL_USERS:results}
+		return [(_ERR,msg_err)]
 
-# async def dbi_QueryOrListUsers(
-# 		rdbc:AsyncIOMotorClient,
-# 		name_db:str,
-# 		user_id:str,
-# 		username:str,
-# 		extra:Mapping={},
-# 	)->Mapping:
+	return items
 
-# 	pass
+async def dbi_rem_EditUser(
+
+		basedir:Path,
+		rdb_client:AsyncIOMotorClient,
+		rdb_name:str,
+		userid:str,
+
+		username:Optional[str]=None,
+			acc_telegram:Optional[str]=None,
+			acc_email:Optional[str]=None,
+
+		ch_acc_telegram:bool=False,
+		ch_acc_email:bool=False,
+
+		verbose:bool=True
+
+	)->Mapping:
+
+	fn=f"{dbi_rem_EditUser.__name__}()"
+
+	ch_set={}
+	ch_unset=[]
+
+	ok=False
+	val:Optional[str]=None
+
+	ch_username=isinstance(username,str)
+
+	if ch_username:
+		val=util_valid_str(username)
+		ok=isinstance(val,str)
+		if ok:
+			ch_set.update({_KEY_USERNAME:val})
+		if not ok:
+			ch_set.update({_KEY_USERNAME:userid})
+
+	if ch_acc_telegram:
+		val=util_valid_str(acc_telegram)
+		ok=isinstance(val,str)
+		if ok:
+			ch_set.update({_KEY_ACC_TELEGRAM:val})
+		if not ok:
+			ch_unset.append(_KEY_ACC_TELEGRAM)
+
+	if ch_acc_email:
+		val=util_valid_str(acc_email)
+		ok=isinstance(val,str)
+		if ok:
+			ch_set.update({_KEY_ACC_EMAIL:val})
+		if not ok:
+			ch_unset.append(_KEY_ACC_EMAIL)
+
+	if len(ch_set)==0 and len(ch_unset)==0:
+		return {_ERR:"Nothing to change"}
+
+	# Editing locally first
+
+	# msg_err=await aw_dbi_loc_edit_user(
+	# msg_err:Optional[str]=await dbi_loc_EditUser(
+	# 	basedir,userid,
+	# 	ch_set,ch_unset
+	# )
+	# if msg_err is not None:
+	# 	return {_ERR:msg_err}
+
+	# Editting remotely
+
+	aggr_pipeline=[{"$match":{_KEY_ID:userid}}]
+
+	if len(ch_set)>0:
+		aggr_pipeline.append({"$set":ch_set})
+
+	if len(ch_unset)>0:
+		aggr_pipeline.append({"$unset":ch_unset})
+
+	aggr_pipeline.append(
+		{
+			"$merge":{
+				"into":_MONGO_COL_USERS,
+				"whenMatched":"replace",
+				"whenNotMatched":"insert"
+			}
+		}
+	)
+
+	try:
+		async with aio_connect(
+				util_get_dbfile(
+					basedir,
+					_DBF_UACCOUNTS
+				)
+			) as sqlcon:
+			cur=await aiodb_getcur(
+				sqlcon,
+				begin_transaction=True
+			)
+			await cur.execute(
+				util_bquery_EditUser(
+					userid,
+					username=username,
+					ch_set=ch_set,
+					ch_unset=ch_unset
+				)
+			)
+			col:AsyncIOMotorCollection=rdb_client[rdb_name][_MONGO_COL_USERS]
+			cursor:AsyncIOMotorCursor=col.aggregate(aggr_pipeline)
+			async for x in cursor:
+				print(fn,x)
+
+			await cur.execute(_SQL_TX_COMMIT)
+
+	except Exception as exc:
+		return {_ERR:f"{exc}"}
+
+	# print(cursor)
+
+	if not verbose:
+		return {}
+
+	user_now=await dbi_loc_GetUser(
+		basedir,
+		params={_KEY_USERID:userid},
+		map=2
+	)
+
+	return user_now
 
 # Ok
-def ldbi_delete_user(
+def dbi_delete_uaccount(
 		basedir:Path,
 		userid:str
 	)->Optional[str]:
 
-	try:
+	if userid==_ROOT_USER_ID:
+		return "Cannot delete the root user"
+
+	# try:
+	if True:
 		con:SQLiteConnection=sqlite_connect(
-			util_get_db_file(basedir)
+			util_get_dbfile(
+				basedir,
+				_DBF_UACCOUNTS
+			)
 		)
-		cur:SQLiteCursor=con.cursor()
-		cur.execute(
+		con.execute(
 			(
 				f"DELETE FROM {_SQL_TABLE_USERS} "
-					# f"""WHERE {_SQL_COL_USERID}="{userid}";"""
 					f"""WHERE {_KEY_USERID}="{userid}";"""
 			)
 		)
 		con.commit()
-		cur.close()
 		con.close()
-	except Exception as exc:
-		return f"{exc}"
+
+		# edb:Elara=el_exe(
+		# 	util_get_dbfile(
+		# 		basedir,
+		# 		_DBF_USETTINGS
+		# 	)
+		# )
+		# edb.remkeys([userid])
+		# edb.commit()
+
+	# except Exception as exc:
+	# 	return f"{exc}"
 
 	return None
 
-async def dbi_DeleteUser(
+async def aw_dbi_delete_uaccount(
 		basedir:Path,
-		rdbc:AsyncIOMotorClient,
-		name_db:str,
-		userid:str,
-		# match_extra:Mapping={}
-	)->Mapping:
-
-	match_this={"_id":userid}
+		userid:Path
+	)->Optional[str]:
 
 	msg_err=await to_thread(
-		ldbi_delete_user,
-		basedir,
-		userid
+		dbi_delete_uaccount,
+		basedir,userid
 	)
+
+	return msg_err
+
+async def dbi_rem_DeleteUser(
+		basedir:Path,
+		rdb_client:AsyncIOMotorClient,
+		rdb_name:str,
+		userid:str,
+	)->Mapping:
+
+	msg_err=await aw_dbi_delete_uaccount(basedir,userid)
 	if msg_err is not None:
 		return {_ERR:msg_err}
 
+	match_this={_KEY_ID:userid}
+
 	try:
-		tgtcol:AsyncIOMotorCollection=rdbc[name_db][_MONGO_COL_USERS]
+		tgtcol:AsyncIOMotorCollection=rdb_client[rdb_name][_MONGO_COL_USERS]
 		await tgtcol.find_one_and_delete(match_this)
 	except Exception as exc:
 		return {_ERR:f"{exc}"}
@@ -525,22 +730,26 @@ async def dbi_DeleteUser(
 
 # 	rdbc=AsyncIOMotorClient()
 
-# 	username="test_user1"
+# 	username="brad"
 
-# 	userdata=await dbi_CreateUser(
-# 		path_basedir,
-# 		rdbc,rdbn,
-# 		username,
-# 		get_result=True
+# 	userdata=await aw_dbi_get_account(basedir,_KEY_USERNAME,username)
+
+# 	if userdata[0]==_ERR:
+# 		print("account get error",userdata[1])
+# 		return
+
+# 	edit_result=await dbi_rem_EditUser(
+# 		basedir,rdbc,rdbn,userdata[0],
+# 		acc_email="juanito@gmai.com",
+# 		ch_acc_email=True
 # 	)
-# 	print("userdata:",userdata)
+# 	print("edit_result =",edit_result)
 
 # 	# loaded=ldbi_load_user(
 # 	# 	Path("./"),
 # 	# 	username=username
 # 	# )
 # 	# print("cached user:",loaded)
-
 
 # if __name__=="__main__":
 
@@ -550,18 +759,23 @@ async def dbi_DeleteUser(
 
 # 	path_basedir=Path("tests")
 
-# 	result=dbi_init_create_users_file(path_basedir)
+# 	result=dbi_init(path_basedir,rdbn,None)
 # 	if result is not None:
 # 		print(result)
 
-# 	ldb_debug_show_users(path_basedir)
+# 	print("\nUSERS (before):")
+# 	for u in dbi_accounts_fuzzy_query(path_basedir,None,3):
+# 		print(u)
 
-# 	dbi_init_import_users(path_basedir,rdbn)
-
+# 	print("\nthe test")
 # 	async_run(
 # 		main(
 # 			path_basedir,
 # 			rdbn
 # 		)
 # 	)
+
+# 	print("\nUSERS (after):")
+# 	for u in dbi_accounts_fuzzy_query(path_basedir,None,3):
+# 		print(u)
 

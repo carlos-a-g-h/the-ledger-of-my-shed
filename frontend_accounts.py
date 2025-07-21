@@ -4,30 +4,9 @@ from typing import Mapping,Optional
 
 from aiohttp.web import Request
 
-from symbols_accounts import (
-	_ROUTE_CHECKIN,
-	_KEY_USERID,
-	_KEY_CON_EMAIL,_KEY_CON_TELEGRAM,
-	_KEY_SIM,_KEY_OTP,_KEY_USERNAME,
-	id_user,
-)
-
 from control_Any import (
 	is_root_local_autologin_allowed,
-	get_username
-)
-
-from symbols_Any import (
-	_LANG_EN,_LANG_ES,
-	_REQ_USERID,
-	_CFG_ACC_TIMEOUT_SESSION,
-
-)
-
-from symbols_accounts import (
-	_ID_FORM_LOGIN,
-	_ID_USER_ACCOUNT
-
+	# get_username
 )
 
 from frontend_Any import (
@@ -39,10 +18,38 @@ from frontend_Any import (
 	_CSS_CLASS_NAV,
 	_CSS_CLASS_IG_FIELDS,
 
+	# write_popupmsg,
 	write_html_input_string,
 	write_html_input_radio,
 	# write_button_anchor,
 )
+
+from symbols_Any import (
+	_LANG_EN,_LANG_ES,
+	_CFG_FLAGS,_CFG_FLAG_D_SECURITY,
+	_REQ_USERID,
+	_REQ_USERNAME,
+	_REQ_HAS_SESSION,
+	_CFG_ACC_TIMEOUT_SESSION,
+	# _ROOT_USER_ID,
+)
+
+from symbols_accounts import (
+	_ID_FORM_LOGIN,
+	_ID_USER_ACCOUNT,
+	_ROUTE_API_CHECKIN,
+	_KEY_USERID,
+	_KEY_ACC_EMAIL,_KEY_ACC_TELEGRAM,
+	_KEY_SIM,_KEY_OTP,_KEY_USERNAME,
+	# id_user,
+)
+
+# from symbols_admin import _ROUTE_API_USERS_DELETE
+
+_TITLE_USER_DETAILS={
+	_LANG_EN:"User details",
+	_LANG_ES:"Detalles del usuario"
+}
 
 # def write_link_account(lang:str,return_there:bool=False)->str:
 
@@ -60,50 +67,178 @@ from frontend_Any import (
 # 		"/page/accountss"
 # 	)
 
-def write_html_user(
+def write_html_user_detailed(
 		lang:str,
 		data:Mapping,
-		full:bool=True
+		full:bool=False,
 	)->str:
 
 	userid=data.get(_KEY_USERID)
-
 	username=data.get(_KEY_USERNAME)
 
-	con_telegram=data.get(_KEY_CON_TELEGRAM)
+	# html_text=(
+	# 	f"<h2>{tl}</h2>"
+	# )
 
-	con_email=data.get(_KEY_CON_EMAIL)
-
+	tl={
+		_LANG_EN:"User ID",
+		_LANG_ES:"ID de usuario"
+	}[lang]
 	html_text=(
-		f"<div>{username} | {userid}</div>\n"
+		f"<div>{tl}: {userid}</div>"
 	)
 
-	if con_telegram is not None:
+	tl={
+		_LANG_EN:"Username",
+		_LANG_ES:"Nombre de usuario"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		f"<div>{tl}: {username}</div>"
+	)
+
+	acc_email=data.get(_KEY_ACC_EMAIL)
+
+	if acc_email is not None:
 		tl={
-			_LANG_EN:"Telegram user",
-			_LANG_ES:"Usuario de Telegram"
+			_LANG_EN:"Correo electrónico",
+			_LANG_ES:"E-Mail account"
 		}[lang]
 		html_text=(
 			f"{html_text}\n"
-			f"<div>{tl}: <code>{con_telegram}</code></div>"
+			f"<div>{tl}: {acc_email}</div>"
 		)
 
-	if con_email is not None:
+	acc_telegram=data.get(_KEY_ACC_TELEGRAM)
+
+	if acc_telegram is not None:
 		tl={
-			_LANG_EN:"E-Mail",
-			_LANG_ES:"Correo electrónico"
+			_LANG_EN:"ID de Telegram",
+			_LANG_ES:"Telegram user ID"
 		}[lang]
 		html_text=(
 			f"{html_text}\n"
-			f"<div>{tl}: <code>{con_email}</code></div>"
+			f"<div>{tl}: {acc_telegram}</div>"
 		)
 
 	if full:
 		html_text=(
-			f"""<div id={id_user(userid)} class="{_CSS_CLASS_COMMON}">""" "\n"
+			"<div>\n"
+				f"<h3>{_TITLE_USER_DETAILS[lang]}</h3>\n"
 				f"{html_text}\n"
 			"</div>"
 		)
+
+	return html_text
+
+# def write_button_delete_user(
+# 		lang:str,
+# 		userid:str,
+# 		as_item:bool=True
+# 	)->str:
+
+# 	tl={
+# 		_LANG_EN:"Are you sure you want to delete this user?",
+# 		_LANG_ES:"¿Está seguro de que quiere eliminar este usuario?"
+# 	}[lang]
+# 	html_text=(
+# 		f"""<button class="{_CSS_CLASS_COMMON}" """
+# 			f"""hx-delete="{_ROUTE_API_USERS_DELETE}" """
+# 			f"""hx-target="{_ID_MSGZONE}" """
+# 			f"""hx-confirm="{tl}" """
+# 			"""hx-swap="innerHTML">"""
+# 	)
+
+# 	tl={
+# 		_LANG_EN:"Delete",
+# 		_LANG_ES:"Eliminar"
+# 	}[lang]
+# 	html_text=(
+# 			f"{html_text}\n"
+# 			f"{tl}\n"
+# 		"</button>"
+# 	)
+
+# 	return html_text
+
+# def write_button_delete_user(
+# 		lang:str,userid:str,
+# 		as_item:bool=True
+# 	)->str:
+
+# 	html_text=(
+# 		f"""<input type="hidden" name="{_KEY_USERID}" value="{userid}" >"""
+# 	)
+
+# 	if as_item:
+# 		html_text=(
+# 			f"{html_text}\n"
+# 			f"""<input type="hidden" name="{_KEY_DELETE_AS_ITEM}" value="true" >"""
+# 		)
+
+# 	tl={
+# 		_LANG_EN:"Delete user",
+# 		_LANG_ES:"Eliminar usuario"
+# 	}[lang]
+# 	html_text=(
+# 		f"{html_text}\n"
+# 		"""<button type="submit" """
+# 			f"""class="{_CSS_CLASS_COMMON} {_CSS_CLASS_DANGER}">"""
+# 			f"{tl}"
+# 		"</button>"
+# 	)
+
+# 	tl={
+# 		_LANG_EN:"The user will be permanently deleted. Are you sure?",
+# 		_LANG_ES:"El usuario será eliminado de forma permanente. ¿Está seguro?"
+# 	}[lang]
+# 	html_text=(
+# 		f"""<form hx-delete="{_ROUTE_API_USERS_DELETE}" """
+# 			f"""hx-confirm="{tl}" """
+# 			f"""hx-target="#{_ID_MSGZONE}" """
+# 			"""hx-trigger="submit" """
+# 			"""hx-swap="innerHTML">""" "\n"
+
+# 			f"{html_text}\n"
+
+# 		"</form>"
+# 	)
+
+# 	return html_text
+
+# def write_html_user_as_item(lang:str,user:Mapping)->str:
+
+# 	userid=user.get(_KEY_USERID)
+
+# 	html_text=(
+# 		f"""<div id="{id_user(userid)}" class="{_CSS_CLASS_COMMON}">""" "\n"
+# 			f"{write_html_user_asitem(lang,user,full=False)}\n"
+# 			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
+# 				f"{write_button_delete_user(lang,userid)}\n"
+# 			"</div>\n"
+# 		"</div>"
+# 	)
+
+# 	return html_text
+
+def write_button_user_details(
+		lang:str,
+		userid:str
+	)->str:
+
+	tl={
+		_LANG_EN:"See details",
+		_LANG_ES:"Ver detalles"
+	}[lang]
+
+	html_text=(
+		f"""<button class="{_CSS_CLASS_COMMON}" """
+			f"""hx-get="/fgmt/accounts/details/{userid}" """
+			f"""hx-target=#{_ID_MSGZONE} """
+			"""hx-swap="innerHTML">"""
+			f"{tl}"
+		"</button>"
+	)
 
 	return html_text
 
@@ -148,18 +283,15 @@ def write_form_login(lang:str,depth:int=0)->str:
 	}[lang]
 	sim_opts=[
 		(
-			_KEY_CON_EMAIL,
+			_KEY_ACC_EMAIL,
 			{
 				_LANG_EN:"E-Mail",
 				_LANG_ES:"Correo electrónico"
 			}[lang]
 		),
 		(
-			_KEY_CON_TELEGRAM,
-			{
-				_LANG_EN:"E-Mail",
-				_LANG_ES:"Correo electrónico"
-			}[lang]
+			_KEY_ACC_TELEGRAM,
+			"Telegram"
 		),
 		(
 			"",
@@ -216,7 +348,16 @@ def write_form_login(lang:str,depth:int=0)->str:
 
 	return html_text
 
-def write_form_otp(
+# def write_form_otp(
+# 		lang:str,
+# 		otp_id:str,
+# 	)->str:
+
+# 	# Result of /api/accounts/otp-new
+
+# 	# Sends /api/accounts/otp-con
+
+def write_form_login_otp(
 		lang:str,
 		username:str,
 		sim:Optional[str]=None,
@@ -238,14 +379,14 @@ def write_form_otp(
 	)
 
 	sim_ok=False
-	if sim==_KEY_CON_EMAIL:
+	if sim==_KEY_ACC_EMAIL:
 		sim_ok=True
 		tl={
 			_LANG_EN:"The generated password has been sent to your e-mail",
 			_LANG_ES:"La contraseña generada ha sido enviada a su correo electrónico"
 		}[lang]
 
-	if sim==_KEY_CON_TELEGRAM:
+	if sim==_KEY_ACC_TELEGRAM:
 		sim_ok=True
 		tl={
 			_LANG_EN:"The generated password has been sent to you through the Telegram bot",
@@ -320,7 +461,7 @@ def write_button_login_magical(lang:str)->str:
 
 def write_html_keepalive(interval:int)->str:
 	return (
-		f"""<div hx-post={_ROUTE_CHECKIN} hx-trigger="every {interval}s">""" "\n"
+		f"""<div hx-post={_ROUTE_API_CHECKIN} hx-trigger="every {interval}s">""" "\n"
 			"<!-- KEEPING THE SESSION ALIVE -->"
 		"</div>"
 	)
@@ -354,7 +495,7 @@ def write_button_logout(lang:str)->str:
 
 	return html_text
 
-async def render_html_user_section(
+def render_html_user_section(
 		request:Request,
 		lang:str,full:bool=True,
 	)->str:
@@ -364,28 +505,32 @@ async def render_html_user_section(
 	userid:Optional[str]=request[_REQ_USERID]
 	username:Optional[str]=None
 
+	has_session=request[_REQ_HAS_SESSION]
+	sec_disabled=(_CFG_FLAG_D_SECURITY in request.app[_CFG_FLAGS])
+
 	anonymous=(userid is None)
 	if not anonymous:
-		username=await get_username(
-			request,explode=False,
-			userid=userid
-		)
+		username=request[_REQ_USERNAME]
 		anonymous=(username is None)
 
 	if not anonymous:
 
-		keep_alive_time=int(
-			0.5*request.app[_CFG_ACC_TIMEOUT_SESSION]
-		)
-
 		html_text=(
 			f"{html_text}\n"
 			f"<div>{username}</div>\n"
-			f"{write_button_logout(lang)}\n"
-			f"{write_html_keepalive(keep_alive_time)}"
 		)
+		if has_session and (not sec_disabled):
+			keep_alive_time=int(
+				0.5*request.app[_CFG_ACC_TIMEOUT_SESSION]
+			)
+			html_text=(
+				f"{html_text}\n"
+				f"{write_button_logout(lang)}\n"
+				f"{write_html_keepalive(keep_alive_time)}"
+			)
 
-	if anonymous:
+	if anonymous and (not sec_disabled):
+
 		super_login=is_root_local_autologin_allowed(request)
 		if super_login:
 			html_text=(
@@ -404,6 +549,9 @@ async def render_html_user_section(
 				f"{html_text}\n"
 			"""</div>"""
 		)
+
+	print("userid",userid)
+	print("username",username)
 
 	return html_text
 

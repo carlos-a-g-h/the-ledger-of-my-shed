@@ -11,7 +11,10 @@ _ROUTE_API_USERS_DELETE="/api/admin/users/delete-user"
 
 _ROUTE_FGMT_MISC="/fgmt/admin/misc"
 _ROUTE_API_MISC_CHANGE_CONFIG="/api/admin/misc/change-config"
-_ROUTE_API_MISC_UKANC="/api/admin/misc/ukanc"
+_ROUTE_API_MISC_DBSYNC="/api/admin/misc/dbsync"
+
+_ROUTE_API_MISC_EXPORT_DATA="/api/admin/misc/export-data"
+_ROUTE_API_MISC_IMPORT_DATA="/api/admin/misc/import-data"
 
 _ID_CREATE_USER="form-create-user"
 _ID_SEARCH_USERS="form-search-users"

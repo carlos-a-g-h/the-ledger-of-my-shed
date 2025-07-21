@@ -2,40 +2,6 @@
 
 from typing import Mapping
 
-from symbols_Any import (
-	_LANG_EN,_LANG_ES,
-	_CFG_PORT_MIN,_CFG_PORT_MAX,
-	_CFG_LANG,_CFG_PORT,
-
-	_KEY_DELETE_AS_ITEM,
-)
-
-from symbols_admin import (
-	_ID_MISC_SETTINGS,
-	_ID_UKANC,
-	_ID_CREATE_USER,
-	_ID_SEARCH_USERS,
-
-	_ROUTE_FGMT_MISC,
-		_ROUTE_API_MISC_CHANGE_CONFIG,
-		_ROUTE_API_MISC_UKANC,
-
-	_ROUTE_FGMT_USERS,
-		_ROUTE_API_USERS_NEW,
-		_ROUTE_API_USERS_SEARCH,
-		_ROUTE_API_USERS_DELETE,
-
-)
-
-from symbols_accounts import (
-	_KEY_USERID,
-	_KEY_USERNAME,
-
-	_KEY_CON_EMAIL,
-	_KEY_CON_TELEGRAM,
-	id_user,
-)
-
 from frontend_Any import (
 
 	_ID_MSGZONE,
@@ -55,7 +21,52 @@ from frontend_Any import (
 	write_html_input_number
 )
 
-from frontend_accounts import write_html_user
+from frontend_accounts import (
+	write_button_user_details,
+	# write_html_user_detailed,
+)
+
+from symbols_Any import (
+	_LANG_EN,_LANG_ES,
+	_ROOT_USER_ID,
+	_CFG_PORT_MIN,_CFG_PORT_MAX,
+	_CFG_LANG,_CFG_PORT,
+
+	_KEY_DELETE_AS_ITEM,
+)
+
+from symbols_admin import (
+	_ID_MISC_SETTINGS,
+	_ID_UKANC,
+	_ID_CREATE_USER,
+	_ID_SEARCH_USERS,
+
+	_ROUTE_FGMT_MISC,
+		_ROUTE_API_MISC_CHANGE_CONFIG,
+		_ROUTE_API_MISC_DBSYNC,
+
+	_ROUTE_FGMT_USERS,
+		_ROUTE_API_USERS_NEW,
+		_ROUTE_API_USERS_SEARCH,
+		_ROUTE_API_USERS_DELETE,
+
+	_ROUTE_API_MISC_EXPORT_DATA,
+	# _ROUTE_API_MISC_IMPORT_DATA,
+
+)
+
+from symbols_assets import _COL_ASSETS
+from symbols_orders import _COL_ORDERS
+
+from symbols_accounts import (
+	_MONGO_COL_USERS,
+	_KEY_USERID,
+	_KEY_USERNAME,
+
+	_KEY_ACC_EMAIL,
+	_KEY_ACC_TELEGRAM,
+	id_user,
+)
 
 def write_button_nav_users(lang:str)->str:
 	tl={
@@ -107,7 +118,7 @@ def write_form_new_user(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"{write_html_input_string(_KEY_CON_EMAIL,label=tl,maxlen=24,input_type=1)}"
+		f"{write_html_input_string(_KEY_ACC_EMAIL,label=tl,maxlen=24,input_type=1)}"
 	)
 
 	tl={
@@ -116,7 +127,7 @@ def write_form_new_user(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"{write_html_input_string(_KEY_CON_TELEGRAM,label=tl,maxlen=24)}"
+		f"{write_html_input_string(_KEY_ACC_TELEGRAM,label=tl,maxlen=24)}"
 	)
 
 	tl={
@@ -191,7 +202,7 @@ def write_form_search_users(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"{write_html_input_string(_KEY_CON_EMAIL,label=tl,maxlen=24,input_type=1)}\n"
+		f"{write_html_input_string(_KEY_ACC_EMAIL,label=tl,maxlen=24,input_type=1)}\n"
 	)
 
 	tl={
@@ -200,7 +211,7 @@ def write_form_search_users(
 	}[lang]
 	html_text=(
 		f"{html_text}\n"
-		f"{write_html_input_string(_KEY_CON_TELEGRAM,label=tl,maxlen=24)}"
+		f"{write_html_input_string(_KEY_ACC_TELEGRAM,label=tl,maxlen=24)}"
 	)
 
 	tl={
@@ -299,20 +310,41 @@ def write_button_delete_user(
 
 	return html_text
 
-def write_html_user_as_item(lang:str,user:Mapping)->str:
+def write_html_user_as_item(
+		lang:str,
+		data:Mapping,
+		full:bool=False
+	)->str:
 
-	userid=user.get(_KEY_USERID)
+	userid=data.get(_KEY_USERID)
+	username=data.get(_KEY_USERNAME)
 
 	html_text=(
-		f"""<div id="{id_user(userid)}" class="{_CSS_CLASS_COMMON}">""" "\n"
-			f"{write_html_user(lang,user,full=False)}\n"
-			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
-				f"{write_button_delete_user(lang,userid)}\n"
-			"</div>\n"
-		"</div>"
+		f"<div>{username}</div>"
 	)
 
+	if full:
+
+		tl=""
+		if not userid==_ROOT_USER_ID:
+			tl=write_button_delete_user(lang,userid)
+
+		html_text=(
+			f"""<div id={id_user(userid)} class="{_CSS_CLASS_COMMON}">""" "\n"
+
+				f"{html_text}\n"
+
+				f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
+					f"{write_button_user_details(lang,userid)}\n"
+					f"{tl}\n"
+				"</div>\n"
+
+			"</div>"
+		)
+
 	return html_text
+
+# Misc config
 
 def write_form_update_config(
 		lang:str,
@@ -404,88 +436,69 @@ def write_form_update_config(
 
 	return html_text
 
-	# ############################################################
+def write_form_database_export(lang:str)->str:
 
-	# html_text=(
-	# 	f"""<form hx-post="{_ROUTE_API_MISC_CHANGE_CONFIG}" """
-	# 		f"""hx-target="#{_ID_MSGZONE}" """
-	# 		"""hx-trigger="submit" """
-	# 		"""hx-swap="innerHTML" """
-	# 		">\n"
-	# )
+	tl={
+		_LANG_EN:"Export database",
+		_LANG_ES:"Exportar base de datos"
+	}[lang]
+	html_text=(
+		f"<h3>{tl}</h3>\n"
+		"""<form method="POST" """
+			f"""action="{_ROUTE_API_MISC_EXPORT_DATA}" """
+			">"
+	)
 
-	# lang_radio_opts=[
-	# 	(_LANG_EN,"English"),
-	# 	(_LANG_ES,"Español")
-	# ]
-	# tl={
-	# 	_LANG_EN:"Language",
-	# 	_LANG_ES:"Idioma"
-	# }[lang]
-	# tl_ch=f"change-{_CFG_LANG}"
-	# html_text=(
-	# 	f"{html_text}\n"
+	tl={
+		_LANG_EN:"Include assets",
+		_LANG_ES:"Incluir activos"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		"<div>\n"
+			f"{write_html_input_checkbox(_COL_ASSETS,tl,checked=True)}"
+		"</div>"
+	)
 
-	# 	"<!-- LANG CONFIG -->\n"
+	tl={
+		_LANG_EN:"Include orders",
+		_LANG_ES:"Incluir órdenes"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		"<div>\n"
+			f"{write_html_input_checkbox(_COL_ORDERS,tl,checked=True)}"
+		"</div>"
+	)
 
-	# 	# f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
-	# 	"<div>\n"
-	# 		f"{write_html_input_checkbox(tl_ch,tl)}\n"
-	# 		f"{write_html_input_radio(_CFG_LANG,lang_radio_opts)}"
-	# 	"</div>"
-	# )
+	tl={
+		_LANG_EN:"Include users",
+		_LANG_ES:"Incluir usuarios"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		"<div>\n"
+			f"{write_html_input_checkbox(_MONGO_COL_USERS,tl,checked=True)}"
+		"</div>"
+	)
 
-	# tl={
-	# 	_LANG_EN:"Port number",
-	# 	_LANG_ES:"Puerto"
-	# }[lang]
-	# tl_ch=f"change-{_CFG_PORT}"
-	# html_text=(
-	# 	f"{html_text}\n"
+	tl={
+		_LANG_EN:"Export",
+		_LANG_ES:"Exportar"
+	}[lang]
+	html_text=(
+			f"{html_text}\n"
+			f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
+				f"{write_button_submit(tl)}\n"
+			"</div>\n"
+		"</form>"
+	)
 
-	# 	"<!-- PORT CONFIG -->\n"
-
-	# 	# f"""<div class="{_CSS_CLASS_COMMON}">"""
-	# 	"<div>\n"
-	# 		f"{write_html_input_checkbox(tl_ch,tl)}\n"
-	# 		"<div>\n"
-	# 			f"{write_html_input_number(_CFG_PORT,value=_CFG_PORT_MIN,minimum=_CFG_PORT_MIN,maximum=_CFG_PORT_MAX)}\n"
-	# 		"</div>\n"
-	# 	"</div>"
-	# )
-
-	# tl={
-	# 	_LANG_EN:"Apply changes",
-	# 	_LANG_ES:"Aplicar cambios"
-	# }[lang]
-
-	# html_text=(
-	# 		f"{html_text}\n"
-
-	# 		"<!-- APPLY CHANGES -->\n"
-
-	# 		f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
-	# 			f"{write_button_submit(tl)}\n"
-	# 		"</div>\n"
-
-	# 	"</form>"
-	# )
-
-	# if full:
-	# 	tl={
-	# 		_LANG_EN:"Server configuration",
-	# 		_LANG_ES:"Configuración del servidor"
-	# 	}[lang]
-	# 	html_text=(
-	# 		f"""<div id="{_ID_MISC_SETTINGS}" class="{_CSS_CLASS_COMMON}">""" "\n"
-	# 			f"<h3>{tl}</h3>\n"
-	# 			f"""<div id="admin-config">""" "\n"
-	# 				f"{html_text}\n"
-	# 			"</div>"
-	# 		"</div>"
-	# 	)
-
-	# return html_text
+	return (
+		f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
+			f"{html_text}\n"
+		"</div>"
+	)
 
 def write_button_update_known_asset_names(lang:str)->str:
 
@@ -516,7 +529,7 @@ def write_button_update_known_asset_names(lang:str)->str:
 	return (
 			f"{html_text}\n"
 			"""<button class="common" """
-				f"""hx-post="{_ROUTE_API_MISC_UKANC}" """
+				f"""hx-post="{_ROUTE_API_MISC_DBSYNC}" """
 				f"""hx-target="#{_ID_MSGZONE}" """
 				"""hx-swap="innerHTML" """
 				">\n"

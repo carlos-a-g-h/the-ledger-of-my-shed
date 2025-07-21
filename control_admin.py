@@ -1,58 +1,58 @@
 #!/usr/bin/python3.9
 
-from asyncio import to_thread
-from typing import Optional,Union
+from typing import Mapping,Optional,Union
 
 from aiohttp.web import (
+	# Application,
 	Request,
-	Response,json_response
+	Response,
+	json_response,
+	FileResponse
 )
 
-from symbols_Any import (
+from control_Any import (
+	_ERR_DETAIL_DBI_FAIL,
+	_ERR_DETAIL_DATA_NOT_VALID,
 
-	_APP_LANG,_LANG_EN,_LANG_ES,
-	_APP_PROGRAMDIR,
-	_APP_RDBC,_APP_RDBN,
+	assert_referer,
+	get_client_type,
+	get_request_body_dict,
 
-	_MIMETYPE_HTML,
-	_TYPE_CUSTOM,_TYPE_BROWSER,
-	_CFG_LANG,_CFG_PORT,
-	_REQ_LANGUAGE,_REQ_USERID,_REQ_CLIENT_TYPE,
-	_CFG_PORT_MIN,_CFG_PORT_MAX,
+	util_get_correct_referer,
+	# write_button_anchor,
 
-	_KEY_GETRES,
-	_KEY_DELETE_AS_ITEM,
-
-	_ERR,
-
-	_ROOT_USER_ID,
-	_ROOT_USER,
-	# _CFG_FLAGS,
-	# _CFG_FLAG_ROOT_LOCAL_AUTOLOGIN
+	response_fullpage_ext,
+	response_fullpage,
+	response_errormsg,
 )
 
-from symbols_accounts import (
+# from control_assets import util_update_known_assets
 
-	_MONGO_COL_USERS,
+from dbi_accounts import (
+	dbi_rem_CreateUser,
+	dbi_rem_DeleteUser,
+	dbi_rem_EditUser,
+	dbi_loc_QueryUsers,
+	# aw_dbi_query_accounts,
+	# aw_dbi_get_account,
+	# dbi_accounts_fuzzy_query,
+	# dbi_QueryOrListUsers,
 
-	_KEY_USERID,
-		_KEY_USERNAME,
-		_KEY_CON_EMAIL,
-		_KEY_CON_TELEGRAM,
-
-	id_user,
+	# ldb_get_one_or_all_users,
 )
 
+from dbi_assets import (
+	# dbi_rem_AssetQuery,
+	dbi_rem_UpdateAllAssetNames,
+	# dbi_loc_UpdateAssetNames,
+	# aw_dbi_loc_update_anames,
+)
 
-from symbols_admin import (
-
-	_ROUTE_PAGE,
-
-	_ID_CREATE_USER,
-	_ID_SEARCH_USERS,
-
-	_ID_LAYOUT_SETTINGS_USERS,
-	_ID_MISC_SETTINGS,
+from dbi_iex import (
+	util_new_name,
+	util_get_dbpath,
+	datafile_ContentBackup,
+	# datafile_ContentRestore,
 )
 
 from frontend_Any import (
@@ -74,50 +74,29 @@ from frontend_Any import (
 	# write_fullpage,
 	write_popupmsg,
 	write_ul,
-	write_html_nav_pages
+	write_html_nav_pages,
+	write_button_return,
 )
 
 # from frontend_accounts import write_html_user_section
 
 from frontend_accounts import (
 
-	write_html_user,
 	render_html_user_section,
 )
 
 from frontend_admin import (
 
-	write_html_user_as_item,
 	# write_button_delete_user,
 
+	write_html_user_as_item,
 	write_form_update_config,
 	write_button_update_known_asset_names,
 	write_button_nav_users,
 	write_button_nav_misc_settings,
 	write_form_new_user,
 	write_form_search_users,
-)
-
-from control_Any import (
-	_ERR_DETAIL_DBI_FAIL,
-	_ERR_DETAIL_DATA_NOT_VALID,
-
-	assert_referer,
-	get_client_type,
-	get_request_body_dict,
-
-	response_fullpage_ext,
-	response_errormsg,
-)
-
-from control_assets import util_update_known_assets
-
-from dbi_accounts import (
-	dbi_CreateUser,
-	dbi_DeleteUser,
-	# dbi_QueryOrListUsers,
-
-	ldb_get_one_or_all_users,
+	write_form_database_export,
 )
 
 from internals import (
@@ -128,6 +107,57 @@ from internals import (
 	util_valid_int_inrange,
 	read_yaml_file_async,
 	write_yaml_file_async,
+)
+
+from symbols_Any import (
+
+	_APP_LANG,_LANG_EN,_LANG_ES,
+	_APP_PROGRAMDIR,
+	_APP_RDBC,_APP_RDBN,
+
+	_MIMETYPE_HTML,_MIMETYPE_SQLITE3,
+	_HEADER_CONTENT_TYPE,
+	_HEADER_CONTENT_DISPOSITION,
+	_TYPE_CUSTOM,_TYPE_BROWSER,
+	_CFG_LANG,_CFG_PORT,
+	_REQ_LANGUAGE,_REQ_USERID,_REQ_CLIENT_TYPE,
+	_CFG_PORT_MIN,_CFG_PORT_MAX,
+
+	_KEY_GETRES,
+	_KEY_DELETE_AS_ITEM,
+
+	_ERR,
+
+	_ROOT_USER_ID,
+	_ROOT_USER,
+	# _CFG_FLAGS,
+	# _CFG_FLAG_ROOT_LOCAL_AUTOLOGIN
+)
+
+from symbols_accounts import (
+
+	_MONGO_COL_USERS as _COL_USERS,
+
+	_KEY_USERID,
+		_KEY_USERNAME,
+		_KEY_ACC_EMAIL,
+		_KEY_ACC_TELEGRAM,
+
+	id_user,
+)
+
+from symbols_assets import _COL_ASSETS
+from symbols_orders import _COL_ORDERS
+
+from symbols_admin import (
+
+	_ROUTE_PAGE,
+
+	_ID_CREATE_USER,
+	_ID_SEARCH_USERS,
+
+	_ID_LAYOUT_SETTINGS_USERS,
+	_ID_MISC_SETTINGS,
 )
 
 _ERR_TITLE_CONFIG_CHANGE={
@@ -148,6 +178,11 @@ _ERR_TITLE_SEARCH_USERS={
 _ERR_TITLE_DELETE_USER={
 	_LANG_EN:"Unable to delete the user",
 	_LANG_ES:"Fallo al eliminar el usuario"
+}
+
+_ERR_TITLE_DATA_EXPORT={
+	_LANG_EN:"Failed to export the database",
+	_LANG_ES:"Fallo al exportar la base de datos"
 }
 
 # layouts
@@ -211,9 +246,7 @@ def write_layout_users(lang:str)->str:
 
 # routes
 
-async def route_fgmt_section_misc(
-		request:Request
-	)->Union[json_response,Response]:
+async def route_fgmt_section_misc(request:Request)->Response:
 
 	# GET: /fgmt/admin/misc
 
@@ -233,6 +266,7 @@ async def route_fgmt_section_misc(
 		f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
 			f"{write_form_update_config(lang)}\n"
 			f"{write_button_update_known_asset_names(lang)}\n"
+			f"{write_form_database_export(lang)}\n"
 		"</section>"
 	)
 
@@ -241,9 +275,7 @@ async def route_fgmt_section_misc(
 		content_type=_MIMETYPE_HTML
 	)
 
-async def route_api_change_config(
-		request:Request
-	)->Union[json_response,Response]:
+async def route_api_change_config(request:Request)->Response:
 
 	# POST: /api/admin/misc/change-config
 	# {
@@ -369,11 +401,13 @@ async def route_api_change_config(
 		request.app[_APP_LANG]=new_lang
 		lang=new_lang
 
-	tl={
-		_LANG_EN:"Config updated",
-		_LANG_ES:"Configuración actualizada"
-	}[lang]
-	html_text=f"<h2>{tl}</h2>"
+	# tl={
+	# 	_LANG_EN:"Config updated",
+	# 	_LANG_ES:"Configuración actualizada"
+	# }[lang]
+	# html_text=f"<h2>{tl}</h2>"
+
+	html_text=""
 
 	if changed_language:
 
@@ -409,19 +443,139 @@ async def route_api_change_config(
 			f"<p>→ {tl}</p>"
 		)
 
+	tl={
+		_LANG_EN:"Changes made",
+		_LANG_ES:"Cambios realizados"
+	}[lang]
+
 	return Response(
 		body=(
 			f"""<div hx-swap-oob="innerHTML:#{_ID_MISC_SETTINGS}-inner">""" "\n"
 				f"{write_form_update_config(lang,False)}"
 			"</div>\n"
-			f"{write_popupmsg(html_text)}"
+			f"{write_popupmsg(html_text,tl)}"
 		),
 		content_type=_MIMETYPE_HTML
 	)
 
-async def route_api_update_known_asset_names(
-		request:Request
-	)->Union[json_response,Response]:
+# async def proc_update_known_asset_names(app:Application)->Optional[str]:
+
+# 	query_result=await dbi_rem_AssetQuery(
+# 		app[_APP_RDBC],
+# 		app[_APP_RDBN]
+# 	)
+# 	if len(query_result)==0:
+# 		return "There are no assets...?"
+
+# 	msg_err:Optional[str]=None
+
+# 	if len(query_result)==1:
+# 		msg_err=query_result[0].get(_ERR)
+# 		if msg_err is not None:
+# 			return msg_err
+
+# 	msg_err=await aw_dbi_loc_update_anames(
+# 		app[_APP_PROGRAMDIR],
+# 		query_result
+# 	)
+
+# 	return msg_err
+
+async def route_api_data_export(request:Request)->Union[Response,FileResponse]:
+
+	# GET or POST: /api/admin/misc/export-data
+
+	ct=request[_REQ_CLIENT_TYPE]
+
+	assert_referer(
+		request,ct,
+		_ROUTE_PAGE
+	)
+
+	backup_assets=True
+	backup_orders=True
+	backup_users=True
+
+	if request.method=="POST":
+
+		req_data=await get_request_body_dict(ct,request)
+		if isinstance(req_data,Mapping):
+			backup_assets=util_valid_bool(
+				req_data.get(_COL_ASSETS),
+				dval=True
+			)
+			backup_orders=util_valid_bool(
+				req_data.get(_COL_ORDERS),
+				dval=True
+			)
+			backup_users=util_valid_bool(
+				req_data.get(_COL_USERS),
+				dval=True
+			)
+
+	lang=request[_REQ_LANGUAGE]
+
+	basedir=request.app[_APP_PROGRAMDIR]
+
+	fname=util_new_name()
+	filepath=util_get_dbpath(basedir,fname)
+
+	rdb_client=request.app[_APP_RDBC]
+	rdb_name=request.app[_APP_RDBN]
+
+	msg_err:Optional[str]=None
+
+	for collection in (_COL_ASSETS,_COL_ORDERS,_COL_USERS):
+
+		if collection==_COL_ASSETS:
+			if not backup_assets:
+				continue
+
+		if collection==_COL_ORDERS:
+			if not backup_orders:
+				continue
+
+		if collection==_COL_USERS:
+			if not backup_users:
+				continue
+
+		msg_err=await datafile_ContentBackup(
+			filepath,
+			rdb_client,
+			rdb_name,
+			collection
+		)
+		if msg_err is not None:
+			break
+
+	if msg_err is not None:
+
+		the_referer=util_get_correct_referer(
+			request,_ROUTE_PAGE
+		)
+
+		return response_fullpage(
+			lang,_ERR,
+			_ERR_TITLE_DATA_EXPORT[lang],
+			(
+				f"<p><code>{msg_err}</code></p>"
+				f"<p>{write_button_return(lang,the_referer)}</p>"
+			)
+		)
+
+	content_dispositon=(
+		f"""  filename="{fname}"  """
+	)
+
+	return FileResponse(
+		filepath,
+		headers={
+			_HEADER_CONTENT_TYPE:_MIMETYPE_SQLITE3,
+			_HEADER_CONTENT_DISPOSITION:content_dispositon.strip()
+		}
+	)
+
+async def route_api_dbsync(request:Request)->Response:
 
 	# POST: /api/admin/misc/update-known-assets
 
@@ -430,9 +584,13 @@ async def route_api_update_known_asset_names(
 
 	lang=request[_REQ_LANGUAGE]
 
-	ok=await util_update_known_assets(request.app,False)
-
-	if not ok:
+	msg_err:Optional[str]=await dbi_rem_UpdateAllAssetNames(
+		request.app[_APP_PROGRAMDIR],
+		request.app[_APP_RDBC],
+		request.app[_APP_RDBN]
+	)
+	if msg_err is not None:
+		print("FAILED TO UPDATE",msg_err)
 		return response_errormsg(
 			_ERR_TITLE_CONFIG_CHANGE[lang],
 			_ERR_DETAIL_DBI_FAIL[lang],ct
@@ -447,27 +605,20 @@ async def route_api_update_known_asset_names(
 		_LANG_EN:"Know asset names updated",
 		_LANG_ES:"Nombres de activos actualizados"
 	}[lang]
-	html_text=f"<h2>{tl}</h2>"
 
-	tl={
+	html_text={
 		_LANG_EN:"The local in-memory database for quick name lookups has been updated",
 		_LANG_ES:"La base de datos en memoria local para la búsqueda por nombres ha sido actualizada"
 	}[lang]
-	html_text=(
-		f"{html_text}\n"
-		f"<p>{tl}</p>"
-	)
 
 	return Response(
-		body=write_popupmsg(html_text),
+		body=write_popupmsg(html_text,tl),
 		content_type=_MIMETYPE_HTML
 	)
 
 # routes / users
 
-async def route_fgmt_section_users(
-		request:Request
-	)->Union[json_response,Response]:
+async def route_fgmt_section_users(request:Request)->Response:
 
 	# GET: /fgmt/admin/users
 
@@ -499,9 +650,7 @@ async def route_fgmt_section_users(
 		content_type=_MIMETYPE_HTML
 	)
 
-async def route_api_new_user(
-		request:Request
-	)->Union[json_response,Response]:
+async def route_api_new_user(request:Request)->Response:
 
 	# POST: /api/admin/users/new-user
 
@@ -544,11 +693,11 @@ async def route_api_new_user(
 		)
 
 	acc_telegram=util_valid_str(
-		req_data.get(_KEY_CON_TELEGRAM)
+		req_data.get(_KEY_ACC_TELEGRAM)
 	)
 
 	acc_email=util_valid_str(
-		req_data.get(_KEY_CON_EMAIL),
+		req_data.get(_KEY_ACC_EMAIL),
 		lowerit=True
 	)
 
@@ -559,14 +708,13 @@ async def route_api_new_user(
 			dval=False
 		)
 
-
-	dbir_cu=await dbi_CreateUser(
+	dbir_cu=await dbi_rem_CreateUser(
 		request.app[_APP_PROGRAMDIR],
 		request.app[_APP_RDBC],
 		request.app[_APP_RDBN],
 		username,
-		con_telegram=acc_telegram,
-		con_email=acc_email,
+		acc_telegram=acc_telegram,
+		acc_email=acc_email,
 		get_result=get_result
 	)
 	if ct==_TYPE_CUSTOM:
@@ -580,14 +728,13 @@ async def route_api_new_user(
 			ct,status_code=400
 		)
 
-
 	html_text=(
 		f"""<div hx-swap-oob="innerHTML:#{_ID_CREATE_USER}-inner">""" "\n"
 			f"{write_form_new_user(lang,full=False)}\n"
 		"</div>\n"
 
 		f"""<div hx-swap-oob="afterbegin:#{_ID_REQ_RES}">""" "\n"
-			f"{write_html_user(lang,dbir_cu)}\n"
+			f"{write_html_user_as_item(lang,dbir_cu)}\n"
 		"</div>\n"
 
 		f"<!-- USER {dbir_cu.get(_KEY_USERID)} CREATED -->"
@@ -598,9 +745,7 @@ async def route_api_new_user(
 		content_type=_MIMETYPE_HTML
 	)
 
-async def route_api_search_users(
-		request:Request
-	)->Union[json_response,Response]:
+async def route_api_search_users(request:Request)->Response:
 
 	ct=request[_REQ_CLIENT_TYPE]
 	assert_referer(request,ct,_ROUTE_PAGE)
@@ -620,48 +765,54 @@ async def route_api_search_users(
 		lowerit=True
 	)
 
-	con_telegram=util_valid_str(
-		req_data.get(_KEY_CON_TELEGRAM)
+	acc_telegram=util_valid_str(
+		req_data.get(_KEY_ACC_TELEGRAM)
 	)
 
-	con_email=util_valid_str(
-		req_data.get(_KEY_CON_EMAIL)
+	acc_email=util_valid_str(
+		req_data.get(_KEY_ACC_EMAIL)
 	)
 
-	query_result=await to_thread(
-		ldb_get_one_or_all_users,
-		request.app[_APP_PROGRAMDIR],
-		None,username,
-		con_telegram,
-		con_email,
-		False
+	basedir=request.app[_APP_PROGRAMDIR]
+
+	qparams={}
+	if username is not None:
+		qparams.update({_KEY_USERNAME:username})
+	if acc_email is not None:
+		qparams.update({_KEY_ACC_EMAIL:acc_email})
+	if acc_telegram is not None:
+		qparams.update({_KEY_ACC_TELEGRAM:acc_telegram})
+
+	qresult=await dbi_loc_QueryUsers(
+		basedir,
+		params=qparams,
+		as_map=1
 	)
-	msg_err=query_result.get(_ERR)
-	if msg_err is not None:
-		tl={
-			_LANG_EN:"Details",
-			_LANG_ES:"Detalles"
-		}[lang]
-		return response_errormsg(
-			_ERR_TITLE_SEARCH_USERS[lang],
-			f"{tl}: {msg_err}",
-			ct,status_code=400
-		)
+	if len(qresult)==1:
+		if qresult[0][0]==_ERR:
+			return response_errormsg(
+				_ERR_TITLE_SEARCH_USERS[lang],
+				qresult[0][1],
+				ct,status_code=400
+			)
+
+	print("user accounts found")
+	for q in qresult:
+		print(q)
 
 	if ct==_TYPE_CUSTOM:
-		return query_result
+		return qresult
 
 	html_text=""
 
 	found=len(
-		query_result[_MONGO_COL_USERS]
+		qresult
 	)
-
-	for user in query_result[_MONGO_COL_USERS]:
-
+	# for user in query_result[_MONGO_COL_USERS]:
+	for user in qresult:
 		html_text=(
 			f"{html_text}\n"
-			f"{write_html_user_as_item(lang,user)}"
+			f"{write_html_user_as_item(lang,user,True)}"
 		)
 
 	html_text=(
@@ -696,9 +847,7 @@ async def route_api_search_users(
 		content_type=_MIMETYPE_HTML
 	)
 
-async def route_api_delete_user(
-		request:Request
-	)->Union[json_response,Response]:
+async def route_api_delete_user(request:Request)->Response:
 
 	ct=request[_REQ_CLIENT_TYPE]
 	assert_referer(request,ct,_ROUTE_PAGE)
@@ -737,21 +886,27 @@ async def route_api_delete_user(
 			ct,status_code=406
 		)
 
-	dbi_res=await dbi_DeleteUser(
+	dbi_res=await dbi_rem_DeleteUser(
 		request.app[_APP_PROGRAMDIR],
 		request.app[_APP_RDBC],
 		request.app[_APP_RDBN],
 		userid
 	)
-	err_msg=dbi_res.get(_ERR)
-	if err_msg is not None:
+	print(
+		"Deletion result:",
+		dbi_res
+	)
+	msg_err=util_valid_str(
+		dbi_res.get(_ERR)
+	)
+	if msg_err is not None:
 		tl={
 			_LANG_EN:"Details",
 			_LANG_ES:"Detalles"
 		}[lang]
 		return response_errormsg(
 			_ERR_TITLE_DELETE_USER[lang],
-			f"{tl}: {err_msg}",
+			f"{tl}: {msg_err}",
 			ct,status_code=406
 		)
 
@@ -791,9 +946,7 @@ async def route_api_delete_user(
 
 # the page
 
-async def route_main(
-		request:Request
-	)->Union[json_response,Response]:
+async def route_main(request:Request)->Response:
 
 	userid:Optional[str]=request[_REQ_USERID]
 	is_admin=(userid==_ROOT_USER_ID)
@@ -806,7 +959,8 @@ async def route_main(
 	}[lang]
 
 
-	tl=await render_html_user_section(request,lang)
+	# tl=await render_html_user_section(request,lang)
+	tl=render_html_user_section(request,lang)
 
 	html_text=(
 		f"""<section id="{_ID_MSGZONE}">""" "\n"

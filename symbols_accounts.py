@@ -1,12 +1,20 @@
 #!/usr/bin/python3.9
 
 _ROUTE_PAGE="/page/accounts"
-_ROUTE_CHECKIN="/api/accounts/check-in"
+_ROUTE_FGMT_LOGIN="/fgmt/accounts/login"
+_ROUTE_API_CHECKIN="/api/accounts/check-in"
+_ROUTE_API_LOGIN="/api/accounts/login"
+_ROUTE_API_LOGIN_OTP="/api/accounts/login-otp"
+_ROUTE_API_LOGIN_MAGIC="/api/accounts/login-magical"
+_ROUTE_API_LOGOUT="/api/accounts/logout"
+_ROUTE_API_OTP_NEW="/api/accounts/otp-new"
+_ROUTE_API_OTP_CON="/api/accounts/otp-con"
 
-_KEY_CON_EMAIL="email"
-_KEY_CON_TELEGRAM="telegram"
+_KEY_ACC_EMAIL="email"
+_KEY_ACC_TELEGRAM="telegram"
 _KEY_USERID="userid"
 _KEY_USERNAME="username"
+_KEY_SETTINGS="settings"
 
 # NOTE: SIM = Sign In Method
 

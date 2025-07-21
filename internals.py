@@ -16,9 +16,12 @@ from yaml import (
 	dump as yaml_dump,
 	Dumper as yaml_Dumper
 )
+from yarl import URL as Yurl
 
 from symbols_Any import (
 	# _excel_columns,
+	_MONGO_URL_DEFAULT,
+
 	_COOKIE_AKEY,_COOKIE_USER,
 	_HEADER_USER_AGENT,
 
@@ -28,6 +31,38 @@ from symbols_Any import (
 	_FMT_DATE_YMDHM,
 	_FMT_DATE_YMDHMS
 )
+
+# Others
+
+def exc_info(exc:Exception)->str:
+	filename=f"{exc.__traceback__.tb_frame.f_code.co_filename}"
+	line=f"{exc.__traceback__.tb_lineno}"
+	return f"{filename}:{line}:{exc}"
+
+def util_path_resolv(
+		path_base:Path,
+		path_given:Path
+	)->Path:
+
+	if path_given.is_absolute():
+		return path_given
+
+	return path_base.joinpath(path_given)
+
+# def util_parse_mongo_url(given_url:Optional[str])->Yurl:
+
+# 	if not isinstance(given_url,str):
+# 		return Yurl(_MONGO_URL_DEFAULT)
+
+# 	if not given_url.startswith("mongodb://"):
+# 		return Yurl(_MONGO_URL_DEFAULT)
+
+# 	the_yurl:Optional[Yurl]=None
+# 	try:
+# 		the_yurl=Yurl(given_url)
+
+# 	except:
+# 		return Yurl(_MONGO_URL_DEFAULT)
 
 # hi-level string to hash functions
 
@@ -395,7 +430,11 @@ def is_yaml(filepath):
 
 	return True
 
-def read_yaml_file(filepath:Path)->dict:
+def read_yaml_file(
+		filepath:Path,
+		kfil:Optional[str]=None
+	)->dict:
+
 	if not is_yaml(filepath):
 		return {}
 
@@ -410,6 +449,16 @@ def read_yaml_file(filepath:Path)->dict:
 	except Exception as e:
 		print(e)
 		return {}
+
+	if isinstance(kfil,str):
+
+		if not isinstance(
+				data.get(kfil),
+				Mapping
+			):
+			return {}
+
+		return data.pop(kfil)
 
 	return data
 
@@ -438,7 +487,7 @@ async def read_yaml_file_async(filepath:Path)->dict:
 
 	return data
 
-async def write_yaml_file(
+def write_yaml_file(
 		filepath:Path,data:dict,
 		check_first:bool=True
 	)->bool:
