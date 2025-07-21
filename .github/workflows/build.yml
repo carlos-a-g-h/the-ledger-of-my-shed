@@ -62,8 +62,9 @@ jobs:
             pyver: "3.9.20"
           - os: "ubuntu-22.04"
             pyver: "3.9.20"
-          - os: "ubuntu-20.04"
-            pyver: "3.9.6"
+          # NOTE: Ubuntu 20.04 got deprecated
+          #- os: "ubuntu-20.04"
+          #  pyver: "3.9.6"
 
     runs-on: ${{ matrix.os }}
     steps:
