@@ -92,7 +92,7 @@ from frontend_Any import (
 	write_html_logging_area
 )
 
-from frontend_accounts import render_html_user_section
+from frontend_accounts import write_html_user_section
 
 from frontend_assets_search import write_form_search_assets
 
@@ -1580,15 +1580,20 @@ async def route_api_export_order_as_spreadsheet(request:Request)->Response:
 async def route_main(request:Request)->Response:
 
 	lang=request[_REQ_LANGUAGE]
-	userid=request[_REQ_USERID]
 
 	tl_title={
 		_LANG_EN:"Orders",
 		_LANG_ES:"Órdenes"
 	}[lang]
 
-	# tl=await render_html_user_section(request,lang,userid)
-	tl=render_html_user_section(request,lang,userid)
+	tl=write_ul(
+		[
+			write_button_nav_new_order(lang),
+			write_button_nav_list_orders(lang)
+		],
+		ul_id=_ID_NAV_TWO_OPTS,
+		ul_classes=[_CSS_CLASS_NAV]
+	)
 
 	html_text=(
 		f"""<section id="{_ID_MSGZONE}">""" "\n"
@@ -1601,20 +1606,7 @@ async def route_main(request:Request)->Response:
 		"</section>\n"
 
 		f"""<section id="{_ID_NAV_TWO}">""" "\n"
-			f"{tl}\n"
-	)
-
-	tl=write_ul(
-		[
-			write_button_nav_new_order(lang),
-			write_button_nav_list_orders(lang)
-		],
-		ul_id=_ID_NAV_TWO_OPTS,
-		ul_classes=[_CSS_CLASS_NAV]
-	)
-
-	html_text=(
-			f"{html_text}\n"
+			f"{write_html_user_section(request,lang)}\n"
 			f"{tl}\n"
 		"</section>\n"
 

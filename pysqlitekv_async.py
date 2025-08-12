@@ -64,18 +64,6 @@ _RUN_NORMAL=0
 _RUN_AWAITABLE=1
 _RUN_TOTHREAD=2
 
-async def data_decode(data:bytes)->Any:
-	decoded=await to_thread(
-		pckl_decode(data)
-	)
-	return decoded
-
-async def data_encode(data:Any)->bytes:
-	encoded=await to_thread(
-		pckl_encode(data)
-	)
-	return encoded
-
 # Init and connection functions
 
 async def db_init(
@@ -218,8 +206,7 @@ async def db_post(
 	cur=await db_getcur(con_or_cur)
 
 	key_ready=key_name.strip().lower()
-	params:Optional[tuple]=await to_thread(
-		util_bparams,
+	params:Optional[tuple]=util_bparams(
 		key_ready,value,
 		dtype
 	)
@@ -290,10 +277,7 @@ async def db_get(
 
 		return None
 
-	the_value=await to_thread(
-		util_extract_correct_value,
-		select_result
-	)
+	the_value=util_extract_correct_value(select_result)
 	if the_value is None:
 		if verbose:
 			print(
@@ -376,10 +360,7 @@ async def db_delete(
 
 	if return_val:
 
-		value=await to_thread(
-			util_extract_correct_value,
-			result
-		)
+		value=util_extract_correct_value(result)
 		if value is None:
 			if verbose:
 				print(
@@ -426,7 +407,7 @@ async def db_lpost(
 					f"""AND ({_SQL_COL_TYPE}={_TYPE_STRING} OR {_SQL_COL_TYPE}>{_TYPE_STRING}) """
 					f"""AND ({_SQL_COL_TYPE}={_TYPE_ANY} OR {_SQL_COL_TYPE}<{_TYPE_ANY});"""
 	)
-	result=await cur.fetchone()
+	result=cur.fetchone()
 
 	if result is not None:
 
@@ -436,7 +417,7 @@ async def db_lpost(
 				await cur.close()
 				return False
 
-			the_thing=await data_decode(result[1])
+			the_thing=pckl_decode(result[1])
 
 			if not is_list:
 				the_thing.append(value)
@@ -478,20 +459,12 @@ async def db_lpost(
 	if isolated:
 		await cur.execute(_SQL_TX_BEGIN)
 
-	the_params=await to_thread(
-		util_bparams,
-		key_ready,
-		value_ok,
-		_TYPE_LIST
-	)
-
 	await cur.execute(
 		util_bquery_insert(
 			replace=force,
 			page=page
 		),
-		the_params
-		# util_bparams(key_ready,value_ok,_TYPE_LIST)
+		util_bparams(key_ready,value_ok,_TYPE_LIST)
 	)
 	if isolated:
 		await cur.execute(_SQL_TX_COMMIT)
@@ -554,7 +527,7 @@ async def db_lget(
 			return []
 		return None
 
-	the_thing:list=await data_decode(result[0])
+	the_thing:list=pckl_decode(result[0])
 
 	size=len(the_thing)
 	last_idx=size-1
@@ -678,7 +651,7 @@ async def db_ldelete(
 			return None
 		return False
 
-	the_thing:list=await data_decode(result[0])
+	the_thing:list=pckl_decode(result[0])
 
 	size=len(the_thing)
 	if size==0:
@@ -788,14 +761,10 @@ async def db_ldelete(
 			f"SET {_SQL_COL_VALUE_BLOB}=? "
 			f"WHERE {_SQL_COL_KEY}=? "
 	)
-
-	encoded_value=await data_encode(the_thing)
-
 	await cur.execute(
 		the_query.strip(),
 		(
-			# pckl_encode(the_thing),
-			encoded_value,
+			pckl_encode(the_thing),
 			key_ready
 		)
 	)
@@ -849,7 +818,7 @@ async def db_hupdate(
 
 		if not force:
 
-			the_thing:Mapping=await data_decode(result[0])
+			the_thing:Mapping=pckl_decode(result[0])
 
 			removed_data:Mapping={}
 
@@ -872,12 +841,10 @@ async def db_hupdate(
 					f"SET {_SQL_COL_VALUE_BLOB}=? "
 					f"WHERE {_SQL_COL_KEY}=? "
 			)
-			encoded=await data_encode(the_thing)
 			await cur.execute(
 				the_query.strip(),
 				(
-					# pckl_encode(the_thing),
-					encoded,
+					pckl_encode(the_thing),
 					key_ready
 				)
 			)
@@ -891,23 +858,15 @@ async def db_hupdate(
 
 			return True
 
-	the_params=await to_thread(
-		util_bparams,
-		key_ready,
-		data_to_add,
-		_TYPE_HASHMAP
-	)
-
 	await cur.execute(
 		util_bquery_insert(
 			replace=force,
 			show=verbose
 		),
-		the_params
-		# util_bparams(
-		# 	key_ready,data_to_add,
-		# 	_TYPE_HASHMAP
-		# )
+		util_bparams(
+			key_ready,data_to_add,
+			_TYPE_HASHMAP
+		)
 	)
 	if isolated:
 		await cur.execute(_SQL_TX_COMMIT)
@@ -947,11 +906,11 @@ async def db_hget(
 				"not found"
 			)
 		if isolated:
-			cur.close()
+			await cur.close()
 
 		return {}
 
-	the_thing:Mapping=await data_decode(result[0])
+	the_thing:Mapping=pckl_decode(result[0])
 
 	selection={}
 	failed=False
@@ -1040,10 +999,7 @@ async def db_custom(
 
 		return None
 
-	the_value=await to_thread(
-		util_extract_correct_value,
-		select_result
-	)
+	the_value=util_extract_correct_value(select_result)
 	if the_value is None:
 		if verbose:
 			print(
@@ -1112,11 +1068,8 @@ async def db_custom(
 
 		dtype_new=util_get_dtype_from_value(func_result)
 
-		exe_params:Optional[tuple]=await to_thread(
-			util_bparams,
-			key_ready,
-			func_result,
-			dtype_new
+		exe_params:Optional[tuple]=util_bparams(
+			key_ready,func_result,dtype_new
 		)
 		await cur.execute(
 			util_bquery_insert(replace=True,page=page),
@@ -1177,9 +1130,11 @@ async def db_len(
 			await cur.close()
 		return -1
 
-	decoded=await data_decode(result[0])
-
-	size=len(decoded)
+	size=len(
+		pckl_decode(
+			result[0]
+		)
+	)
 
 	if isolated:
 		await cur.close()

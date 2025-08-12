@@ -4,6 +4,7 @@
 
 from pathlib import Path
 from typing import Optional,Union,Mapping
+from secrets import token_hex
 
 from multidict import MultiDictProxy
 
@@ -29,17 +30,20 @@ from dbi_accounts_sessions import (
 	# _KEY_USERNAME,
 
 	# _SESSION_PENDING,
-	_SESSION_ACTIVE,
+	# _SESSION_ACTIVE,
 
-	util_check_session_data,
+	# util_check_session_data,
 
 	aw_util_get_session_id,
 	# aw_dbi_read_session,
-	dbi_loc_ReadSession,
+	# dbi_loc_ReadSession,
 	# aw_dbi_drop_session,
-	dbi_loc_DropSession,
+	# dbi_loc_DropSession,
 	# aw_dbi_renovate_active_session
-	dbi_loc_RenovateActiveSession
+	dbi_loc_RenovateActiveSession,
+		_SESSION_OK,
+		_SESSION_INVALID,
+		_SESSION_NOT_FOUND,
 )
 
 from frontend_Any import (
@@ -71,14 +75,17 @@ from internals import (
 
 	util_valid_bool,
 	util_valid_str,
-	util_valid_date,
+	# util_valid_date,
 
-	util_extract_from_cookies,
-	util_get_pid_from_request,
-	util_date_calc_expiration,
+	# util_extract_from_cookies,
+	# util_get_pid_from_request,
+	# util_date_calc_expiration,
 )
 
 from symbols_Any import (
+
+	_LOCALHOST_IPV4,
+	_LOCALHOST_IPV6,
 
 	_ROOT_USER_ID,
 	_ROOT_USER,
@@ -99,8 +106,15 @@ from symbols_Any import (
 	_HEADER_ACCEPT,_HEADER_CONTENT_TYPE,
 	_HEADER_REFERER,_HEADER_USER_AGENT,
 
-	_COOKIE_AKEY,_COOKIE_USER,
+	# _CRED_TYPE,
+		_CRED_VISITOR,
+		_CRED_EMPLOYEE,
 
+	_COOKIE_CLIENT,
+	_COOKIE_AKEY,
+	_COOKIE_USER,
+
+	_REQ_CID,_REQ_SID,
 	_REQ_PATH,
 	_REQ_IS_HTMX,
 	_REQ_USERID,_REQ_USERNAME,
@@ -119,9 +133,7 @@ from symbols_Any import (
 )
 
 from symbols_assets import _ROUTE_PAGE as _ROUTE_PAGE_ASSETS
-
 from symbols_orders import _ROUTE_PAGE as _ROUTE_PAGE_ORDERS
-
 from symbols_admin import _ROUTE_PAGE as _ROUTE_PAGE_ADMIN
 from symbols_accounts import (
 	# _ROUTE_CHECKIN,
@@ -158,8 +170,8 @@ _ERR_DETAIL_DBI_FAIL={
 
 def has_local_access(request:Request)->bool:
 	return (
-		request.remote=="127.0.0.1" or
-		request.remote=="::1"
+		request.remote==_LOCALHOST_IPV4 or
+		request.remote==_LOCALHOST_IPV6
 	)
 
 def get_lang(ct:str,request:Request)->str:
@@ -186,11 +198,14 @@ async def get_username(
 	if userid==_ROOT_USER_ID:
 		return _ROOT_USER
 
-	result=await dbi_loc_GetUser(
+	result:Optional[tuple]=await dbi_loc_GetUser(
 		request.app[_APP_PROGRAMDIR],
 		params={_KEY_USERID:userid_ok}
 	)
 	print(fn,result)
+	if result is None:
+		return "NOT FOUND"
+
 	if result[0]==_ERR:
 		msg_err=(
 			f"Failed to get username from ID {userid_ok}\n"
@@ -204,6 +219,36 @@ async def get_username(
 			return None
 
 	return result[1]
+
+def util_get_pid_from_request(request:Request)->tuple:
+
+	# PID = Partially Identifiable Data
+
+	ip_address=request.remote
+	user_agent=util_valid_str(
+		request.headers.get(_HEADER_USER_AGENT)
+	)
+
+	return (ip_address,user_agent)
+
+def util_extract_from_cookies(request:Request)->Optional[tuple]:
+
+	clientid=request.cookies.get(_COOKIE_CLIENT)
+	if clientid is None:
+		return None
+
+	userid=request.cookies.get(_COOKIE_USER)
+	access_key=request.cookies.get(_COOKIE_AKEY)
+
+	if (userid is None) or (userid is None):
+		return (
+			_CRED_VISITOR,clientid
+		)
+
+	return (
+		_CRED_EMPLOYEE,clientid,
+		userid,access_key
+	)
 
 async def util_patch_doc_with_username(
 		the_req:Request,
@@ -300,8 +345,8 @@ def assert_referer(
 
 def util_get_correct_referer(
 		request:Request,
-		fallback:str="/"
-	)->str:
+		fallback:str=None
+	)->Optional[str]:
 
 	the_referer_raw=request.headers.get(_HEADER_REFERER)
 	the_referer:Optional[yarl_URL]=None
@@ -321,13 +366,19 @@ def util_get_correct_referer(
 
 def is_root_local_autologin_allowed(request:Request)->bool:
 
-	if request.remote not in ("::1","127.0.0.1"):
+	if request.remote not in (
+			_LOCALHOST_IPV4,
+			_LOCALHOST_IPV6
+		):
+
 		return False
 
-	if _CFG_FLAG_E_LOGIN_ROOT_LOCAL_AUTOLOGIN not in request.app[_CFG_FLAGS]:
-		return False
+	allowed=(
+		_CFG_FLAG_E_LOGIN_ROOT_LOCAL_AUTOLOGIN
+		in request.app[_CFG_FLAGS]
+	)
 
-	return True
+	return allowed
 
 async def get_request_body_dict(
 		client_type:str,
@@ -547,120 +598,26 @@ def response_unauthorized(
 		)
 
 
-	return response_popupmsg(f"<h3>{tl}<h3>")
-
-# Session check-in process
-
-async def process_session_checkin(request:Request,test_only:bool=False)->Optional[str]:
-
-	# NOTE: Returning None = OK
-
-	from_cookie=util_extract_from_cookies(request)
-	if from_cookie is None:
-		return "The request has either no credentials or the they are not valid"
-
-	userid,access_key=from_cookie
-
-	ip_address,user_agent=util_get_pid_from_request(request)
-
-	# basedir=request.app[_APP_PROGRAMDIR]
-
-	session_id=await aw_util_get_session_id(
-		userid,ip_address,
-		user_agent
-	)
-
-	msg_err:Optional[str]=await dbi_loc_RenovateActiveSession(
-		request.app[_APP_PROGRAMDIR],
-		session_id,
-		access_key,
-		request.app[_CFG_ACC_TIMEOUT_SESSION]
-	)
-
-	print(
-		f"{process_session_checkin.__name__}()",
-		msg_err
-	)
-	return msg_err
-
-	##############################################################################
-
-	# from_cookie=util_extract_from_cookies(request)
-	# if from_cookie is None:
-	# 	return "The request has either no credentials or the they are not valid"
-
-	# userid,access_key=from_cookie
-
-	# ip_address,user_agent=util_get_pid_from_request(request)
-
-	# basedir=request.app[_APP_PROGRAMDIR]
-
-	# session_id=await aw_util_get_session_id(userid,ip_address,user_agent)
-
-	# # active_session=await aw_dbi_read_session(
-	# active_session=await dbi_loc_ReadSession(
-	# 	basedir,session_id,
-	# 	target_status=_SESSION_ACTIVE
-	# )
-	# print(
-	# 	f"[{process_session_checkin.__name__}] active_session = {active_session}"
-	# )
-	# if active_session[0]==_ERR:
-	# 	return active_session[1]
-
-	# stored_date=util_valid_date(
-	# 	active_session[0],
-	# 	get_dt=True
-	# )
-	# if not access_key==active_session[1]:
-	# 	return "The stored access key does not match"
-
-	# if util_date_calc_expiration(
-	# 	stored_date,
-	# 	request.app[_CFG_ACC_TIMEOUT_SESSION],
-	# 	get_age=False,
-	# 	get_exp_date=False
-	# ).get("expired"):
-
-	# 	if test_only:
-	# 		return "The active sesion expired"
-
-	# 	msg_err=await dbi_loc_DropSession(
-	# 		basedir,session_id,
-	# 		_SESSION_ACTIVE
-	# 	)
-	# 	if msg_err is not None:
-	# 		return msg_err
-
-	# if test_only:
-	# 	return None
-
-	# msg_err=await dbi_loc_RenovateActiveSession(
-	# 	basedir,session_id
-	# )
-	# if msg_err is not None:
-	# 	return msg_err
-
-	# return None
+	return response_popupmsg(f"<h3>{tl}</h3>")
 
 # Middleware factory
 
 async def the_middleware_factory(app,handler):
 
-	# THE middleware
+	# The middleware
 
 	async def the_middleware(request:Request):
 
-		# Gather client type and language
 		client_type=get_client_type(request)
-		if client_type is None:
+		if client_type not in (_TYPE_BROWSER,_TYPE_CUSTOM):
 			return Response(
-				body="Can't tell if you're a browser or a custom client",
+				body="Unable to determine type of client",
 				status=406,
 			)
-		client_is_browser=(not client_type==_TYPE_CUSTOM)
 
-		# Custom client route restrictions
+		client_is_browser=(
+			client_type==_TYPE_BROWSER
+		)
 		if not client_is_browser:
 
 			if not request.path.startswith("/api/"):
@@ -680,22 +637,21 @@ async def the_middleware_factory(app,handler):
 					await handler(request)
 				)
 
-		# Get the language
 		lang=get_lang(client_type,request)
+		request_pl=Path(request.path)
+
+		req_by_htmx=(
+			client_is_browser and
+			util_valid_bool(
+				request.headers.get("HX-Request"),
+				dval=False
+			)
+		)
 
 		request[_REQ_CLIENT_TYPE]=client_type
 		request[_REQ_LANGUAGE]=lang
-		request[_REQ_PATH]=Path(request.path)
-
-		# Check wether the request was performed by HTMX
-		by_htmx=False
-		if client_is_browser:
-			by_htmx=(
-				util_valid_bool(
-					request.headers.get("HX-Request"),False
-				)
-			)
-		request[_REQ_IS_HTMX]=by_htmx
+		request[_REQ_PATH]=request_pl
+		request[_REQ_IS_HTMX]=req_by_htmx
 
 		# Print (some) request information
 
@@ -708,27 +664,32 @@ async def the_middleware_factory(app,handler):
 			"}"
 		)
 
-		userid:Optional[str]=None
+		user_id:Optional[str]=None
 		username:Optional[str]=None
+		client_id:Optional[str]=None
+		session_id:Optional[str]=None
 		access_key:Optional[str]=None
-		has_session=False
 
-		# api_local_access=(_CFG_FLAG_D_SECURITY in request.app[_CFG_FLAGS])
-		# if not api_local_access:
+		has_session=False
+		create_guest_credentials=False
+		remove_all_credentials=False
+
 		api_local_access=has_local_access(request)
-		security_disabled=(_CFG_FLAG_D_SECURITY in request.app[_CFG_FLAGS])
+		security_disabled=(
+			_CFG_FLAG_D_SECURITY in
+				request.app[_CFG_FLAGS]
+		)
 
 		url_is_page=request.path.startswith("/page/")
-
 		url_is_admin=(
 			request.path.startswith("/api/admin/") or
 			request.path.startswith("/fgmt/admin/")
 		)
 		if security_disabled:
 			if url_is_admin:
-				if request[_REQ_PATH].parts[3]=="users":
+				if request_pl.parts[3]=="users":
 					return Response(
-						body="Access to any account config is restricted",
+						body="Access to any account config has been disabled",
 						status=406,
 					)
 
@@ -739,7 +700,7 @@ async def the_middleware_factory(app,handler):
 		if security_disabled:
 			if url_is_account:
 				return Response(
-					body="Security is disabled, therefore, access to any account/user data is also disabled",
+					body="Access to any account config has been disabled",
 					status=406,
 				)
 
@@ -752,186 +713,230 @@ async def the_middleware_factory(app,handler):
 			request.path.startswith("/fgmt/orders/")
 		)
 
-		# Session and credentials will be verified. The process may change or destroy the credentials
+		url_is_login_related=False
+
+		if (not url_is_page) and (
+				url_is_assets or
+				url_is_orders or
+				url_is_account or
+				url_is_admin
+			):
+
+			# NOTE:
+			# Some /api/ routes do not require this referer check: they are not bound to any specific page
+
+			requires_referer=True
+			if request.path.startswith("/api/"):
+				if url_is_assets:
+					if len(request_pl.parts)==4 and request_pl.name=="export-as-spreadsheet":
+						requires_referer=False
+
+				if url_is_orders:
+					if len(request_pl.parts==6):
+						if request_pl.parts[3]=="pool" and request_pl.name=="spreadsheet":
+							requires_referer=False
+							url_is_login_related=True
+
+				if url_is_account:
+					if len(request_pl.parts)==4:
+						if request_pl.name in ("login","login-otp","login-magical","logout"):
+							requires_referer=False
+							url_is_login_related=True
+
+				if url_is_admin:
+					if (
+							len(request_pl.parts)==5 and
+							request_pl.parent.name=="misc" and (
+								request_pl.name in (
+									"export-data",
+									"import-data"
+								)
+							)
+						):
+						requires_referer=False
+
+			if requires_referer and client_is_browser:
+
+				the_referer:Optional[str]=util_get_correct_referer(request)
+				ok=(the_referer is not None)
+				if not ok:
+					print("→ No referer...?")
+
+				if ok:
+					ok=(
+						req_by_htmx and
+						the_referer.startswith("/page/")
+					)
+					if not ok:
+						print("→ 0",the_referer)
+
+				if ok:
+					the_referer_pl=Path(the_referer)
+					ok=(
+						len(the_referer_pl.parts)==3 and
+						the_referer_pl.parent.name=="page" and
+						the_referer_pl.name in (
+							"assets",
+							"orders",
+							"accounts",
+							"admin"
+						)
+					)
+					if not ok:
+						print("→ 1")
+
+					# Specific rules for routes
+					if ok:
+						if the_referer_pl.name in (
+							"assets",
+							"orders",
+							"accounts",
+							"admin"
+						):
+							if url_is_account and len(request_pl.parts)==4:
+								ok=(
+									request_pl.name in (
+										"login",
+										"login-otp",
+										"login-magical"
+										"logout",
+										"check-in"
+									)
+								)
+								if not ok:
+									print("→ 2")
+
+				if not ok:
+					return Response(
+						body="Illegal request",
+						status=406
+					)
+
+		# Session and credentials will be verified.
+		# The process may change or destroy the credentials at the end of the request
+
 		requires_session_checkin=True
 		if security_disabled:
 			requires_session_checkin=False
 			has_session=True
-			userid=_ROOT_USER_ID
+			user_id=_ROOT_USER_ID
 			username=_ROOT_USER
 
 		if not security_disabled:
-			if client_is_browser:
+			if client_is_browser and (not url_is_login_related):
 				requires_session_checkin=(
 					url_is_page or
 					url_is_assets or url_is_orders or
 					url_is_account or url_is_admin
 				)
+
+				if (
+						req_by_htmx and
+						url_is_account and
+						(not url_is_page)
+					):
+
+					if (
+							request_pl.parts[1]=="api" and
+							request_pl.name=="login-otp"
+						):
+						requires_session_checkin=False
+
+					if (
+							request_pl.parts[1]=="api" and
+							request_pl.name=="login-magical"
+						):
+						requires_session_checkin=False
+
 			if not client_is_browser:
 				requires_session_checkin=(
 					not api_local_access
 				)
 				if api_local_access:
 					has_session=True
-					userid=_ROOT_USER_ID
+					user_id=_ROOT_USER_ID
 
 		# Session and credentials check-in
 
+		ren_result=-1
 		if requires_session_checkin:
-			msg_error=(
-				await process_session_checkin(
-					request,
-				)
+
+			creds_from_cookies=util_extract_from_cookies(request)
+			has_creds=(creds_from_cookies is not None)
+
+			print(
+				"Extracted credentials:",
+				creds_from_cookies
 			)
-			has_session=(msg_error is None)
-			if not has_session:
-				print(
-					"SESSION CHECK-IN FAILED:",
-					msg_error
-				)
-			if has_session:
-				userid,access_key=util_extract_from_cookies(request)
-			# NOTE:
-			# "Allowed" means that there will be partial or different content if the session is not valid
-			allowed=(
-				request.path.startswith("/page/assets") or
-				request.path.startswith("/page/orders") or
-				request.path.startswith("/page/accounts")
-				# NOTE: The admin page has zero public access
-			)
-			if not allowed:
-				the_referer:Optional[str]=None
-				if not by_htmx:
-					the_referer=util_get_correct_referer(request)
-				# if request.path==_ROUTE_CHECKIN:
-				# 	# status_code={
-				# 	# 	True:200,False:403
-				# 	# }[by_htmx]
-					
-				# 	return Response(
-				# 		body="<!-- illegal checkin detected -->",
-				# 		# status=status_code
-				# 	)
-				if not url_is_account:
-					if (not url_is_page) and (not has_session):
-						return response_unauthorized(
-							lang,client_type,
-							fallback=the_referer
-						)
-				if (not url_is_page) and url_is_admin:
-					if not userid==_ROOT_USER_ID:
-						return response_unauthorized(
-							lang,client_type,
-							root_access=True,
-							fallback=the_referer
-						)
-			if url_is_page:
-				result_GetUser=await dbi_loc_GetUser(
-					request.app[_APP_PROGRAMDIR],
-					params={_KEY_USERID:userid}
-				)
-				is_err=result_GetUser[0]==_ERR
-				if not is_err:
-					username=result_GetUser[1]
-				if is_err:
-					print(
-						"[!] Username not found",
-						result_GetUser[1]
+
+			if not has_creds:
+				create_guest_credentials=True
+
+			if has_creds:
+				if creds_from_cookies[0]==_CRED_VISITOR:
+					# (visitor,client_id)
+					print("Known visitor")
+					client_id=creds_from_cookies[1]
+
+				if creds_from_cookies[0]==_CRED_EMPLOYEE:
+					print("Known employee")
+					# (employee,client_id,user_id,access_key)
+
+					ip_address,user_agent=util_get_pid_from_request(request)
+					temp=await aw_util_get_session_id(
+						creds_from_cookies[2],
+						ip_address,user_agent
 					)
+					temp=f"{creds_from_cookies[1]}.{temp}"
 
-		#########################################################
+					ren_result=await dbi_loc_RenovateActiveSession(
+						request.app[_APP_PROGRAMDIR],
+						temp,creds_from_cookies[3],
+						request.app[_CFG_ACC_TIMEOUT_SESSION]
+					)
+					if ren_result==_SESSION_OK:
+						session_id=temp
+						client_id=creds_from_cookies[1]
+						user_id=creds_from_cookies[2]
+						access_key=creds_from_cookies[3]
+						has_session=True
 
-		# Custom client
+					if (
+							(ren_result==_SESSION_INVALID) or
+							(ren_result==_SESSION_NOT_FOUND)
+						):
+						remove_all_credentials=True
+						create_guest_credentials=True
+						has_session=False
 
-		# if (not client_is_browser):
+					if ren_result==-1:
+						return Response(
+							body="Failed to perform the check-in",
+							status=406
+						)
 
-		# 	if url_is_admin or url_is_account or url_is_page:
+			if url_is_page:
+				result_GetUser:Optional[tuple]=await dbi_loc_GetUser(
+					request.app[_APP_PROGRAMDIR],
+					params={_KEY_USERID:user_id}
+				)
+				if result_GetUser is None:
+					print("[!] USERNAME NOT FOUND")
 
-		# 		# NOTE: The following if block is temporary
+				if result_GetUser is not None:
+					is_err=(result_GetUser[0]==_ERR)
+					if not is_err:
+						username=result_GetUser[1]
+					if is_err:
+						print(
+							"[!] Username not found",
+							result_GetUser[1]
+						)
 
-		# 		if not has_local_access(request):
-		# 			return json_response(
-		# 				data={
-		# 					"error":(
-		# 						"Custom clients can only access "
-		# 						"from localhost at the moment"
-		# 					)
-		# 				},
-		# 				status=501
-		# 			)
-		# 			# NOTE: 501 == Not implemented
+		request[_REQ_CID]=client_id
+		request[_REQ_SID]=session_id
 
-		# Get userid and access_key
-
-		# if requires_session_checkin:
-
-		# 	test_session=(
-		# 		request.path=="/api/accounts/debug"
-		# 	)
-		# 	if (not client_is_browser):
-		# 		if api_local_access:
-		# 			has_session=True
-
-		# 	if client_is_browser:
-		# 		msg_error=(
-		# 			await process_session_checkin(
-		# 				request,test_session
-		# 			)
-		# 		)
-		# 		has_session=(msg_error is None)
-		# 		if not has_session:
-		# 			print("SESSION CHECK-IN FAILED:",msg_error)
-
-		# 		if has_session:
-		# 			userid,access_key=util_extract_from_cookies(request)
-
-		# 	# The following routes despite asking for a session will return a
-		# 	# "different" content to unauthenticated users instead of denying it
-
-		# 	allowed=(
-		# 		request.path.startswith("/fgmt/assets/search-assets") or
-		# 		request.path.startswith("/api/assets/search-assets") or
-		# 		request.path.startswith("/fgmt/assets/panel/") or
-		# 		request.path.startswith("/fgmt/assets/history/") or 
-		# 		url_is_account
-		# 	)
-
-		# 	if (not client_is_browser):
-		# 		if api_local_access:
-		# 			allowed=True
-		# 			userid=_ROOT_USER_ID
-
-		# 	print("\tis account?",url_is_account)
-		# 	print("\tis admin?",url_is_admin)
-		# 	print("\tis page?",url_is_page)
-
-		# 	# if is_local_access(request) and (not client_is_browser):
-		# 	# 	allowed=True
-
-		# 	if not allowed:
-
-		# 		print("\nNOT ALLOWED")
-
-		# 		the_referer:Optional[str]=None
-		# 		if not by_htmx:
-		# 			the_referer=util_get_correct_referer(request)
-
-		# 		if not url_is_account:
-		# 			if (not url_is_page) and (not has_session):
-		# 				return response_unauthorized(
-		# 					lang,client_type,
-		# 					fallback=the_referer
-		# 				)
-
-		# 		if (not url_is_page) and url_is_admin:
-		# 			if not userid==_ROOT_USER_ID:
-		# 				return response_unauthorized(
-		# 					lang,client_type,
-		# 					root_access=True,
-		# 					fallback=the_referer
-		# 				)
-
-		request[_REQ_USERID]=userid
+		request[_REQ_USERID]=user_id
 		request[_REQ_USERNAME]=username
 		request[_REQ_ACCESS_KEY]=access_key
 		request[_REQ_HAS_SESSION]=has_session
@@ -942,14 +947,20 @@ async def the_middleware_factory(app,handler):
 
 		if requires_session_checkin and client_is_browser and url_is_page:
 
-			if (
-				(not has_session) and
-				(util_extract_from_cookies(request) is not None)
-			):
+			if remove_all_credentials:
+				print("[!] Destroying employee credentials")
+				the_response.del_cookie(_COOKIE_CLIENT)
 				the_response.del_cookie(_COOKIE_AKEY)
 				the_response.del_cookie(_COOKIE_USER)
 
-		print("[!] Reached real end")
+			if create_guest_credentials:
+				print("[!] Creating new client ID")
+				the_response.set_cookie(
+					_COOKIE_CLIENT,
+					token_hex(16)
+				)
+
+		print("[!] Reached end of request")
 
 		return the_response
 

@@ -17,16 +17,21 @@ from frontend_Any import (
 	_CSS_CLASS_CONTROLS,
 	_CSS_CLASS_NAV,
 	_CSS_CLASS_IG_FIELDS,
+	_CSS_CLASS_INPUT_GUARDED,
 
 	# write_popupmsg,
+	write_button_submit,
 	write_html_input_string,
+	write_html_input_checkbox,
 	write_html_input_radio,
 	# write_button_anchor,
 )
 
 from symbols_Any import (
 	_LANG_EN,_LANG_ES,
-	_CFG_FLAGS,_CFG_FLAG_D_SECURITY,
+	_CFG_FLAGS,
+		_CFG_FLAG_D_SECURITY,
+		# _CFG_FLAG_E_LOGIN_ROOT_LOCAL_AUTOLOGIN,
 	_REQ_USERID,
 	_REQ_USERNAME,
 	_REQ_HAS_SESSION,
@@ -42,6 +47,8 @@ from symbols_accounts import (
 	_KEY_ACC_EMAIL,_KEY_ACC_TELEGRAM,
 	_KEY_SIM,_KEY_OTP,_KEY_USERNAME,
 	# id_user,
+	_ID_UACC_EDITOR,
+	_ID_UACC_EDITOR_FORM,
 )
 
 # from symbols_admin import _ROUTE_API_USERS_DELETE
@@ -359,7 +366,7 @@ def write_form_login(lang:str,depth:int=0)->str:
 
 def write_form_login_otp(
 		lang:str,
-		username:str,
+		userid:str,
 		sim:Optional[str]=None,
 		depth:int=0,
 	)->str:
@@ -373,7 +380,7 @@ def write_form_login_otp(
 		_LANG_ES:"Introduzca la contraseña generada"
 	}[lang]
 	html_text=(
-		f"""<input name="{_KEY_USERNAME}" type=hidden value="{username}">""" "\n"
+		f"""<input name="{_KEY_USERID}" type=hidden value="{userid}">""" "\n"
 
 		f"{write_html_input_string(_KEY_OTP,tl,maxlen=32)}"
 	)
@@ -495,41 +502,50 @@ def write_button_logout(lang:str)->str:
 
 	return html_text
 
-def render_html_user_section(
+def write_html_user_section(
 		request:Request,
-		lang:str,full:bool=True,
+		lang:str,
+		full:bool=True,
 	)->str:
 
 	html_text=""
 
 	userid:Optional[str]=request[_REQ_USERID]
 	username:Optional[str]=None
-
 	has_session=request[_REQ_HAS_SESSION]
-	sec_disabled=(_CFG_FLAG_D_SECURITY in request.app[_CFG_FLAGS])
+	flag_sec_disabled=(
+		_CFG_FLAG_D_SECURITY in
+		request.app[_CFG_FLAGS]
+	)
+	logged_in=(userid is not None)
 
-	anonymous=(userid is None)
-	if not anonymous:
+	if logged_in:
 		username=request[_REQ_USERNAME]
-		anonymous=(username is None)
 
-	if not anonymous:
+	print(
+		"uid =",userid,
+		"; uname =",username,
+		"; has_session =",has_session,
+		"; sd =",flag_sec_disabled
+	)
 
+	if logged_in:
 		html_text=(
 			f"{html_text}\n"
 			f"<div>{username}</div>\n"
 		)
-		if has_session and (not sec_disabled):
-			keep_alive_time=int(
-				0.5*request.app[_CFG_ACC_TIMEOUT_SESSION]
-			)
-			html_text=(
-				f"{html_text}\n"
-				f"{write_button_logout(lang)}\n"
-				f"{write_html_keepalive(keep_alive_time)}"
-			)
+		if not flag_sec_disabled:
+			if has_session:
+				keep_alive_time=int(
+					0.5*request.app[_CFG_ACC_TIMEOUT_SESSION]
+				)
+				html_text=(
+					f"{html_text}\n"
+					f"{write_button_logout(lang)}\n"
+					f"{write_html_keepalive(keep_alive_time)}"
+				)
 
-	if anonymous and (not sec_disabled):
+	if not logged_in:
 
 		super_login=is_root_local_autologin_allowed(request)
 		if super_login:
@@ -550,8 +566,97 @@ def render_html_user_section(
 			"""</div>"""
 		)
 
-	print("userid",userid)
-	print("username",username)
+	return html_text
+
+def write_form_edit_user(
+		lang:str,
+		userid:str,
+		as_admin:bool=False,
+		full:bool=True
+	)->str:
+
+	tl={
+		_LANG_EN:"Username",
+		_LANG_ES:"Nombre de usuario"
+	}[lang]
+	tl_change=f"change-{_KEY_USERNAME}"
+	html_text=(
+
+		f"""<div class="{_CSS_CLASS_INPUT_GUARDED}">""" "\n"
+			f"{write_html_input_checkbox(tl_change,tl)}\n"
+			f"{write_html_input_string(_KEY_USERNAME)}"
+		"</div>"
+	)
+
+	tl={
+		_LANG_EN:"E-Mail",
+		_LANG_ES:"Correo electrónico"
+	}[lang]
+	tl_change=f"change-{_KEY_ACC_EMAIL}"
+	html_text=(
+		f"{html_text}\n"
+
+		f"""<div class="{_CSS_CLASS_INPUT_GUARDED}">""" "\n"
+			f"{write_html_input_checkbox(tl_change,tl)}\n"
+			f"{write_html_input_string(_KEY_ACC_EMAIL)}"
+		"</div>"
+	)
+
+	tl={
+		_LANG_EN:"Telegram user",
+		_LANG_ES:"Usuario de Telegram"
+	}[lang]
+	tl_change=f"change-{_KEY_ACC_TELEGRAM}"
+	html_text=(
+		f"{html_text}\n"
+
+		f"""<div class="{_CSS_CLASS_INPUT_GUARDED}">""" "\n"
+			f"{write_html_input_checkbox(tl_change,tl)}\n"
+			f"{write_html_input_string(_KEY_ACC_TELEGRAM)}"
+		"</div>"
+	)
+
+	tl={
+		_LANG_EN:"Apply changes",
+		_LANG_ES:"Aplicar cambios"
+	}[lang]
+	html_text=(
+		f"{html_text}\n"
+		f"""<div class="{_CSS_CLASS_CONTROLS}">""" "\n"
+			f"{write_button_submit(tl)}\n"
+		"</div>\n"
+	)
+
+
+	req_url={
+		True:f"/api/admin/users/{userid}/edit",
+		False:"/api/accounts/apply-changes"
+	}[as_admin]
+
+	html_text=(
+		f"""<form hx-post="{req_url}" """ "\n"
+			f"""hx-target="#{_ID_MSGZONE}" """ "\n"
+			"""hx-swap="innerHTML">""" "\n"
+
+			f"""<div class="{_CSS_CLASS_COMMON}">""" "\n"
+				f"{html_text}\n"
+			"</div>\n"
+		"</form>"
+	)
+
+	if full:
+		tl={
+			_LANG_EN:"Edit user account",
+			_LANG_ES:"Editar cuenta de usuario"
+		}[lang]
+		html_text=(
+			f"""<details id="{_ID_UACC_EDITOR}">""" "\n"
+				f"<summary>{tl}</summary>\n"
+				f"""<div id={_ID_UACC_EDITOR_FORM}>""" "\n"
+					f"{html_text}\n"
+				"</div>"
+			"</details>"
+		)
 
 	return html_text
 

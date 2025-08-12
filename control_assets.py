@@ -119,7 +119,7 @@ from frontend_assets import (
 	write_html_record_detailed,
 )
 
-from frontend_accounts import render_html_user_section
+from frontend_accounts import write_html_user_section
 
 from internals import (
 	util_valid_bool,
@@ -1585,21 +1585,7 @@ async def route_main(request:Request)->Response:
 	}[lang]
 
 	# tl=await render_html_user_section(request,lang)
-	tl=render_html_user_section(request,lang)
-
-	html_text=(
-		f"""<section id="{_ID_MSGZONE}">""" "\n"
-			"<!-- MESSAGES GO HERE -->\n"
-		"</section>\n"
-
-		f"""<section id="{_ID_NAV_ONE}">""" "\n"
-			f"<div>SHLED / {tl_title}</div>\n"
-			f"{write_html_nav_pages(lang,0)}\n"
-		"</section>\n"
-
-		f"""<section id="{_ID_NAV_TWO}">""" "\n"
-			f"{tl}\n"
-	)
+	# tl=write_html_user_section(request,lang)
 
 	tl=write_ul(
 		[
@@ -1612,7 +1598,17 @@ async def route_main(request:Request)->Response:
 	)
 
 	html_text=(
-			f"{html_text}\n"
+		f"""<section id="{_ID_MSGZONE}">""" "\n"
+			"<!-- MESSAGES GO HERE -->\n"
+		"</section>\n"
+
+		f"""<section id="{_ID_NAV_ONE}">""" "\n"
+			f"<div>SHLED / {tl_title}</div>\n"
+			f"{write_html_nav_pages(lang,0)}\n"
+		"</section>\n"
+
+		f"""<section id="{_ID_NAV_TWO}">""" "\n"
+			f"{write_html_user_section(request,lang)}\n"
 			f"{tl}\n"
 		"</section>\n"
 

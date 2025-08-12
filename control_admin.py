@@ -82,7 +82,7 @@ from frontend_Any import (
 
 from frontend_accounts import (
 
-	render_html_user_section,
+	write_html_user_section,
 )
 
 from frontend_admin import (
@@ -747,6 +747,8 @@ async def route_api_new_user(request:Request)->Response:
 
 async def route_api_search_users(request:Request)->Response:
 
+	# POST: /api/admin/users/search
+
 	ct=request[_REQ_CLIENT_TYPE]
 	assert_referer(request,ct,_ROUTE_PAGE)
 
@@ -789,7 +791,8 @@ async def route_api_search_users(request:Request)->Response:
 		as_map=1
 	)
 	if len(qresult)==1:
-		if qresult[0][0]==_ERR:
+		print("qresult",qresult)
+		if _ERR in qresult[0].keys():
 			return response_errormsg(
 				_ERR_TITLE_SEARCH_USERS[lang],
 				qresult[0][1],
@@ -812,7 +815,7 @@ async def route_api_search_users(request:Request)->Response:
 	for user in qresult:
 		html_text=(
 			f"{html_text}\n"
-			f"{write_html_user_as_item(lang,user,True)}"
+			f"{write_html_user_as_item(lang,user)}"
 		)
 
 	html_text=(
@@ -848,6 +851,8 @@ async def route_api_search_users(request:Request)->Response:
 	)
 
 async def route_api_delete_user(request:Request)->Response:
+
+	# POST: /api/admin/users/delete-user
 
 	ct=request[_REQ_CLIENT_TYPE]
 	assert_referer(request,ct,_ROUTE_PAGE)
@@ -958,9 +963,16 @@ async def route_main(request:Request)->Response:
 		_LANG_ES:"Administración del sistema"
 	}[lang]
 
-
-	# tl=await render_html_user_section(request,lang)
-	tl=render_html_user_section(request,lang)
+	tl=""
+	if is_admin:
+		tl=write_ul(
+			[
+				write_button_nav_users(lang),
+				write_button_nav_misc_settings(lang),
+			],
+			ul_id=_ID_NAV_TWO_OPTS,
+			ul_classes=[_CSS_CLASS_NAV]
+		)
 
 	html_text=(
 		f"""<section id="{_ID_MSGZONE}">""" "\n"
@@ -973,25 +985,8 @@ async def route_main(request:Request)->Response:
 		"</section>\n"
 
 		f"""<section id="{_ID_NAV_TWO}">""" "\n"
+			f"{write_html_user_section(request,lang)}\n"
 			f"{tl}\n"
-	)
-
-	if is_admin:
-		tl=write_ul(
-			[
-				write_button_nav_users(lang),
-				write_button_nav_misc_settings(lang),
-			],
-			ul_id=_ID_NAV_TWO_OPTS,
-			ul_classes=[_CSS_CLASS_NAV]
-		)
-		html_text=(
-			f"{html_text}\n"
-			f"{tl}"
-		)
-
-	html_text=(
-			f"{html_text}\n"
 		"</section>\n"
 
 		f"""<section id="{_ID_MAIN}">""" "\n"

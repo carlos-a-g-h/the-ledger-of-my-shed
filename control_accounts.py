@@ -2,8 +2,9 @@
 
 # from asyncio import to_thread as async_run
 
-from pathlib import Path
+# from pathlib import Path
 from typing import (
+	Mapping,
 	Optional,
 	# Union
 )
@@ -26,6 +27,7 @@ from control_Any import (
 
 	assert_referer,
 
+	util_get_pid_from_request,
 	get_client_type,
 	get_request_body_dict,
 
@@ -48,11 +50,12 @@ from dbi_accounts_sessions import (
 	_SESSION_ACTIVE,
 	_SESSION_PENDING,
 
-	util_check_session_data,
+	# util_check_session_data,
 	aw_util_get_session_id,
 
 	# aw_dbi_create_session,
-	dbi_loc_CreateSession,
+	dbi_loc_CreateActiveSession,
+	dbi_loc_CreatePendingSession,
 	# aw_dbi_convert_to_active_session,
 	dbi_loc_ConvertToActive,
 	# aw_dbi_read_session,
@@ -89,6 +92,7 @@ from frontend_accounts import (
 	_TITLE_USER_DETAILS,
 
 	write_html_user_detailed,
+	write_form_edit_user,
 
 	write_form_login,
 	write_form_login_otp,
@@ -96,13 +100,12 @@ from frontend_accounts import (
 	# write_button_anchor,
 	# write_button_login_magical,
 	write_button_login,
-	render_html_user_section,
+	write_html_user_section,
 )
 
 from internals import (
 	util_valid_str,util_valid_date,
 	util_date_calc_expiration,
-	util_get_pid_from_request,
 	util_rnow,
 )
 
@@ -115,8 +118,13 @@ from symbols_Any import (
 
 	# _HEADER_REFERER,
 
-	_REQ_CLIENT_TYPE,_TYPE_CUSTOM,_TYPE_BROWSER,
+	_REQ_CLIENT_TYPE,
+		_TYPE_CUSTOM,
+		_TYPE_BROWSER,
+		_REQ_SID,
+		_REQ_CID,
 	_REQ_USERID,
+	_REQ_PATH,
 	_REQ_HAS_SESSION,
 
 	_APP_PROGRAMDIR,
@@ -127,12 +135,14 @@ from symbols_Any import (
 	_CFG_ACC_TIMEOUT_OTP,
 
 	_CFG_FLAGS,
-	_CFG_FLAG_E_LOGIN_BACKEND_OTP_ALL
+	_CFG_FLAG_E_LOGIN_BACKEND_OTP_ALL,
+	_CFG_FLAG_D_SECURITY
 )
 
 from symbols_accounts import (
 
 	_ROUTE_PAGE,
+		# _ROUTE_FGMT_DETAILS,
 
 	_KEY_USERID,
 	_KEY_USERNAME,
@@ -142,6 +152,8 @@ from symbols_accounts import (
 	_ID_FORM_LOGIN,
 	# _ID_USER_ACCOUNT
 )
+
+from symbols_admin import _ROUTE_PAGE as _ROUTE_PAGE_ADMIN
 
 _ERR_TITLE_LOGIN={
 	_LANG_EN:"Login error",
@@ -226,6 +238,8 @@ async def route_api_login(request:Request)->Response:
 			_TYPE_BROWSER
 		)
 
+	# NOTE:
+	# SIM = Sign In Method
 	sim=util_valid_str(
 		request_data.get(_KEY_SIM),
 		lowerit=True
@@ -235,20 +249,28 @@ async def route_api_login(request:Request)->Response:
 
 	# TODO: get the settings....
 	# res_uaccount=await aw_dbi_get_account(
-	res_uaccount=await dbi_loc_GetUser(
+	res_uaccount:Optional[tuple]=await dbi_loc_GetUser(
 		basedir,
 		params={_KEY_USERNAME:username},
 		# get_settings=True,
 	)
-
-	if res_uaccount[0]==_ERR:
-		tl={
-			_LANG_EN:f"Unable to find the user '{username}'",
-			_LANG_ES:f"El usuario '{username}' no se pudo encontrar"
+	msg_err:Optional[str]=None
+	if res_uaccount is None:
+		msg_err={
+			_LANG_EN:"The user does not exist",
+			_LANG_ES:"El usuario no existe"
 		}[lang]
+	if res_uaccount is not None:
+		if res_uaccount[0]==_ERR:
+			tl={
+				_LANG_EN:f"Unable to find the user '{username}'",
+				_LANG_ES:f"El usuario '{username}' no se pudo encontrar"
+			}[lang]
+			msg_err=f"{tl}<br>{res_uaccount[1]}"
+	if msg_err is not None:
 		return response_errormsg(
 			_ERR_TITLE_LOGIN[lang],
-			f"{tl}<br>{res_uaccount[1]}",
+			msg_err,
 			_TYPE_BROWSER
 		)
 
@@ -261,9 +283,12 @@ async def route_api_login(request:Request)->Response:
 
 	# Check if the user is already waiting for a code
 
-	ip_address,user_agent=util_get_pid_from_request(request)
-
-	session_id=await aw_util_get_session_id(userid,ip_address,user_agent)
+	session_id=request[_REQ_SID]
+	if session_id is None:
+		print("building session ID...")
+		ip_address,user_agent=util_get_pid_from_request(request)
+		session_id=await aw_util_get_session_id(userid,ip_address,user_agent)
+		session_id=f"{request[_REQ_CID]}.{session_id}"
 
 	# session_candidate=await aw_dbi_read_session(basedir,session_id,0)
 	session_candidate=await dbi_loc_ReadSession(
@@ -277,6 +302,15 @@ async def route_api_login(request:Request)->Response:
 
 		print(session_candidate[1])
 
+		msg_error=await dbi_loc_DropSession(
+			basedir,session_id,
+			target_status=0
+		)
+		print(
+			f"ERR While dropping {session_id}:",
+			msg_error
+		)
+
 	if already_has_otp:
 
 		print(
@@ -285,7 +319,8 @@ async def route_api_login(request:Request)->Response:
 		)
 
 		stored_date=util_valid_date(
-			session_candidate[0],get_dt=True
+			session_candidate[0],
+			get_dt=True
 		)
 		if not util_date_calc_expiration(
 			stored_date,
@@ -304,27 +339,12 @@ async def route_api_login(request:Request)->Response:
 			return Response(
 				body=(
 					f"""<section hx-swap-oob="innerHTML:#{_ID_FORM_LOGIN}">""" "\n"
-						f"{write_form_login_otp(lang,username,depth=1)}\n"
+						f"{write_form_login_otp(lang,userid,depth=1)}\n"
 					"</section>\n"
 					f"{html_text_popup}"
 				),
 				content_type=_MIMETYPE_HTML
 			)
-
-		# msg_error=await async_run(
-		# 	dbi_drop_session,
-		# 	request.app[_APP_PROGRAMDIR],
-		# 	userid,ip_address,user_agent,True
-		# )
-		# msg_error=await aw_dbi_drop_session(basedir,session_id,0)
-		msg_error=await dbi_loc_DropSession(
-			basedir,session_id,
-			target_status=0
-		)
-		print(
-			f"ERR While dropping {session_id}:",
-			msg_error
-		)
 
 	# extract user login preferences
 	# Users with their corresponding login preferences are pulled from the db
@@ -402,13 +422,9 @@ async def route_api_login(request:Request)->Response:
 
 	# Create the session candidate
 
-	# error_msg=await aw_dbi_create_session(
-	# 	basedir,userid,
-	# 	session_id,otp_new,0
-	# )
-	msg_err=await dbi_loc_CreateSession(
+	msg_err=await dbi_loc_CreatePendingSession(
 		basedir,userid,
-		session_id,otp_new,0
+		session_id,otp_new,
 	)
 	if isinstance(msg_err,str):
 		tl={
@@ -423,9 +439,8 @@ async def route_api_login(request:Request)->Response:
 
 	return Response(
 		body=(
-			# f"""<section hx-swap-oob="innerHTML:#{_ID_FORM_LOGIN}">""" "\n"
 			f"""<section hx-swap-oob="innerHTML:#{_ID_FORM_LOGIN}">""" "\n"
-				f"{write_form_login_otp(lang,username,sim,depth=1)}\n"
+				f"{write_form_login_otp(lang,userid,sim,depth=1)}\n"
 			"</section>"
 			),
 		content_type=_MIMETYPE_HTML
@@ -433,7 +448,7 @@ async def route_api_login(request:Request)->Response:
 
 async def route_api_login_otp(request:Request)->Response:
 
-	# POST /api/accounts/login-otp {username:String,otp:String}
+	# POST /api/accounts/login-otp {userid:String,otp:String}
 	# NOTE: The response is an entire page (cookie must be delivered)
 
 	ct=request[_REQ_CLIENT_TYPE]
@@ -465,15 +480,13 @@ async def route_api_login_otp(request:Request)->Response:
 			)
 		)
 
-	print(request_data)
-
-	username=util_valid_str(
-		request_data.get(_KEY_USERNAME),True
+	userid=util_valid_str(
+		request_data.get(_KEY_USERID),True
 	)
-	if username is None:
+	if userid is None:
 		tl={
-			_LANG_EN:"Check the 'username' field",
-			_LANG_ES:"Revise el campo 'username' (nombre de usuario)"
+			_LANG_EN:"Check the 'userid' field",
+			_LANG_ES:"Revise el campo 'userid' (ID de usuario)"
 		}[lang]
 		return response_fullpage(
 			lang,_ERR,
@@ -507,33 +520,49 @@ async def route_api_login_otp(request:Request)->Response:
 	ip_address,user_agent=util_get_pid_from_request(request)
 
 	# res_uaccount=await aw_dbi_get_account(
-	res_uaccount=await dbi_loc_GetUser(
-		basedir,{_KEY_USERNAME:username}
-		# _KEY_USERNAME,
-		# username
+	res_uaccount:Optional[tuple]=await dbi_loc_GetUser(
+		basedir,
+		{_KEY_USERID:userid}
 	)
 
-	if res_uaccount[0]==_ERR:
+	msg_err:Optional[str]=None
 
-		tl={
-			_LANG_EN:f"Unable to find the user '{username}'",
-			_LANG_ES:f"El usuario '{username}' no se pudo encontrar"
+	if res_uaccount is None:
+		msg_err={
+			_LANG_EN:"User not found",
+			_LANG_ES:"El usuario no existe"
 		}[lang]
 
-		return response_fullpage(
-			lang,_ERR,
-			_ERR_TITLE_LOGIN[lang],
-			(
+	if res_uaccount is not None:
+		if res_uaccount[0]==_ERR:
+			tl={
+				_LANG_EN:f"Unable to find the user '{userid}'",
+				_LANG_ES:f"El usuario '{userid}' no se pudo encontrar"
+			}[lang]
+			msg_err=(
 				f"<p>{tl}<br>{res_uaccount[1]}</p>\n"
 				f"<p>{write_button_return(lang,the_referer)}</p>"
 			)
+
+
+	if msg_err is not None:
+		return response_fullpage(
+			lang,_ERR,
+			_ERR_TITLE_LOGIN[lang],
+			msg_err
 		)
 
 	userid=res_uaccount[0]
 
-	session_id=await aw_util_get_session_id(
-		userid,ip_address,user_agent
-	)
+	# session_id=await aw_util_get_session_id(
+	# 	userid,ip_address,user_agent
+	# )
+	session_id=request[_REQ_SID]
+	if session_id is None:
+		print("building session ID...")
+		ip_address,user_agent=util_get_pid_from_request(request)
+		session_id=await aw_util_get_session_id(userid,ip_address,user_agent)
+		session_id=f"{request[_REQ_CID]}.{session_id}"
 
 	# session_candidate=await aw_dbi_read_session(
 	session_candidate=await dbi_loc_ReadSession(
@@ -541,7 +570,8 @@ async def route_api_login_otp(request:Request)->Response:
 		target_status=_SESSION_PENDING
 	)
 	print(
-		f"[{route_api_login_otp.__name__}] session_candidate = {session_candidate}"
+		f"[{route_api_login_otp.__name__}]",
+		f"session_candidate = {session_candidate}"
 	)
 	if session_candidate[0]==_ERR:
 		tl={
@@ -571,11 +601,26 @@ async def route_api_login_otp(request:Request)->Response:
 			_LANG_EN:"The session is either not valid or the password expired",
 			_LANG_ES:"La sesión o no es válida o la contraseña expiró"
 		}[lang]
+		msg_err=await dbi_loc_DropSession(
+			basedir,session_id,
+			target_status=_SESSION_PENDING
+		)
+		html_text=f"<p>{tl}</p>"
+		if msg_err is not None:
+			tl={
+				_LANG_EN:"Failed to delete the pending session",
+				_LANG_ES:"No se pudo eliminar la sesión pendiente"
+			}[lang]
+			html_text=(
+				f"{html_text}\n"
+				f"<p>{tl}<br><code>{msg_err}</code></p>"
+			)
+
 		return response_fullpage(
 			lang,_ERR,
 			_ERR_TITLE_LOGIN[lang],
 			(
-				f"<p>{tl}</p>\n"
+				f"{html_text}\n"
 				f"<p>{write_button_return(lang,the_referer)}</p>"
 			)
 		)
@@ -598,27 +643,10 @@ async def route_api_login_otp(request:Request)->Response:
 	# Creating access key
 	access_key=token_hex(32)
 
-	# print(
-	# 	await async_run(
-	# 		ldbi_drop_session,
-	# 		request.app[_APP_PROGRAMDIR],
-	# 		userid,ip_address,user_agent,False
-	# 	)
-	# )
-
-	# Converts the candidate session into an active session
-	# error_msg=await async_run(
-	# 	dbi_convert_to_active_session,
-	# 	request.app[_APP_PROGRAMDIR],
-	# 	userid,ip_address,user_agent,
-	# 	access_key
-	# )
-	# error_msg=await aw_dbi_convert_to_active_session(
 	msg_err=await dbi_loc_ConvertToActive(
 		request.app[_APP_PROGRAMDIR],
 		session_id,access_key
 	)
-
 	if isinstance(msg_err,str):
 		tl={
 			_LANG_EN:"Details",
@@ -632,6 +660,8 @@ async def route_api_login_otp(request:Request)->Response:
 				f"<p>{write_button_return(lang,the_referer)}</p>"
 			)
 		)
+
+	print("--> CONVERTED")
 
 	# TODO: improve cookie security
 
@@ -705,12 +735,17 @@ async def route_api_login_magical(request:Request)->Response:
 
 	basedir=request.app[_APP_PROGRAMDIR]
 
-	ip_address,user_agent=util_get_pid_from_request(request)
-
-	session_id=await aw_util_get_session_id(
-		_ROOT_USER_ID,
-		ip_address,user_agent
-	)
+	# ip_address,user_agent=util_get_pid_from_request(request)
+	# session_id=await aw_util_get_session_id(
+	# 	_ROOT_USER_ID,
+	# 	ip_address,user_agent
+	# )
+	session_id=request[_REQ_SID]
+	if session_id is None:
+		print("building session ID...")
+		ip_address,user_agent=util_get_pid_from_request(request)
+		session_id=await aw_util_get_session_id(_ROOT_USER_ID,ip_address,user_agent)
+		session_id=f"{request[_REQ_CID]}.{session_id}"
 
 	access_key=token_hex(32)
 
@@ -720,10 +755,9 @@ async def route_api_login_magical(request:Request)->Response:
 	# 	ip_address,user_agent,access_key
 	# )
 	# msg_err=await aw_dbi_create_session(
-	msg_err=await dbi_loc_CreateSession(
+	msg_err=await dbi_loc_CreateActiveSession(
 		basedir,_ROOT_USER_ID,
 		session_id,access_key,
-		status=_SESSION_ACTIVE
 	)
 	if msg_err is not None:
 		tl={
@@ -796,8 +830,6 @@ async def route_api_logout(request:Request)->Response:
 			}[lang],_TYPE_BROWSER
 		)
 
-	ip_address,user_agent=util_get_pid_from_request(request)
-
 	path_program=request.app[_APP_PROGRAMDIR]
 
 	# msg_error=await async_run(
@@ -807,7 +839,12 @@ async def route_api_logout(request:Request)->Response:
 	# 	user_agent,False
 	# )
 
-	session_id=await aw_util_get_session_id(userid,ip_address,user_agent)
+	session_id=request[_REQ_SID]
+	if session_id is None:
+		print("building session ID...")
+		ip_address,user_agent=util_get_pid_from_request(request)
+		session_id=await aw_util_get_session_id(userid,ip_address,user_agent)
+		session_id=f"{request[_REQ_CID]}.{session_id}"
 
 	# msg_error=await aw_dbi_drop_session(
 	msg_err=await dbi_loc_DropSession(
@@ -828,7 +865,6 @@ async def route_api_logout(request:Request)->Response:
 	html_text=(
 		f"""<div hx-swap-oob="innerHTML:#{_ID_USER_ACCOUNT}">""" "\n"
 			f"{write_button_login(lang)}\n"
-			# f"""<div class="{_CSS_CLASS_COMMON}"><strong>{tl}</strong></div>""" "\n"
 		"</div>"
 	)
 
@@ -860,21 +896,34 @@ async def route_fgmt_details(request:Request)->Response:
 
 	# GET /fgmt/accounts/details
 	# GET /fgmt/accounts/details/{userid_req}
+	# GET /fgmt/admin/users/details/{userid_req}
 
 	ct=request[_REQ_CLIENT_TYPE]
 	lang=request[_REQ_LANGUAGE]
 	userid=request[_REQ_USERID]
 
+	reqfrom_personal_page=(len(request[_REQ_PATH].parts)==4)
+	reqfrom_admin_page=False
+	reqfrom_anywhere=False
+	if len(request[_REQ_PATH].parts)==5:
+		if request[_REQ_PATH].parts[2]=="accounts":
+			reqfrom_personal_page=assert_referer(
+					request,_TYPE_BROWSER,
+					_ROUTE_PAGE,
+					explode=False
+				)
+		if request[_REQ_PATH].parts[2]=="admin":
+			reqfrom_admin_page=assert_referer(
+					request,_TYPE_BROWSER,
+					_ROUTE_PAGE_ADMIN,
+					explode=False
+				)
+
 	userid_req:Optional[str]=None
-	spec_uid=(
-		len(
-			Path(request.path).parts
-		)==5
-	)
-	if spec_uid:
-		userid_req=request.match_info["userid_req"]
-	if not spec_uid:
+	if reqfrom_personal_page:
 		userid_req=userid
+	if reqfrom_admin_page or reqfrom_anywhere:
+		userid_req=request.match_info["userid_req"]
 
 	if userid_req is None:
 		return response_errormsg(
@@ -887,54 +936,49 @@ async def route_fgmt_details(request:Request)->Response:
 
 	basedir=request.app[_APP_PROGRAMDIR]
 
-	# uaccount_req=await aw_dbi_get_account(
-	uaccount_req=await dbi_loc_GetUser(
+	uaccount_req:Mapping=await dbi_loc_GetUser(
 		basedir,
-		{_KEY_USERID:userid_req}
+		params={_KEY_USERID:userid_req},
+		as_map=1
 	)
-	if uaccount_req[0]==_ERR:
+	msg_err:Optional[str]=None
+	empty=(len(uaccount_req)==0)
+	if empty:
+		msg_err={
+			_LANG_EN:"The user does not exist",
+			_LANG_ES:"El usuario no existe"
+		}[lang]
+	if not empty:
+		msg_err=uaccount_req.get(_ERR)
+	if msg_err is not None:
 		return response_errormsg(
 			_ERR_TITLE_DETAILS,
-			uaccount_req[1],ct
+			msg_err,ct
 		)
-
-	uaccount_rec_conv=util_uaccount_conv_tuple_to_mapping(
-		uaccount_req
-	)
 
 	if ct==_TYPE_CUSTOM:
-		return json_response(
-			uaccount_rec_conv
-		)
-
-	# TODO: FIX THIS
-
-	at_acc_page=(
-		assert_referer(
-			request,
-			_TYPE_BROWSER,
-			_ROUTE_PAGE,
-			explode=False
-		)
-	)
-
-	print(f"at_acc_page = {at_acc_page}")
+		return json_response(uaccount_req)
 
 	html_text=write_html_user_detailed(
-		lang,uaccount_rec_conv,
-		full=at_acc_page
+		lang,uaccount_req,
+		full=reqfrom_anywhere
 	)
-
-	if not at_acc_page:
-
+	if reqfrom_anywhere:
 		return response_popupmsg(
 			html_text,
 			_TITLE_USER_DETAILS[lang]
 		)
 
+	if _CFG_FLAG_D_SECURITY not in request.app[_CFG_FLAGS]:
+		html_text=(
+			f"{html_text}"
+			f"{write_form_edit_user(lang,userid,as_admin=reqfrom_admin_page)}"
+		)
+
 	return Response(
 		body=(
-			f"<!-- USER ACCOUNT DETAILS OF {userid_req} REQUESTED BY {userid} -->\n"
+			f"<!-- USER ACCOUNT DETAILS OF {userid_req} "
+				f"REQUESTED BY {userid} -->\n"
 
 			f"""<section hx-swap-oob="innerHTML:#{_ID_MAIN}">""" "\n"
 				f"{html_text}\n"
@@ -942,6 +986,12 @@ async def route_fgmt_details(request:Request)->Response:
 		),
 		content_type=_MIMETYPE_HTML
 	)
+
+async def route_api_edit_user(request:Request)->Response:
+
+	pass
+
+
 
 async def route_main(request:Request)->Response:
 
@@ -952,31 +1002,28 @@ async def route_main(request:Request)->Response:
 		_LANG_ES:"Cuenta de usuario"
 	}[lang]
 
-	# tl=await render_html_user_section(request,lang)
-	tl=render_html_user_section(request,lang)
-
 	html_text=""
 
 	if request[_REQ_HAS_SESSION]:
 		userid=request[_REQ_USERID]
-		# uaccount=await aw_dbi_get_account(
-		uaccount=await dbi_loc_GetUser(
+		uaccount:Optional[tuple]=await dbi_loc_GetUser(
 			request.app[_APP_PROGRAMDIR],
-			{_KEY_USERID:userid}
+			params={_KEY_USERID:userid},
+			as_map=1
 		)
-		failed=(uaccount[0]==_ERR)
-		if failed:
-			html_text=(
-				f"<code>{uaccount[1]}</code>"
-			)
-		if not failed:
-			html_text=write_html_user_detailed(
-				lang,
-				util_uaccount_conv_tuple_to_mapping(
-					uaccount
-				),
-				full=True
-			)
+		if not len(uaccount)==0:
+			msg_err:Optional[str]=uaccount.get(_ERR)
+			if msg_err is not None:
+				html_text=(
+					f"{html_text}"
+					f"<code>{msg_err}</code>"
+				)
+
+			if msg_err is None:
+				html_text=write_html_user_detailed(
+					lang,uaccount,
+					full=True
+				)
 
 	if len(html_text)==0:
 		html_text="<!-- EMPTY AT THE MOMENT -->"
@@ -992,13 +1039,12 @@ async def route_main(request:Request)->Response:
 		"</section>\n"
 
 		f"""<section id="{_ID_NAV_TWO}">""" "\n"
-			f"{tl}\n"
+			f"{write_html_user_section(request,lang)}\n"
 		"</section>\n"
 
 		f"""<section id="{_ID_MAIN}">""" "\n"
 			f"{html_text}\n"
 		"</section>"
-
 	)
 
 	return (

@@ -31,13 +31,12 @@ from control_accounts import (
 
 	route_fgmt_login as route_Accounts_fgmt_Login,
 		route_api_login as route_Accounts_api_Login,
+		route_fgmt_details as route_Accounts_fgmt_Details,
 		route_api_login_otp as route_Accounts_api_LoginOTP,
 		route_api_login_magical as route_Accounts_api_LoginMagical,
 		route_api_logout as route_Accounts_api_Logout,
 
 	route_api_checkin as route_Accounts_api_CheckIn,
-
-	route_fgmt_details as route_Accounts_fgmt_Details,
 
 	# route_api_otp_new as route_Accounts_api_OTPNew,
 	# route_api_otp_con as route_Accounts_api_OTPCon,
@@ -114,7 +113,7 @@ from frontend_Any import util_css_bake
 
 from internals import (
 	read_yaml_file,
-	util_path_resolv,
+	# util_path_resolv,
 	util_valid_int,
 	util_valid_int_inrange,
 	util_valid_str,
@@ -159,6 +158,7 @@ from symbols_Any import (
 
 	_CFG_FLAG_D_SECURITY,
 	_CFG_FLAG_D_STARTUP_CSS_BAKING,
+	_CFG_FLAG_E_STARTUP_RUN_MONGOD,
 	_CFG_FLAG_E_STARTUP_PRINT_NW_INTERFACES,
 	_CFG_FLAG_E_STARTUP_PRINT_ASSETS,
 	# _CFG_FLAG_ROOT_LOCAL_AUTOLOGIN,
@@ -186,6 +186,8 @@ from symbols_accounts import (
 			_ROUTE_API_LOGIN_MAGIC as _ROUTE_ACC_API_LOGIN_MAGIC,
 			_ROUTE_API_LOGOUT as _ROUTE_ACC_API_LOGOUT,
 
+		_ROUTE_FGMT_DETAILS as _ROUTE_ACC_FGMT_DETAILS,
+
 		# _ROUTE_API_OTP_NEW as _ROUTE_ACC_API_OTP_NEW,
 		# _ROUTE_API_OTP_CON as _ROUTE_ACC_API_OTP_CON
 )
@@ -208,30 +210,38 @@ from symbols_admin import (
 )
 
 _CMD_HELP="help"
+# _CMD_CONFIG="conf"
 _CMD_IMPORT="import"
 _CMD_EXPORT="export"
 _CMD_UNKNOWN="Unknown or misused command"
 
 
-def run_ifconfig_or_ipconfig(platform:str)->Optional[str]:
+def run_ifconfig_or_ipconfig(platform:str):
 
-	name:Optional[str]=None
+	command:Optional[str]=None
 	if platform=="win32":
-		name="ipconfig"
-
+		command="ipconfig"
 	if platform=="linux":
-		name="ifconfig"
+		command="ifconfig"
 
-	if name is None:
-		print("Unlisted platform:",platform)
+	if command is None:
+		print("\nUnknown platform:",platform)
 		return
 
-	print("\nNW Int. {")
-	proc=sub_run(name)
-	print(
-		"} NW Int, ",
-		f"return code is {proc.returncode}\n"
-	)
+	print("\nRunning $",command)
+	proc=sub_run(command)
+	print("return code:",proc.returncode)
+
+def run_mongod(platform:str)->Optional[str]:
+
+	if not platform=="linux":
+		print("\nCannot run systemctl: not in linux")
+		return
+
+	command="systemctl start mongod"
+	print("\nRunning $",command)
+	proc=sub_run(command.split())
+	print("return code:",proc.returncode)
 
 def read_config(config_raw:Mapping)->dict:
 
@@ -287,7 +297,8 @@ def read_config(config_raw:Mapping)->dict:
 	)
 	if not isinstance(cfg_db_url,str):
 		print(
-			f"'{_CFG_DB_URL}' key not found in config: A local database will be used instead"
+			f"'{_CFG_DB_URL}' key not found in config: "
+			"A local database will be used instead"
 		)
 		cfg_db_url=_MONGO_URL_DEFAULT,
 
@@ -345,7 +356,6 @@ def build_app(
 	acc_timeout_session=config.get(_CFG_ACC_TIMEOUT_SESSION)
 
 	flags=config.get(_CFG_FLAGS)
-	security_disabled=(_CFG_FLAG_D_SECURITY in flags)
 
 	# Base directory
 
@@ -354,12 +364,30 @@ def build_app(
 		parents=True
 	)
 
-	if not security_disabled:
+	# Display network interfaces ?
+	if _CFG_FLAG_E_STARTUP_PRINT_NW_INTERFACES in flags:
+		run_ifconfig_or_ipconfig(platform)
+
+	# Run mongod ?
+	if _CFG_FLAG_E_STARTUP_RUN_MONGOD in flags:
+		run_mongod(platform)
+
+	# Disable CSS Baking ?
+	if _CFG_FLAG_D_STARTUP_CSS_BAKING not in flags:
+		if not util_css_bake(path_programdir,True):
+			print("WARNING: Unable to create the custom.css file")
+
+	# Disable user accounts and security ?
+	if _CFG_FLAG_D_SECURITY not in flags:
+		print("\n- Initializing users database file...")
 		dbi_init_users(
 			path_programdir,
 			rdb_name,rdb_url
 		)
+		print("\n- Initializing sessions database file...")
 		dbi_init_sessions(path_programdir)
+
+	print("\n- Initializing assets database file...")
 
 	dbi_init_assets(
 		path_programdir,
@@ -383,6 +411,8 @@ def build_app(
 	app[_APP_RDBN]=rdb_name
 
 	# motor (MongoDB)
+
+	print("\n- Connecting to a MongoDB database...")
 
 	app[_APP_RDBC]=AsyncIOMotorClient(rdb_url)
 
@@ -444,6 +474,10 @@ def build_app(
 					_ROUTE_ADMIN_API_USERS_SEARCH,
 					route_Admin_api_search_users
 				),
+				web_GET(
+					"/fgmt/admin/users/details/{userid_req}",
+					route_Accounts_fgmt_Details
+				),
 				web_DELETE(
 					_ROUTE_ADMIN_API_USERS_DELETE,
 					route_Admin_api_delete_user
@@ -490,7 +524,7 @@ def build_app(
 			),
 
 			web_GET(
-				"/fgmt/accounts/details",
+				_ROUTE_ACC_FGMT_DETAILS,
 				route_Accounts_fgmt_Details
 			),
 				web_GET(
@@ -685,18 +719,6 @@ def build_app(
 				),
 	])
 
-	# Display network interfaces ?
-
-	if _CFG_FLAG_E_STARTUP_PRINT_NW_INTERFACES in flags:
-		run_ifconfig_or_ipconfig(platform)
-
-	# Disable CSS Baking ?
-
-	devmode_css=(_CFG_FLAG_D_STARTUP_CSS_BAKING in flags)
-	if not devmode_css:
-		if not util_css_bake(path_programdir,True):
-			print("WARNING: Unable to create the custom.css file")
-
 	return app
 
 if __name__=="__main__":
@@ -716,11 +738,13 @@ if __name__=="__main__":
 			if sys_argv[1]==_CMD_HELP:
 				help=(
 					# TODO: Implement the export through the CLI...
-					"SHLED CLI commands" "\n"
-					"\n" f"$ {path_bin.name} export [FilePath]" "\n"
-						"\t" "Connects to the remote database and exports all assets, orders and users to an external file" "\n"
-					"\n" f"$ {path_bin.name} import [FilePath]" "\n"
-						"\t" "Imports assets, orders and users from a data file to the remote database, overwritting any existing values"
+					"SHLED commands" "\n"
+					"\n" f"$ {path_bin.name} {_CMD_EXPORT} [FilePath]" "\n"
+						"\t" "Connects to the remote database and exports all assets, "
+							"orders and users to an external file" "\n"
+					"\n" f"$ {path_bin.name} {_CMD_IMPORT} [FilePath]" "\n"
+						"\t" "Imports assets, orders and users from a data file to "
+							"the remote database, overwritting any existing values"
 				)
 				print(f"\n{help}\n")
 				sys_exit(0)
@@ -734,18 +758,21 @@ if __name__=="__main__":
 			print(_CMD_UNKNOWN)
 			sys_exit(1)
 
-	path_cfg:Optional[Path]=None
-	if len(sys_argv)==2:
-		path_cfg=util_path_resolv(
-			path_appdir,
-			Path(sys_argv[1].strip())
-		)
+	# path_cfg:Optional[Path]=None
+	# if len(sys_argv)==2:
+	# 	path_cfg=util_path_resolv(
+	# 		path_appdir,
+	# 		Path(sys_argv[1].strip())
+	# 	)
 
-	if not isinstance(path_cfg,Path):
-		path_cfg=path_appdir.joinpath(
-			"config.yaml"
-		)
+	# if not isinstance(path_cfg,Path):
+	# 	path_cfg=path_appdir.joinpath(
+	# 		"config.yaml"
+	# 	)
 
+	path_cfg=path_appdir.joinpath(
+		"config.yaml"
+	)
 	the_config_raw=read_yaml_file(path_cfg)
 
 	the_config=read_config(the_config_raw)

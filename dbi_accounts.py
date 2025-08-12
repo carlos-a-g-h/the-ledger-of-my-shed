@@ -168,9 +168,6 @@ def dbi_init(
 		_DBF_UACCOUNTS,
 		ep=True
 	)
-
-	print(fn,"initializing DB...")
-
 	rdbc:MongoClient=MongoClient(rdb_constring)
 	col=rdbc[rdb_name][_MONGO_COL_USERS]
 
@@ -214,11 +211,6 @@ def dbi_init(
 		# cur.execute(_SQL_TX_COMMIT)
 		con.commit()
 		cur.close()
-
-		# nc=con.cursor()
-		# nc.execute(f"SELECT * FROM {_SQL_TABLE_USERS}")
-		# print("-->",nc.fetchall())
-		# nc.close()
 
 	rdbc.close()
 
@@ -279,10 +271,6 @@ async def dbi_rem_CreateUser(
 		return {_ERR:f"{fn} {exc}"}
 
 	if get_result:
-
-		user_new.update({_KEY_USERID:userid})
-		user_new.pop(_KEY_ID)
-
 		return user_new
 
 	return {}
@@ -291,7 +279,7 @@ async def dbi_loc_GetUser(
 		basedir:Path,
 		params:Mapping={},
 		as_map:int=0,
-	)->Union[tuple,Mapping]:
+	)->Union[Optional[tuple],Mapping]:
 
 	the_query=f"SELECT * FROM {_SQL_TABLE_USERS}"
 	woa={
@@ -327,9 +315,12 @@ async def dbi_loc_GetUser(
 			f"""{_KEY_ACC_TELEGRAM}="{uacc_telegram}" """
 		)
 
-	userdata:Optional[tuple]
+	userdata:Optional[tuple]=None
+	ret_mapping=(
+		as_map in (1,2)
+	)
 
-	ret_mapping=(as_map in [1,2])
+	print(the_query)
 
 	try:
 		async with aio_connect(
@@ -343,6 +334,8 @@ async def dbi_loc_GetUser(
 					the_query.strip()
 				)
 				userdata=await cur.fetchone()
+				print("-->",userdata)
+
 	except Exception as exc:
 		if ret_mapping:
 			return {_ERR:f"{exc}"}
@@ -350,6 +343,9 @@ async def dbi_loc_GetUser(
 		return (_ERR,f"{exc}")
 
 	if ret_mapping:
+
+		if userdata is None:
+			return {}
 
 		keyname={
 			1:_KEY_USERID,
@@ -487,7 +483,7 @@ async def dbi_loc_QueryUsers(
 		the_query=the_query.strip()
 
 	print(
-		f"{dbi_loc_QueryUsers}()",
+		f"{dbi_loc_QueryUsers.__name__}()",
 		the_query
 	)
 
@@ -504,9 +500,10 @@ async def dbi_loc_QueryUsers(
 				)
 			) as con:
 			async with con.cursor() as cur:
-				async for item in cur.execute(the_query):
+				await cur.execute(the_query)
+				async for item in cur:
 					if as_mapping:
-						item.append(
+						items.append(
 							util_user_tuple_to_mapping(
 								item,
 								for_rdb=for_rdb

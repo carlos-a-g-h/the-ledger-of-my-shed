@@ -15,6 +15,9 @@ _DIR_SOURCES="sources"
 
 _MONGO_URL_DEFAULT="mongodb://127.0.0.1:27017"
 
+_LOCALHOST_IPV4="127.0.0.1"
+_LOCALHOST_IPV6="::1"
+
 # Errors
 
 _ERR="error"
@@ -86,18 +89,22 @@ _HEADER_USER_AGENT="User-Agent"
 # ]
 
 # The f***ing Cookies!
-
+_CRED_TYPE="CRED_TYPE"
+_CRED_VISITOR="CRED_VISITOR"
+_CRED_EMPLOYEE="CRED_EMPLOYEE"
+_COOKIE_CLIENT="CLIENT-ID"
 _COOKIE_AKEY="ACCESS-KEY"
 _COOKIE_USER="USER-ID"
 
 # Root User
-
 _ROOT_USER="root"
 _ROOT_USER_ID="000000000000000000000001"
 
 # Request extra data
 _REQ_USERNAME="Username"
 _REQ_USERID="User_ID"
+_REQ_CID="Client_ID"
+_REQ_SID="Session_ID"
 _REQ_ACCESS_KEY="Access_Key"
 _REQ_CLIENT_TYPE="Client_Type"
 _REQ_IS_HTMX="RequestFromHTMX"
@@ -117,6 +124,7 @@ _CFG_ACC_TIMEOUT_SESSION="timeout-session"
 
 _CFG_FLAGS="flags"
 _CFG_FLAG_D_SECURITY="d-security"
+_CFG_FLAG_E_STARTUP_RUN_MONGOD="e-startup-run-mongod"
 _CFG_FLAG_E_STARTUP_PRINT_ASSETS="e-startup-print-assets"
 _CFG_FLAG_E_STARTUP_PRINT_NW_INTERFACES="e-startup-print-nw-interfaces"
 _CFG_FLAG_D_STARTUP_CSS_BAKING="d-startup-css-baking"
@@ -136,7 +144,7 @@ _CFG_TELEGRAM_API_HASH="api-hash"
 _CFG_TELEGRAM_BOT_TOKEN="bot-token"
 _CFG_TELEGRAM_API_LVL="tg-api-lvl"
 
-# Keys/Fields fit for for ANYTHING
+# Keys/Fields for anything
 
 _KEY_ID="_id"
 _KEY_STATUS="status"

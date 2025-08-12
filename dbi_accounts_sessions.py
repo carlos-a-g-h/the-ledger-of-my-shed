@@ -29,8 +29,8 @@ from aiosqlite import (
 # )
 
 from pysqlitekv import (
-	_SQL_TX_BEGIN,
-	_SQL_TX_COMMIT,
+	# _SQL_TX_BEGIN,
+	# _SQL_TX_COMMIT,
 	db_init as db_init_sync
 )
 from pysqlitekv_async import (
@@ -79,9 +79,9 @@ from internals import (
 _SESSION_PENDING=0
 _SESSION_ACTIVE=1
 
-_FLAG_NOT_FOUND_OR_MISSING=2
-_FLAG_DESTROY=1
-_FLAG_OK=0
+_SESSION_NOT_FOUND=2
+_SESSION_INVALID=1
+_SESSION_OK=0
 
 def util_get_dbfile(
 		basedir:Path,
@@ -132,35 +132,23 @@ async def aw_util_get_session_id(
 
 def dbi_init(basedir:Path):
 
-		db_init_sync(
-			util_get_dbfile(basedir),
-			confirm_only=True
-		)
+	filepath=util_get_dbfile(basedir,ep=True)
 
-async def dbi_loc_CreateSession(
+	db_init_sync(
+		util_get_dbfile(basedir,ep=True),
+		confirm_only=True
+	)
+
+async def dbi_loc_CreatePendingSession(
 		basedir:Path,
 		userid:str,
 		session_id:str,
-		payload:str,
-		status:int
+		password:str,
 	)->Optional[str]:
 
-	keyname={
-		_SESSION_PENDING:_KEY_OTP,
-		_SESSION_ACTIVE:_KEY_AKEY
-	}[status]
-
-	data={
-		_KEY_ID:session_id,
-		_KEY_USERID:userid,
-		_KEY_DATE:util_rnow(),
-		_KEY_STATUS:status,
-		keyname:payload,
-	}
-
 	fn=(
-		f"{dbi_loc_ConvertToActive}"
-		f"({userid},{session_id},{payload},{status})"
+		f"{dbi_loc_CreatePendingSession.__name__}"
+		f"({userid},{session_id},{password})"
 	)
 	msg_err:Optional[str]=None
 
@@ -171,7 +159,13 @@ async def dbi_loc_CreateSession(
 
 			ok=await db_post(
 				sqlcon,session_id,
-				data,force=True
+				{
+					_KEY_ID:session_id,
+					_KEY_USERID:userid,
+					_KEY_DATE:util_rnow(),
+					_KEY_STATUS:_SESSION_PENDING,
+					_KEY_OTP:password,
+				},
 			)
 			if not ok:
 				msg_err="failed to create session"
@@ -185,14 +179,104 @@ async def dbi_loc_CreateSession(
 
 	return None
 
+async def dbi_loc_CreateActiveSession(
+		basedir:Path,
+		userid:str,
+		session_id:str,
+		access_key:str,
+	)->Optional[str]:
+
+	fn=(
+		f"{dbi_loc_CreateActiveSession.__name__}"
+		f"({userid},{session_id},{access_key})"
+	)
+	msg_err:Optional[str]=None
+
+	try:
+		async with aio_connect(
+				util_get_dbfile(basedir)
+			) as sqlcon:
+
+			ok=await db_post(
+				sqlcon,session_id,
+				{
+					_KEY_ID:session_id,
+					_KEY_USERID:userid,
+					_KEY_DATE:util_rnow(),
+					_KEY_STATUS:_SESSION_ACTIVE,
+					_KEY_AKEY:access_key,
+				},
+				# force=False
+			)
+			if not ok:
+				msg_err="failed to create session"
+
+	except Exception as exc:
+		msg_err=f"{exc}"
+
+
+	if msg_err is not None:
+		return f"{fn} {msg_err}"
+
+	return None
+
+# async def dbi_loc_CreateSession(
+# 		basedir:Path,
+# 		userid:str,
+# 		session_id:str,
+# 		payload:str,
+# 		status:int
+# 	)->Optional[str]:
+
+# 	keyname={
+# 		_SESSION_PENDING:_KEY_OTP,
+# 		_SESSION_ACTIVE:_KEY_AKEY
+# 	}[status]
+
+# 	data={
+# 		_KEY_ID:session_id,
+# 		_KEY_USERID:userid,
+# 		_KEY_DATE:util_rnow(),
+# 		_KEY_STATUS:status,
+# 		keyname:payload,
+# 	}
+
+# 	fn=(
+# 		f"{dbi_loc_CreateSession}"
+# 		f"({userid},{session_id},{payload},{status})"
+# 	)
+# 	msg_err:Optional[str]=None
+
+# 	try:
+# 		async with aio_connect(
+# 				util_get_dbfile(basedir)
+# 			) as sqlcon:
+
+# 			ok=await db_post(
+# 				sqlcon,session_id,
+# 				data,force=True
+# 			)
+# 			if not ok:
+# 				msg_err="failed to create session"
+
+# 	except Exception as exc:
+# 		msg_err=f"{exc}"
+
+
+# 	if msg_err is not None:
+# 		return f"{fn} {msg_err}"
+
+# 	return None
+
 async def dbi_loc_ReadSession(
 		basedir:Path,
 		session_id:str,
 		target_status:int=-1,
+		confirm_only:bool=False
 	)->Union[tuple,Mapping]:
 
 	fn=(
-		f"{dbi_loc_CreateSession.__name__}"
+		f"{dbi_loc_ReadSession.__name__}"
 		f"({session_id},{target_status}):"
 	)
 
@@ -209,24 +293,36 @@ async def dbi_loc_ReadSession(
 
 	except Exception as exc:
 		m=f"{fn} {exc}"
+		if confirm_only:
+			print(_ERR,m)
+			return False
 		if get_raw:
 			return {_ERR:m}
 		return (_ERR,m)
 
 	if len(session_data)==0:
 		m=f"{fn} not found"
+		if confirm_only:
+			print(_ERR,m)
+			return False
 		if get_raw:
 			return {_ERR:m}
 		return (_ERR,m)
 
 	if not session_data.get(_KEY_ID)==session_id:
 		m=f"{fn} ID mismatch"
+		if confirm_only:
+			print(_ERR,m)
+			return False
 		if get_raw:
 			return {_ERR:m}
 		return (_ERR,m)
 
 	if not session_data.get(_KEY_STATUS)==target_status:
 		m=f"{fn} status mismatch"
+		if confirm_only:
+			print(_ERR,m)
+			return False
 		if get_raw:
 			return {_ERR:m}
 		return (_ERR,m)
@@ -234,6 +330,9 @@ async def dbi_loc_ReadSession(
 	the_date=session_data.get(_KEY_DATE)
 	if the_date is None:
 		m=f"{fn} date missing"
+		if confirm_only:
+			print(_ERR,m)
+			return False
 		if get_raw:
 			return {_ERR:m}
 		return (_ERR,m)
@@ -245,9 +344,16 @@ async def dbi_loc_ReadSession(
 	the_payload=session_data.get(keyname)
 	if the_payload is None:
 		m=f"{fn} payload missing"
+		if confirm_only:
+			print(_ERR,m)
+			return False
 		if get_raw:
 			return {_ERR:m}
 		return (_ERR,m)
+
+	if confirm_only:
+		print(session_id,fn,"It exists")
+		return True
 
 	if get_raw:
 		return session_data
@@ -280,10 +386,12 @@ async def dbi_loc_DropSession(
 			if not any_status:
 				result=await db_hget(
 					sqlcon,session_id,
-					subkeys=[_KEY_STATUS]
+					subkeys=[
+						(_KEY_STATUS,_SESSION_ACTIVE)
+					]
 				)
 				if len(result)==0:
-					raise Exception("not found")
+					raise Exception("not found or status mismatch")
 
 				if not result[_KEY_STATUS]==status:
 					raise Exception("status mismatch")
@@ -295,10 +403,10 @@ async def dbi_loc_DropSession(
 	except Exception as exc:
 		msg_err=f"{exc}"
 
-	if msg_err is None:
-		return None
+	if msg_err is not None:
+		return f"{fn} {msg_err}"
 
-	return f"{fn} {msg_err}"
+	return None
 
 async def dbi_loc_ConvertToActive(
 		basedir:Path,
@@ -391,7 +499,7 @@ def util_check_session_data(
 
 	if not session_id==data.get(_KEY_ID):
 		print(fn,"session_id mismatch")
-		return _FLAG_NOT_FOUND_OR_MISSING
+		return _SESSION_NOT_FOUND
 
 	if status in (_SESSION_PENDING,_SESSION_ACTIVE):
 		keyname={
@@ -400,18 +508,18 @@ def util_check_session_data(
 		}[status]
 		if keyname not in data.keys():
 			print(fn,"payload key not found")
-			return _FLAG_NOT_FOUND_OR_MISSING
+			return _SESSION_NOT_FOUND
 
 		if payload is not None:
 			if not data[keyname]==payload:
 				print(fn,"payload mismatch")
-				return _FLAG_NOT_FOUND_OR_MISSING
+				return _SESSION_NOT_FOUND
 
 	if timeout>0:
 		stored_date=util_valid_date(data.get(_KEY_DATE))
 		if stored_date is None:
 			print(fn,"invalid date")
-			return _FLAG_DESTROY
+			return _SESSION_INVALID
 
 		if not util_date_calc_expiration(
 			stored_date,
@@ -420,23 +528,25 @@ def util_check_session_data(
 			get_exp_date=False
 		).get("expired",True):
 			print(fn,"session expired")
-			return _FLAG_DESTROY
+			return _SESSION_INVALID
 
 	print(fn,"session valid")
-	return _FLAG_OK
+	return _SESSION_OK
 
 async def dbi_loc_RenovateActiveSession(
 		basedir:Path,
 		session_id:str,
 		access_key:str,
-		timeput:int,
-	)->Optional[str]:
+		timeout:int,
+	)->int:
 
 	fn=(
 		f"{dbi_loc_RenovateActiveSession.__name__}"
 		f"({session_id})"
 	)
 	msg_err:Optional[str]=None
+
+	check_result=-1
 
 	try:
 		async with aio_connect(
@@ -449,28 +559,40 @@ async def dbi_loc_RenovateActiveSession(
 					sqlcur,
 					session_id
 				)
+				print(fn,session_data)
 				if session_data is None:
-					raise Exception("session not found")
+					print("NOT FOUND!")
+					check_result=_SESSION_NOT_FOUND
 
-				check_result=util_check_session_data(
-					session_data,session_id,
-					payload=access_key,
-					status=_SESSION_ACTIVE,
-					timeout=timeput
-				)
-				if check_result==_FLAG_NOT_FOUND_OR_MISSING:
-					raise Exception("session data mismatch")
+				if check_result==-1:
+					check_result=util_check_session_data(
+						session_data,session_id,
+						payload=access_key,
+						status=_SESSION_ACTIVE,
+						timeout=timeout
+					)
+					print(
+						"CHECK RESULT",
+						{
+							_SESSION_INVALID:"the session expired: it will be destroyed",
+							_SESSION_OK:"the session willl be renovated",
+							_SESSION_NOT_FOUND:"the session was no found or it is missing"
+						}[check_result]
+					)
 
-				await sqlcur.execute(_SQL_TX_BEGIN)
+				if check_result==_SESSION_NOT_FOUND:
+					msg_err="session data mismatch or not found"
 
-				if check_result==_FLAG_DESTROY:
+				# await sqlcur.execute(_SQL_TX_BEGIN)
 
+				if check_result==_SESSION_INVALID:
+					print("destroying session...")
 					ok=await db_delete(sqlcur,session_id)
 					if not ok:
 						msg_err="Failed to delete invalid/timed-out session"
 
-				if check_result==_FLAG_OK:
-
+				if check_result==_SESSION_OK:
+					print("updating date...")
 					ok=await db_hupdate(
 						sqlcur,session_id,
 						data_to_add={_KEY_DATE:util_rnow()}
@@ -478,23 +600,17 @@ async def dbi_loc_RenovateActiveSession(
 					if not ok:
 						msg_err="Failed to renovate the session"
 
-				await sqlcur.execute(_SQL_TX_COMMIT)
+				# await sqlcur.execute(_SQL_TX_COMMIT)
 
-			# ok=await db_custom(
-			# 	sqlcon,session_id,
-			# 	util_renovate_active_session,
-			# 	custom_func_params=session_id,
-			# )
-			# if not ok:
-			# 	msg_err="unable to renovate"
+				await sqlcon.commit()
 
 	except Exception as exc:
 		msg_err=f"{exc}"
 
-	if msg_err is None:
-		return None
+	if msg_err is not None:
+		print(f"ERROR:\n\t{fn} {msg_err}")
 
-	return f"{fn} {msg_err}"
+	return check_result
 
 async def dbi_loc_GetSessionsFromUsers(
 		basedir:Path,userid:str,

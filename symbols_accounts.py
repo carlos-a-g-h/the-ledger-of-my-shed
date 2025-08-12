@@ -9,6 +9,7 @@ _ROUTE_API_LOGIN_MAGIC="/api/accounts/login-magical"
 _ROUTE_API_LOGOUT="/api/accounts/logout"
 _ROUTE_API_OTP_NEW="/api/accounts/otp-new"
 _ROUTE_API_OTP_CON="/api/accounts/otp-con"
+_ROUTE_FGMT_DETAILS="/fgmt/accounts/details"
 
 _KEY_ACC_EMAIL="email"
 _KEY_ACC_TELEGRAM="telegram"
@@ -45,6 +46,9 @@ _SQL_COL_SID="SessionID"
 
 _ID_FORM_LOGIN="form-login"
 _ID_USER_ACCOUNT="user-account"
+
+_ID_UACC_EDITOR="uaccount-editor"
+_ID_UACC_EDITOR_FORM="uaccount-editor-form"
 
 def id_user(userid:str)->str:
 	return f"user-{userid}"

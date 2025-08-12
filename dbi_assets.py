@@ -187,64 +187,6 @@ def dbi_init(
 	dbctl.db_tx_commit()
 	dbctl.close()
 
-# def dbi_loc_get_aname_from_aid(
-# 		basedir:Path,
-# 		asset_id:str
-# 	)->Optional[str]:
-
-# 	asset_name:Optional[str]=None
-
-# 	try:
-# 		with DBControl(
-# 				util_get_dbfile(basedir)
-# 			) as dbctl:
-
-# 			asset_name=dbctl.get(asset_id)
-# 	except Exception as exc:
-# 		print(_ERR,f"{exc}")
-# 		return None
-
-# 	return asset_name
-
-# def dbi_loc_get_anames_from_aids(
-# 		basedir:Path,
-# 		aid_lst:list,
-# 		as_list:bool
-# 	)->Union[list,Mapping]:
-
-# 	result_list=[]
-# 	result_map={}
-
-# 	edb:Elara=el_exe(
-# 		util_get_dbfile(basedir)
-# 	)
-
-# 	for aid in aid_lst:
-# 		aname=edb.get(aid)
-# 		if aname is None:
-# 			continue
-
-# 		if not as_list:
-# 			result_map.update({aid:aname})
-
-# 		result_list.append({aid:aname})
-
-# 	if not as_list:
-# 		return result_map
-
-# 	return result_list
-
-# async def aw_dbi_loc_get_names_from_aids(
-# 		basedir:Path,aid_list:str,
-# 		as_list:bool=True,
-# 	)->Union[list,Mapping]:
-
-# 	result:Union[list,Mapping]=await dbi_loc_get_anames_from_aids(
-# 		basedir,aid_list,as_list
-# 	)
-
-# 	return result
-
 async def dbi_loc_GetAssetNames(
 		basedir:Path,
 		target:Union[str,list],

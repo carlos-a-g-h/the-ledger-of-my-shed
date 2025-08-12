@@ -10,8 +10,8 @@ from frontend_Any import (
 	_CSS_CLASS_CONTROLS,
 	_CSS_CLASS_DANGER,
 	_CSS_CLASS_NAV,
-
 	_CSS_CLASS_IG_FIELDS,
+	_CSS_CLASS_INPUT_GUARDED,
 
 	write_button_submit,
 
@@ -313,7 +313,7 @@ def write_button_delete_user(
 def write_html_user_as_item(
 		lang:str,
 		data:Mapping,
-		full:bool=False
+		full:bool=True
 	)->str:
 
 	userid=data.get(_KEY_USERID)

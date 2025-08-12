@@ -8,7 +8,7 @@ from hashlib import (
 from pathlib import Path
 from typing import Mapping,Optional,Union
 
-from aiohttp.web import Request
+# from aiohttp.web import Request
 from aiofiles import open as async_open
 from yaml import (
 	Loader as yaml_Loader,
@@ -16,14 +16,14 @@ from yaml import (
 	dump as yaml_dump,
 	Dumper as yaml_Dumper
 )
-from yarl import URL as Yurl
+# from yarl import URL as Yurl
 
 from symbols_Any import (
 	# _excel_columns,
-	_MONGO_URL_DEFAULT,
+	# _MONGO_URL_DEFAULT,
 
-	_COOKIE_AKEY,_COOKIE_USER,
-	_HEADER_USER_AGENT,
+	# _COOKIE_AKEY,_COOKIE_USER,
+	# _HEADER_USER_AGENT,
 
 	_FMT_DATE_YM,
 	_FMT_DATE_YMD,
@@ -78,32 +78,21 @@ def util_hash_md5(content:str)->str:
 
 # user session management related
 
-def util_get_pid_from_request(request:Request)->tuple:
+# def util_extract_from_cookies(
+# 		request:Request
+# 	)->Optional[tuple]:
 
-	# PID = Partially Identifiable Data
+# 	# Pulls username and access key from request cookies
 
-	ip_address=request.remote
-	user_agent=util_valid_str(
-		request.headers.get(_HEADER_USER_AGENT)
-	)
+# 	username=request.cookies.get(_COOKIE_USER)
+# 	if username is None:
+# 		return None
 
-	return (ip_address,user_agent)
+# 	access_key=request.cookies.get(_COOKIE_AKEY)
+# 	if access_key is None:
+# 		return None
 
-def util_extract_from_cookies(
-		request:Request
-	)->Optional[tuple]:
-
-	# Pulls username and access key from request cookies
-
-	username=request.cookies.get(_COOKIE_USER)
-	if username is None:
-		return None
-
-	access_key=request.cookies.get(_COOKIE_AKEY)
-	if access_key is None:
-		return None
-
-	return (username,access_key)
+# 	return (username,access_key)
 
 # date and time
 
