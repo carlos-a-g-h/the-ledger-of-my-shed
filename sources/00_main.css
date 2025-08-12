@@ -169,7 +169,7 @@ div.assets-in-order > details > form > div.controls {
 }
 
 div.tabs,
-div.tabs-content {
+div.tabs>.tab-content {
 	display:flex;
 	flex-direction: column;
 	flex-wrap: nowrap;
