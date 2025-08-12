@@ -41,6 +41,7 @@ _CSS_CLASS_MSGZONE_BUTTON="msgzone-button"
 # _CSS_CLASS_TITLE="title"
 
 _CSS_CLASS_TABS="tabs"
+_CSS_CLASS_TAB_CONTENT="tab-content"
 _CSS_CLASS_SWITCH="switch"
 _CSS_CLASS_NAV="nav"
 
@@ -286,7 +287,7 @@ def write_html_tabs(
 		tab_idx=tab_idx+1
 		html_text=(
 			f"{html_text}\n"
-			f"""<div x-show="curtab === {tab_idx}">""" "\n"
+			f"""<div class="{_CSS_CLASS_TAB_CONTENT}" x-show="curtab === {tab_idx}">""" "\n"
 				f"{tab_con[1]}\n"
 			"</div>"
 		)

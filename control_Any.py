@@ -732,7 +732,7 @@ async def the_middleware_factory(app,handler):
 						requires_referer=False
 
 				if url_is_orders:
-					if len(request_pl.parts==6):
+					if len(request_pl.parts)==6:
 						if request_pl.parts[3]=="pool" and request_pl.name=="spreadsheet":
 							requires_referer=False
 							url_is_login_related=True
